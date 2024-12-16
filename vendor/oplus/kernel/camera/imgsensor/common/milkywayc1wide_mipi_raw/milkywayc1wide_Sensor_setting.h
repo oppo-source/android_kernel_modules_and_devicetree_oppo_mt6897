@@ -24,7 +24,8 @@
 static u16 milkywayc1wide_soft_reset[] = {
 /* @@ init */
 	0xfd, 0x00,
-	0x20, 0x0e,
+	0xc2, 0x32,
+	0x21, 0x0f,
 /* sl 3 3 ; sleep time */
 };
 
@@ -48,6 +49,12 @@ static u16 milkywayc1wide_preview_capture_setting[] = {
 /*  ;analog gain 15.5x */
 /*  ;digital gain (1x-32x) */
 /*  ;OB 0x40 */
+	/* sw power up begin */
+	0xfd, 0x00,
+	0xc2, 0x30,
+	0x21, 0x0e,
+	0x21, 0x00,
+	/* sw power up end */
 	0xfd, 0x00,
 	0x20, 0x0b,
 	0xfd, 0x00,
@@ -215,6 +222,11 @@ static u16 milkywayc1wide_preview_capture_setting[] = {
 	0x9c, 0x32,
 	0xb7, 0x02,
 	0xfd, 0x01,
+	/* sw power down begin */
+	0xfd, 0x00,
+	0xc2, 0x32,
+	0x21, 0x0f,
+	/* sw power down end */
 };
 
 static u16 milkywayc1wide_normal_video_setting[] = {
@@ -234,6 +246,12 @@ static u16 milkywayc1wide_normal_video_setting[] = {
 /*  ;analog gain 15.5x */
 /*  ;digital gain (1x-32x) */
 /*  ;OB 0x40 */
+	/* sw power up begin */
+	0xfd, 0x00,
+	0xc2, 0x30,
+	0x21, 0x0e,
+	0x21, 0x00,
+	/* sw power up end */
 	0xfd, 0x00,
 	0x20, 0x0b,
 	0xfd, 0x00,
@@ -401,6 +419,11 @@ static u16 milkywayc1wide_normal_video_setting[] = {
 	0x9c, 0x32,
 	0xb7, 0x02,
 	0xfd, 0x01,
+	/* sw power down begin */
+	0xfd, 0x00,
+	0xc2, 0x32,
+	0x21, 0x0f,
+	/* sw power down end */
 };
 
 static u16 milkywayc1wide_hs_video_setting[] = {
@@ -993,6 +1016,12 @@ static u16 milkywayc1wide_custom3_setting[] = {
 /* 100 99 2560 1920 */
 /* 102 80 1 */
 /* 102 81 0 */
+	/* sw power up begin */
+	0xfd, 0x00,
+	0xc2, 0x30,
+	0x21, 0x0e,
+	0x21, 0x00,
+	/* sw power up end */
 	0xfd, 0x00,
 	0x20, 0x0b,
 	0xfd, 0x00,
@@ -1160,6 +1189,11 @@ static u16 milkywayc1wide_custom3_setting[] = {
 	0x9c, 0x32,
 	0xb7, 0x02,
 	0xfd, 0x01,
+	/* sw power down begin */
+	0xfd, 0x00,
+	0xc2, 0x32,
+	0x21, 0x0f,
+	/* sw power down end */
 };
 
 static u16 milkywayc1wide_custom4_setting[] = {
@@ -1180,6 +1214,12 @@ static u16 milkywayc1wide_custom4_setting[] = {
 /* 100 99 2304 1728 */
 /* 102 80 1 */
 /* 102 81 0 */
+	/* sw power up begin */
+	0xfd, 0x00,
+	0xc2, 0x30,
+	0x21, 0x0e,
+	0x21, 0x00,
+	/* sw power up end */
 	0xfd, 0x00,
 	0x20, 0x0b,
 	0xfd, 0x00,
@@ -1347,6 +1387,11 @@ static u16 milkywayc1wide_custom4_setting[] = {
 	0x9c, 0x32,
 	0xb7, 0x02,
 	0xfd, 0x01,
+	/* sw power down begin */
+	0xfd, 0x00,
+	0xc2, 0x32,
+	0x21, 0x0f,
+	/* sw power down end */
 };
 
 static u16 milkywayc1wide_custom5_setting[] = {
@@ -1367,6 +1412,12 @@ static u16 milkywayc1wide_custom5_setting[] = {
 /* 100 99 1664 1248 */
 /* 102 80 1 */
 /* 102 81 0 */
+	/* sw power up begin */
+	0xfd, 0x00,
+	0xc2, 0x30,
+	0x21, 0x0e,
+	0x21, 0x00,
+	/* sw power up end */
 	0xfd, 0x00,
 	0x20, 0x0b,
 	0xfd, 0x00,
@@ -1534,6 +1585,11 @@ static u16 milkywayc1wide_custom5_setting[] = {
 	0x9c, 0x32,
 	0xb7, 0x02,
 	0xfd, 0x01,
+	/* sw power down begin */
+	0xfd, 0x00,
+	0xc2, 0x32,
+	0x21, 0x0f,
+    /* sw power down end */
 };
 
 #endif  /* _OMEGAC1WIDE_SENSOR_SETTING_H  */

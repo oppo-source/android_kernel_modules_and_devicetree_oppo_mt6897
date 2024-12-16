@@ -74,7 +74,7 @@ extern int (*tp_gesture_enable_notifier)(unsigned int tp_index);
 #define  U_DELAY(n) usleep_range(n, n+10)
 
 #define HFP_144HZ (54)
-#define HFP_90_50_48 (172)
+#define HFP_90_50_48 (169)
 #define HFP_120_60_30 (170)
 #define HSA (28)
 #define HBP (26)
@@ -799,7 +799,7 @@ static int lcm_backlight_ic_config(struct drm_panel *panel, int enable)
 			lcd_bl_i2c_write_dual(lcd_bl_i2c_m_client, 0x08, 0x00, lcd_bl_i2c_s_client, 0x08, 0x00);
 			usleep_range(5000, 6000);
 
-			// gpiod_set_value(ctx->bias_en, 0);
+			gpiod_set_value(ctx->bias_en, 0);
 
 			backlight_ic_enable_flag = false;
 		}

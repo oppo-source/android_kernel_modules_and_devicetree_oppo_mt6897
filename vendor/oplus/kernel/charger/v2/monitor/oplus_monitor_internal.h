@@ -162,6 +162,8 @@ struct oplus_monitor {
 	int batt_fcc_comp;
 	int batt_soh_comp;
 	int uisoc_keep_2_err;
+	int batt_qmax;
+	int gauge_car_c;
 	struct super_endurance_mode_info sem_info;
 	bool gauge_inited;
 

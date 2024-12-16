@@ -50,7 +50,7 @@
 
 /*********** PART2: Define Area ***********/
 #define TMS_MOUDLE                "Common"
-#define TMS_VERSION               "010201"
+#define TMS_VERSION               "010202"
 #define DEVICES_CLASS_NAME        "tms"
 #define OFF                       0    /* Device power off */
 #define ON                        1    /* Device power on */
@@ -59,6 +59,9 @@
 #define PAGESIZE                  512
 #define WAIT_TIME_NONE            0
 #define WAIT_TIME_1000US         1000
+#define WAIT_TIME_500US           500
+#define WAIT_TIME_1000US          1000
+#define WAIT_TIME_5000US          5000
 #define WAIT_TIME_10000US         10000
 #define WAIT_TIME_20000US         20000
 
@@ -104,6 +107,8 @@ struct dev_register {
 
 struct tms_feature {
     bool    dl_support : 1; /* DownLoad pin is supported or not */
+    bool    rf_clk_enable_support : 1; /* rf clk control is supported or not, unisoc rf clk need to be controlled */
+    bool    indept_se_support : 1; /* Independent ese support feature*/
 };
 
 struct tms_info {

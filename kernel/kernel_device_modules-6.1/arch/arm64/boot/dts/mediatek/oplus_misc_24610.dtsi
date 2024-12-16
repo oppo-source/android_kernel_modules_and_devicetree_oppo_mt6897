@@ -50,7 +50,8 @@
 		oplus,drv2_time = /bits/ 8 <0x30>;
 		oplus,auto_break_mode_support;
 		oplus,d2s_gain = /bits/ 8 <0x7>;
-		oplus,brk_time = /bits/ 8 <0x6>;
+		oplus,brk_time = /bits/ 8 <0x5>;
+		oplus,brk_gain = /bits/ 8 <0x6>;
 	};
 };
 

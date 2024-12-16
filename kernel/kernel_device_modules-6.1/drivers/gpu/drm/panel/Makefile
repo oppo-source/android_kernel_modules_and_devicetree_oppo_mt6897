@@ -31,6 +31,7 @@ obj-$(CONFIG_DRM_PANEL_AC230_P_7_A0014_DSI_CMD_PANEL_T1) += oplus_panel/ac230_p_
 obj-$(CONFIG_DRM_PANEL_AC230_P_3_A0004_DSI_CMD_PANEL_T1) += oplus_panel/ac230_p_3_a0004_dsi_cmd_panel_t1.o
 obj-$(CONFIG_DRM_PANEL_AC230_P_7_A0014_DSI_CMD_PANEL_T0) += oplus_panel/ac230_p_7_a0014_dsi_cmd_panel_t0.o
 obj-$(CONFIG_DRM_PANEL_AC232_P_7_A0014_DSI_CMD_PANEL_T0) += oplus_panel/ac232_p_7_a0014_dsi_cmd_panel_t0.o
+obj-$(CONFIG_DRM_PANEL_PANEL_AE016_P_7_A0014_DSI_CMD) += oplus_panel/panel_ae016_p_7_a0014_dsi_cmd.o
 obj-$(CONFIG_DRM_PANEL_AC164_P_3_A0001_CMD_PANEL) += ac164_p_3_a0001_cmd_panel.o
 obj-$(CONFIG_DRM_PANEL_AC164_P_7_A0001_CMD_PANEL) += ac164_p_7_a0001_cmd_panel.o
 obj-$(CONFIG_DRM_PANEL_AC164_P_7_A0001_CMD_PANEL) += ac158_p_7_a0001_cmd_panel.o

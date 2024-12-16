@@ -4604,6 +4604,16 @@ int fg_check_lk_swocv(struct device *dev,
 }
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
+static void oplus_chg_track_aging_trigger_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct mtk_battery *gm = container_of(
+		dwork, struct mtk_battery, aging_trigger_work);
+
+	gauge_cali_track_trig_upload(gm,
+			&gm->gauge_cali_track_update_state, GAUGE_TRACK_CALI_FLAG_AGING);
+}
+
 static bool battery_type_is_4450mv(void)
 {
 	int battery_type = BAT_TYPE__UNKNOWN;
@@ -4714,12 +4724,20 @@ static int meter_fg_30_get_battery_fcc(void)
 
 static int meter_fg_30_get_battery_cc(void)
 {
-	return -1;
+	if (oplus_gm == NULL) {
+		bm_err("%s oplus_gm is NULL\n", __func__);
+		return -EINVAL;
+	}
+	return oplus_gm->bat_cycle;
 }
 
 static int meter_fg_30_get_battery_soh(void)
 {
-	return -1;
+	if (oplus_gm == NULL) {
+		bm_err("%s oplus_gm is NULL\n", __func__);
+		return -EINVAL;
+	}
+	return oplus_gm->soh/100;
 }
 
 static int meter_fg_30_get_prev_batt_remaining_capacity(void)
@@ -4777,6 +4795,121 @@ static bool meter_set_gauge_power_sel(int sel)
 	}
 	return set_charge_power_sel(chgsel);
 }
+
+static int meter_fg_30_get_batt_qmax(int *qmax1, int *qmax2)
+{
+	if (qmax1 == NULL || qmax2 == NULL) {
+		bm_err("%s qmax1 or qmax2 is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (oplus_gm == NULL) {
+		bm_err("%s oplus_gm is NULL\n", __func__);
+		return -EINVAL;
+	}
+	*qmax1 = oplus_gm->algo_qmax;
+	*qmax2 = *qmax1;
+	return 0;
+}
+
+static int meter_fg_30_get_gauge_car_c(int *car_c)
+{
+	if (car_c == NULL) {
+		bm_err("%s car_c is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (oplus_gm == NULL) {
+		bm_err("%s oplus_gm is NULL\n", __func__);
+		return -EINVAL;
+	}
+	*car_c = oplus_gm->car_c;
+	return 0;
+}
+
+void oplus_chg_update_gauge_cali_track_info(
+	struct mtk_battery *gm,
+	struct gauge_track_cali_info_s *info)
+{
+	if (gm == NULL || info == NULL) {
+		bm_err("input is null\n");
+		return;
+	}
+
+	info->tbat = gm->bs_data.bat_batt_temp;
+	info->vbat = gm->batt_volt;
+	info->ui_soc = gm->fg_cust_data.ui_old_soc;
+	info->soc = gm->soc;
+	info->c_soc = gm->fg_cust_data.c_soc;
+	info->v_soc = gm->fg_cust_data.v_soc;
+	info->car_c = gm->car_c;
+	info->total_car = gm->total_car;
+	info->aging_factor = gm->aging_factor;
+	info->qmax = gm->algo_qmax;
+	info->quse = gm->prev_batt_fcc;
+	info->zcv = gm->zcv;
+	info->batt_cc = gm->bat_cycle;
+}
+
+void gauge_cali_track_init_state(struct mtk_battery *gm,
+	struct gauge_cali_track_state *state, int track_reason)
+{
+	if (state == NULL)
+		return;
+
+	mutex_lock(&state->lock);
+	state->begin_flag = true;
+	state->end_flag = 0;
+	state->begin_time = ktime_get();
+	state->track_reason = track_reason;
+	state->pre_info = kzalloc(sizeof(struct gauge_track_cali_info_s), GFP_KERNEL);
+	oplus_chg_update_gauge_cali_track_info(gm, state->pre_info);
+	mutex_unlock(&state->lock);
+}
+
+bool gauge_cali_track_check_state(struct gauge_cali_track_state *state, int offset)
+{
+	ktime_t now;
+
+	now = ktime_get();
+
+	mutex_lock(&state->lock);
+	state->end_flag |= BIT(offset);
+	mutex_unlock(&state->lock);
+
+	if (!(state->end_flag ^ GAUGE_TRACK_STATE_END_MASK)) {
+		bm_info("[%s]: gauge_cali_track_state end_flag complete.\n", __func__);
+		return true;
+	} else if (ktime_ms_delta(now, state->begin_time) > GAUGE_TRACK_STATE_UPDATE_TIMEOUT_MS) {
+		bm_err("[%s]: gauge_cali_track_state update timeout.\n", __func__);
+		return true;
+	}
+	return false;
+}
+
+void gauge_cali_track_trig_upload(struct mtk_battery *gm,
+	struct gauge_cali_track_state *state, int track_reason)
+{
+	struct gauge_track_cali_info_s info;
+
+	if (gm == NULL || state == NULL ||
+	    gm->oplus_track_ops == NULL || gm->oplus_track_ops->mtk_gauge_cali_track == NULL)
+		return;
+
+	oplus_chg_update_gauge_cali_track_info(gm, &info);
+
+	if (track_reason == GAUGE_TRACK_CALI_FLAG_AGING) {
+		gm->oplus_track_ops->mtk_gauge_cali_track(&(gm->pre_info), &info, track_reason);
+	} else {
+		gm->oplus_track_ops->mtk_gauge_cali_track(state->pre_info, &info, state->track_reason);
+
+		mutex_lock(&state->lock);
+		state->begin_flag = false;
+		state->end_flag = 0;
+		kfree(state->pre_info);
+		state->pre_info = NULL;
+		mutex_unlock(&state->lock);
+	}
+}
+
 static struct oplus_gauge_operations oplus_battery_gauge = {
 	.get_battery_mvolts 		= meter_fg_30_get_battery_mvolts,
 	.get_battery_temperature		= meter_fg_30_get_battery_temperature,
@@ -4800,7 +4933,9 @@ static struct oplus_gauge_operations oplus_battery_gauge = {
 	.get_prev_batt_fcc				= meter_fg_30_get_prev_battery_fcc,
 	.update_battery_dod0				= meter_fg_30_modify_dod0,
 	.update_soc_smooth_parameter		= meter_fg_30_update_soc_smooth_parameter,
-    .set_gauge_power_sel                = meter_set_gauge_power_sel,
+	.set_gauge_power_sel                = meter_set_gauge_power_sel,
+	.get_batt_qmax				= meter_fg_30_get_batt_qmax,
+	.get_gauge_car_c			= meter_fg_30_get_gauge_car_c,
 };
 #endif
 
@@ -4939,6 +5074,9 @@ int battery_init(struct platform_device *pdev)
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /*BSP.CHG.Basic 2020/04/30 add for fg*/
 	oplus_gm = gm;
+	oplus_gm->car_c = 0;
+	mutex_init(&gm->gauge_cali_track_update_state.lock);
+	INIT_DELAYED_WORK(&gm->aging_trigger_work, oplus_chg_track_aging_trigger_work);
 	printk(KERN_ERR "!!!!! oplus_gm is ready\n");
 #endif
 

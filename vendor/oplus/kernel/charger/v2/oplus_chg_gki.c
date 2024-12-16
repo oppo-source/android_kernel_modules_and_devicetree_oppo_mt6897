@@ -66,6 +66,7 @@ struct oplus_gki_device {
 	struct delayed_work retention_checkout_work;
 	struct wakeup_source *status_wake_lock;
 	bool status_wake_lock_on;
+	bool is_ui_keep;
 
 	bool led_on;
 
@@ -217,8 +218,13 @@ static int wls_psy_get_prop(struct power_supply *psy,
 				oplus_chg_wls_set_status_keep(chip->wls_topic, WLS_SK_BY_KERNEL);
 				pval->intval = 1;
 				schedule_delayed_work(&chip->status_keep_clean_work, msecs_to_jiffies(KEEP_CLEAN_INTERVAL));
+				chip->is_ui_keep = true;
 			} else {
 				pre_wls_online = pval->intval;
+				if (chip->is_ui_keep && pval->intval == 0) {
+					pval->intval = 1;
+					break;
+				}
 				if (chip->status_wake_lock_on) {
 					cancel_delayed_work_sync(&chip->status_keep_clean_work);
 					schedule_delayed_work(&chip->status_keep_clean_work, 0);
@@ -1239,6 +1245,7 @@ static void oplus_chg_wls_status_keep_clean_work(struct work_struct *work)
 		return;
 	}
 
+	chip->is_ui_keep = false;
 	oplus_chg_wls_set_status_keep(chip->wls_topic, WLS_SK_NULL);
 	if (chip->batt_psy)
 		power_supply_changed(chip->batt_psy);
@@ -1554,16 +1561,15 @@ static void oplus_gki_retention_checkout_work(struct work_struct *work)
 
 	chip->cc_detect = oplus_wired_get_hw_detect();
 	chg_debug("gki_retention_state, rc=%d, cc_detect =%d\n", chip->retention_connect_state, chip->cc_detect);
-	if ((!chip->retention_connect_state && chip->retention_connect_state != chip->pre_retention_state) ||
-		(chip->cc_detect == CC_DETECT_NOTPLUG)) {
-		chip->pre_retention_state = 0;
-		chip->retention_connect_state = 0;
+	if ((!chip->retention_connect_state && chip->retention_connect_state != chip->pre_retention_state) &&
+		(chip->cc_detect == CC_DETECT_PLUGIN)) {
 		chip->last_wired_type = POWER_SUPPLY_TYPE_UNKNOWN;
 		chip->retention_state = 0;
 		usb_psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
 		if (!IS_ERR_OR_NULL(chip->batt_psy))
 			power_supply_changed(chip->batt_psy);
 	}
+	chip->pre_retention_state = 0;
 	chg_debug("gki_retention_state, usb_psy_desc.type =%d\n", usb_psy_desc.type);
 }
 

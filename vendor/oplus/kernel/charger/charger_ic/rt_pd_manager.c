@@ -58,6 +58,7 @@
 extern void oplus_otg_enable_by_buckboost(void);
 extern void oplus_otg_disable_by_buckboost(void);
 extern void tcpc_late_sync(void);
+extern int oplus_pd_set_aicr(int current_ma, bool en);
 #ifdef OPLUS_CHG_SEPARATE_MUSE
 extern void oplus_set_splitchg_request_dpdm(bool enable);
 extern void oplus_notify_pd_event(unsigned long evt);
@@ -493,12 +494,9 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		if (noti->vbus_state.type & TCP_VBUS_CTRL_PD_DETECT) {
 			pd_sink_set_vol_and_cur(rpmd, rpmd->sink_mv_new, rpmd->sink_ma_new,
 						noti->vbus_state.type);
-			if (g_oplus_chip && g_oplus_chip->chg_ops && g_oplus_chip->chg_ops->set_pd_aicr) {
-				ret = g_oplus_chip->chg_ops->set_pd_aicr(rpmd->sink_ma_new, true);
-				if (ret == 0)
-					dev_info(rpmd->dev, " %s set pd aicr from tcp ma= %d\n",
-						 __func__, rpmd->sink_ma_new);
-			}
+			oplus_pd_set_aicr(rpmd->sink_ma_new, true);
+			dev_info(rpmd->dev, " %s set pd aicr from tcp ma= %d\n",
+						__func__, rpmd->sink_ma_new);
 		}
 		break;
 	case TCP_NOTIFY_SOURCE_VBUS:
@@ -539,8 +537,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * start charger type detection,
 			 * and enable device connection
 			 */
-			if (g_oplus_chip && g_oplus_chip->chg_ops && g_oplus_chip->chg_ops->set_pd_aicr)
-				g_oplus_chip->chg_ops->set_pd_aicr(PD_DEFAULT_CURRENT_MA, false);
+			oplus_pd_set_aicr(PD_DEFAULT_CURRENT_MA, false);
 			cancel_delayed_work_sync(&rpmd->usb_dwork);
 			rpmd->usb_dr = DR_DEVICE;
 			rpmd->usb_type_polling_cnt = 0;
@@ -565,8 +562,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * report charger plug-out,
 			 * and disable device connection
 			 */
-			if (g_oplus_chip && g_oplus_chip->chg_ops && g_oplus_chip->chg_ops->set_pd_aicr)
-				g_oplus_chip->chg_ops->set_pd_aicr(PD_DEFAULT_CURRENT_MA, false);
+			oplus_pd_set_aicr(PD_DEFAULT_CURRENT_MA, false);
 			cancel_delayed_work_sync(&rpmd->usb_dwork);
 			rpmd->usb_dr = DR_IDLE;
 			schedule_delayed_work(&rpmd->usb_dwork, 0);

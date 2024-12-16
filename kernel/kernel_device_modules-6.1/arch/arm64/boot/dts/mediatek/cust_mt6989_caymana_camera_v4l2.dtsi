@@ -308,27 +308,10 @@
 			remote-endpoint = <&wide_af>;
 		};
 	};
-	port@3 {
-		reg = <3>;
-		tele_af_endpoint: endpoint {
-			remote-endpoint = <&tele_af>;
-		};
-	};
-	port@4 {
-		tele_ois_endpoint: endpoint {
-			remote-endpoint = <&tele_ois>;
-		};
-	};
 	port@5 {
 		reg = <0>;
 		main_af2_endpoint: endpoint {
 			remote-endpoint = <&main_af2>;
-		};
-	};
-	port@6 {
-		reg = <0>;
-		tele_af2_endpoint: endpoint {
-			remote-endpoint = <&tele_af2>;
 		};
 	};
 	port@7 {
@@ -344,42 +327,6 @@
 	clock-frequency = <400000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-
-	camera_af_tele@0c {
-		compatible = "oplus,ak7316";
-		reg = <0x0c>;
-		//vin-supply = <&wl28681c1_ldo7a>;
-		port {
-			tele_af: endpoint {
-				remote-endpoint = <&tele_af_endpoint>;
-			};
-		};
-	};
-
-	camera_af_tele@0b {
-		compatible = "oplus,afsem1217s";
-		reg = <0x0b>;
-		//vin-supply = <&wl28681c1_ldo7a>;
-		//vdd-supply = <&wl28681c1_ldo6a>;
-		//avdd-supply = <&wl28681c1_ldo5a>;
-		port {
-			tele_af2: endpoint {
-				remote-endpoint = <&tele_af2_endpoint>;
-			};
-		};
-	};
-
-	camera_ois_tele@3e {
-		compatible = "mediatek,sem1217s";
-		reg = <0x3e>;
-		//iovdd-supply = <&wl28681c1_ldo6a>;
-		//avdd-supply = <&wl28681c1_ldo5a>;
-		port {
-			tele_ois: endpoint {
-				remote-endpoint = <&tele_ois_endpoint>;
-			};
-		};
-	};
 
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";

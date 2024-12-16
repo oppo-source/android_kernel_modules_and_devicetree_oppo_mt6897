@@ -14615,8 +14615,8 @@
 
 		lbat-max-level = <3>;
 		lbat-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 1200000  1700000 1800000>;
-		lbat-limit-freq-lv3 = < 900000  900000 900000>;
+		lbat-limit-freq-lv2 = < 2147483647  2147483647 2147483647>;
+		lbat-limit-freq-lv3 = < 1200000  1700000 1800000>;
 
 		oc-max-level = <2>;
 		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
@@ -14630,7 +14630,7 @@
 		compatible = "mediatek,gpu-power-throttling";
 
 		lbat-max-level = <3>;
-		lbat-limit-freq = <1200000 700000 300000>;
+		lbat-limit-freq = <2147483647 1200000 700000>;
 
 		oc-max-level = <2>;
 		oc-limit-freq = <1200000 700000>;

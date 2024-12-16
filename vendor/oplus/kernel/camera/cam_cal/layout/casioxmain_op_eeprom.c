@@ -24,6 +24,8 @@ static unsigned int do_lens_id_casioxmain(struct EEPROM_DRV_FD_DATA *pdata,
 static unsigned int do_pdaf_casioxmain(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
 
+static unsigned int layout_check_casioxmain(struct EEPROM_DRV_FD_DATA *pdata, unsigned int sensorID);
+
 static struct STRUCT_CALIBRATION_LAYOUT_STRUCT cal_layout_table = {
 	0x00000006, 0x016B012B, CAM_CAL_SINGLE_EEPROM_DATA,
 	{
@@ -40,7 +42,7 @@ static struct STRUCT_CALIBRATION_LAYOUT_STRUCT cal_layout_table = {
 
 struct STRUCT_CAM_CAL_CONFIG_STRUCT casioxmain_op_eeprom = {
 	.name = "casioxmain_op_eeprom",
-	.check_layout_function = layout_check,
+	.check_layout_function = layout_check_casioxmain,
 	.read_function = Common_read_region,
 	.layout = &cal_layout_table,
 	.sensor_id = CASIOXMAIN_SENSOR_ID,
@@ -50,6 +52,7 @@ struct STRUCT_CAM_CAL_CONFIG_STRUCT casioxmain_op_eeprom = {
 	.preload_size = 0x8000,
 };
 
+static struct STRUCT_CAM_CAL_CONFIG_STRUCT *cam_cal_config = &casioxmain_op_eeprom;
 /*
 unsigned int do_pdaf_casioxmain(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
@@ -787,4 +790,32 @@ static unsigned int do_lens_id_casioxmain(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
 {
 	return do_lens_id_base(pdata, start_addr, block_size, pGetSensorCalData);
+}
+static unsigned int layout_check_casioxmain(struct EEPROM_DRV_FD_DATA *pdata, unsigned int sensorID)
+{
+	unsigned int header_offset = cam_cal_config->layout->header_addr;
+	unsigned int check_id = 0x00000000;
+	unsigned int result = CAM_CAL_ERR_NO_DEVICE;
+
+	if (cam_cal_config->sensor_id == sensorID) {
+		debug_log("%s sensor_id matched\n", cam_cal_config->name);
+	}
+	else {
+		debug_log("%s sensor_id not matched\n", cam_cal_config->name);
+		return result;
+	}
+
+	if (read_data_region(pdata, (u8 *)&check_id, header_offset, 4) != 4) {
+		debug_log("header_id read failed\n");
+		return result;
+	}
+
+	if (check_id == 0x016B012B || check_id == 0x01C3012B) {	// hearder id on OTP guide
+		debug_log("header_id matched 0x%08x\n", check_id);
+		result = CAM_CAL_ERR_NO_ERR;
+	} else {
+		debug_log("header_id not matched 0x%08x\n", check_id);
+	}
+
+	return result;
 }

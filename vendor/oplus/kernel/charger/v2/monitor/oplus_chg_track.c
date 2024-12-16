@@ -1279,6 +1279,7 @@ static struct oplus_chg_track_gague_err_reason gague_err_reason_table[] = {
 	{ TRACK_GAGUE_ERR_CC_TERM_VOLT, "cc_term_volt" },
 	{ TRACK_GAGUE_ERR_BELOW_FIRMWARE_TERM_VOLT, "below_firmware_term_volt" },
 	{ TRACK_GAGUE_ERR_LIFETIME_OVER, "lifetime_over" },
+	{ TRACK_GAGUE_MTK_CALI_INFO, "mtk_cali_info"},
 };
 
 static struct oplus_chg_track_speed_ref wired_series_double_cell_125w_150w[] = {
@@ -4337,6 +4338,7 @@ static int oplus_chg_track_init(struct oplus_chg_track *track_dev)
 	mutex_init(&chip->gauge_info.track_lock);
 	mutex_init(&chip->sub_gauge_info.track_lock);
 	mutex_init(&chip->rechg_info_lock);
+	mutex_init(&chip->eis_timeout_info_lock);
 	mutex_init(&chip->gauge_info.sili_alg_application_lock);
 	mutex_init(&chip->sub_gauge_info.sili_alg_application_lock);
 	mutex_init(&chip->gauge_info.sili_alg_monitor_lock);

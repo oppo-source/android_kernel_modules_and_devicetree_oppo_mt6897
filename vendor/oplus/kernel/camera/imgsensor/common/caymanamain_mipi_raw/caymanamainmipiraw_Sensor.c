@@ -571,9 +571,20 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus9[] = {
 		.bus.csi2 = {
 			.channel = 0,
 			.data_type = 0x2b,
-			.hsize = 8192,
-			.vsize = 6144,
+			.hsize = 4096,
+			.vsize = 3072,
 			.user_data_desc = VC_STAGGER_NE,
+		},
+	},
+    // partial pd
+	{
+	    .bus.csi2 = {
+			.channel = 0,
+			.data_type = 0x30,
+			.hsize = 512,
+			.vsize = 1504,
+			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
+			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
 		},
 	},
 };
@@ -1502,8 +1513,8 @@ static struct subdrv_ops ops = {
 static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
 	{HW_ID_RST, 0, 1},
-	{HW_ID_AVDD, 2800000, 3},
-	{HW_ID_AFVDD, 2800000, 3},
+	{HW_ID_AFVDD, 2800000, 0},
+	{HW_ID_AVDD, 2800000, 0},
 	{HW_ID_DVDD, 1104000, 3},
 	{HW_ID_DOVDD, 1800000, 3},
 	{HW_ID_MCLK_DRIVING_CURRENT, 4, 6},
@@ -1567,20 +1578,10 @@ static struct oplus_eeprom_info_struct  oplus_eeprom_info = {0};
 
 static int get_eeprom_common_data(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
-	u32 addr_sensorver = 0x0018;
 	struct oplus_eeprom_info_struct* infoPtr;
 	memcpy(para, (u8*)(&oplus_eeprom_info), sizeof(oplus_eeprom_info));
 	infoPtr = (struct oplus_eeprom_info_struct*)(para);
 	*len = sizeof(oplus_eeprom_info);
-	if (subdrv_i2c_rd_u8(ctx, addr_sensorver) != 0x00) {
-		printk("need to convert to 10bit");
-		infoPtr->afInfo[0] = (kal_uint8)((infoPtr->afInfo[1] << 6) | (infoPtr->afInfo[0] >> 2));
-		infoPtr->afInfo[1] = (kal_uint8)(infoPtr->afInfo[1] >> 2);
-		infoPtr->afInfo[2] = (kal_uint8)((infoPtr->afInfo[3] << 6) | (infoPtr->afInfo[2] >> 2));
-		infoPtr->afInfo[3] = (kal_uint8)(infoPtr->afInfo[3] >> 2);
-		infoPtr->afInfo[4] = (kal_uint8)((infoPtr->afInfo[5] << 6) | (infoPtr->afInfo[4] >> 2));
-		infoPtr->afInfo[5] = (kal_uint8)(infoPtr->afInfo[5] >> 2);
-	}
 
 	return 0;
 }

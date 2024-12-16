@@ -67,4 +67,6 @@ void nfc_fw_download_control(struct nfc_info *nfc, bool state);
 void nfc_hard_reset(struct nfc_info *nfc);
 int nfc_irq_register(struct nfc_info *nfc);
 void nfc_jump_fw(struct i2c_client *client, unsigned int irq_gpio);
+int nfc_enable_rf_clk(struct nfc_info *nfc);
+void nfc_disable_rf_clk(struct nfc_info *nfc);
 #endif /* _TMS_NFC_H_ */

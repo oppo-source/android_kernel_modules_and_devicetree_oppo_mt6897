@@ -9,6 +9,10 @@
 #define I2C_THRES_FROM_L_SOF_NS 3000000
 #define SCQ_THRES_FROM_F_SOF_NS 8000000
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
+#define OPLUS_FEATURE_CAMERA_COMMON
+#endif /* OPLUS_FEATURE_CAMERA_COMMON */
+
 #include "mtk_cam-job.h"
 
 struct state_accessor;
@@ -176,7 +180,20 @@ static inline bool valid_cq_execution(struct transition_param *p)
 	if (unlikely(!p->s_params))
 		return false;
 
+	#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	return (p->event_ts - p->info->sof_ts_ns) < SCQ_THRES_FROM_F_SOF_NS;
+	#else /*OPLUS_FEATURE_CAMERA_COMMON*/
+	return (p->info->sof_ts_ns <= p->info->sof_l_ts_ns);
+}
+
+static inline bool valid_cq_directly_execution(struct transition_param *p)
+{
+	if (unlikely(!p->s_params))
+		return false;
+
+	return ((p->event_ts - p->info->sof_ts_ns) < SCQ_THRES_FROM_F_SOF_NS) &&
+		(p->info->sof_ts_ns <= p->info->sof_l_ts_ns);
+	#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 }
 
 static inline int guard_apply_sensor_subsample(struct state_accessor *s_acc,
@@ -236,7 +253,11 @@ static inline int guard_apply_isp(struct state_accessor *s_acc,
 {
 	return allow_applying_hw(s_acc) &&
 		ops_call(s_acc, prev_allow_apply_isp) &&
+		#ifndef OPLUS_FEATURE_CAMERA_COMMON
 		current_sensor_ready(s_acc);
+		#else /*OPLUS_FEATURE_CAMERA_COMMON*/
+		current_sensor_ready(s_acc) && valid_cq_execution(p);
+		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 }
 
 static inline int guard_apply_m2m(struct state_accessor *s_acc,
@@ -256,7 +277,11 @@ static inline int guard_ack_apply_directly(struct state_accessor *s_acc,
 					   struct transition_param *p)
 {
 	return guard_ack_eq(s_acc, p) && guard_apply_isp(s_acc, p) &&
+			#ifndef OPLUS_FEATURE_CAMERA_COMMON
 			valid_cq_execution(p);
+			#else /*OPLUS_FEATURE_CAMERA_COMMON*/
+			valid_cq_directly_execution(p);
+			#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 }
 
 static inline int guard_ack_apply_m2m_directly(struct state_accessor *s_acc,

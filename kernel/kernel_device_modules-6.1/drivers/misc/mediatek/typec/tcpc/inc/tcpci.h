@@ -120,6 +120,7 @@ int tcpci_notify_wd0_state(struct tcpc_device *tcpc, bool wd0_state);
 int tcpci_notify_chrdet_state(struct tcpc_device *tcpc, bool uvlo_state);
 int tcpci_notify_bc12_complete_state(struct tcpc_device *tcpc, bool bc12_complete_state);
 int tcpci_notify_hvdcp_detect_dn(struct tcpc_device *tcpc, bool hvdcp_detect_dn);
+int tcpci_notify_sourcecap_done(struct tcpc_device *tcpc, struct power_caps *info);
 #endif
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)

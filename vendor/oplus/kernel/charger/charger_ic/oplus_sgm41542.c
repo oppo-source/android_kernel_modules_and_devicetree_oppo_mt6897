@@ -39,8 +39,13 @@
 #include <linux/pm_wakeup.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
-#include <tcpm.h>
+#ifdef CONFIG_OPLUS_PD_EXT_SUPPORT
+#include "../pd_ext/inc/tcpci.h"
+#include "../pd_ext/inc/tcpm.h"
+#else
 #include <tcpci.h>
+#include <tcpm.h>
+#endif
 #include "../oplus_chg_track.h"
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))

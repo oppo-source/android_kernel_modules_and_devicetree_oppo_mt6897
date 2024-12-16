@@ -287,7 +287,7 @@ static unsigned int do_single_lsc_caymanafront(struct EEPROM_DRV_FD_DATA *pdata,
 	pr_debug("lsc table_size %d\n", table_size);
 	pCamCalData->SingleLsc.LscTable.MtkLcsData.TableSize = table_size;
 	if (table_size > 0) {
-		pCamCalData->SingleLsc.TableRotation = 1;
+		pCamCalData->SingleLsc.TableRotation = 0;
 		debug_log("u4Offset=%d u4Length=%d", start_addr, table_size);
 		read_data_size = read_data(pdata,
 			pCamCalData->sensorID, pCamCalData->deviceID,

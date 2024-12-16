@@ -1241,13 +1241,13 @@ static int oplus_ofp_set_lhbm_pressed_icon(struct drm_panel *panel, void *dsi_dr
 
 	if (lhbm_pressed_icon_on) {
 		if (temp_seed_mode == VIVID) {
-			seed_gain = 440;
+			seed_gain = 450;
 		} else if (temp_seed_mode == EXPERT) {
 			seed_gain = 450;
 		} else if (temp_seed_mode == NATURAL) {
-			seed_gain = 440;
+			seed_gain = 450;
 		} else {
-			seed_gain = 440;
+			seed_gain = 450;
 		}
 		r_reg1 = ((((regs1[AC178_GAMMA_COMPENSATION_REG_INDEX1] << 8)
 				| regs1[AC178_GAMMA_COMPENSATION_REG_INDEX2]) * seed_gain / 100U) >> 8) & 0xFF;
@@ -1341,7 +1341,7 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 		reg_count = sizeof(aod_off_cmd) / sizeof(struct LCM_setting_table);
 	}
 
-	for (i = 0; i < (sizeof(aod_off_cmd) / sizeof(struct LCM_setting_table)); i++) {
+	for (i = 0; i < reg_count; i++) {
 		cmd = aod_off_cmd_set[i].cmd;
 
 		switch (cmd) {
@@ -1738,7 +1738,6 @@ static int oplus_display_panel_set_demura_bl(void *dsi, dcs_write_gce_pack cb, v
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_pack = lcm_setbacklight_pack,
-	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	.panel_poweron = lcm_panel_poweron,
 	.panel_reset = lcm_panel_reset,
 	.panel_poweroff = lcm_panel_poweroff,

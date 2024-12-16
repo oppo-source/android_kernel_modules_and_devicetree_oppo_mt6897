@@ -167,6 +167,20 @@ def define_oplus_local_modules():
         }),
     )
 
+    define_oplus_ddk_module(
+        name = "oplus_bsp_kshrink_slabd",
+        srcs = native.glob([
+            "**/*.h",
+            "async_reclaim_opt/kshrink_slabd/kshrink_slabd.c",
+        ]),
+        includes = ["."],
+        local_defines = ["CONFIG_KSHRINK_SLABD"],
+        copts = select({
+            "//build/kernel/kleaf:kocov_is_true": ["-fprofile-arcs", "-ftest-coverage"],
+            "//conditions:default": [],
+        }),
+    )
+
     ddk_copy_to_dist_dir(
         name = "oplus_bsp_mm",
         module_list = [
@@ -178,6 +192,7 @@ def define_oplus_local_modules():
             "oplus_bsp_zsmalloc",
             "oplus_bsp_lz4k",
             "oplus_bsp_kswapd_opt",
+            "oplus_bsp_kshrink_slabd",
             # TODO: qcom convert to GKI implementation
             #"oplus_bsp_uxmem_opt",
             #"oplus_bsp_dynamic_readahead",

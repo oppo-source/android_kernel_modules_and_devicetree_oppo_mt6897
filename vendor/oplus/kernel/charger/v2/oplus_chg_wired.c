@@ -126,6 +126,7 @@ struct oplus_chg_wired {
 	struct delayed_work switch_end_recheck_work;
 	struct delayed_work pd_config_work;
 	struct delayed_work qc_config_work;
+	struct delayed_work pd_boost_icl_disable_work;
 
 	struct power_supply *usb_psy;
 	struct power_supply *batt_psy;
@@ -163,7 +164,6 @@ struct oplus_chg_wired {
 	bool vooc_started;
 	bool pd_boost_disable;
 	bool cpa_support;
-	bool common_charge_icl_support;
 
 	int chg_type;
 	int vbus_set_mv;
@@ -401,7 +401,6 @@ done:
 	oplus_wired_set_err_code(chip, err_code);
 }
 
-#define OPLUS_COMMON_CHARGE_PDSDP_ICL_MA 1500 /* common charger TD.4.10.2.V.29 fail. */
 static int oplus_wired_current_set(struct oplus_chg_wired *chip,
 				   bool vbus_changed)
 {
@@ -500,11 +499,6 @@ static int oplus_wired_current_set(struct oplus_chg_wired *chip,
 
 	icl_ma =
 		spec->input_power_mw[chip->chg_mode] * 1000 / chip->vbus_set_mv;
-
-	if (chip->common_charge_icl_support && chip->chg_type == OPLUS_CHG_USB_TYPE_PD_SDP &&
-	    chip->chg_mode == OPLUS_WIRED_CHG_MODE_DCP)
-		icl_ma = OPLUS_COMMON_CHARGE_PDSDP_ICL_MA;
-
 	switch (chip->chg_mode) {
 	case OPLUS_WIRED_CHG_MODE_QC:
 		icl_ma = min(icl_ma, spec->qc_iclmax_ma);
@@ -828,6 +822,15 @@ static int oplus_qc_cpa_switch_end(struct oplus_chg_wired *chip)
 	return 0;
 }
 
+#define PD_BOOST_DISABLE_ICL_DELAY msecs_to_jiffies(3000)
+#define PD_BOOST_ICL_MA 1500
+static void oplus_wired_pd_boost_icl_disable_work(struct work_struct *work)
+{
+	struct oplus_chg_wired *chip = container_of(work, struct oplus_chg_wired, pd_boost_icl_disable_work.work);
+
+	vote(chip->icl_votable, BOOST_VOTER, false, 0, true);
+}
+
 #define PD_RETRY_DELAY msecs_to_jiffies(1000)
 #define PD_RETRY_COUNT_MAX 3
 static void oplus_wired_pd_config_work(struct work_struct *work)
@@ -902,6 +905,9 @@ static void oplus_wired_pd_config_work(struct work_struct *work)
 			/* Set the current to 500ma before PD before boost ot 9V */
 			vote(chip->icl_votable, SPEC_VOTER, true, PDQC_BUCK_DEF_CURR_MA,
 			     true);
+			cancel_delayed_work_sync(&chip->pd_boost_icl_disable_work);
+			vote(chip->icl_votable, BOOST_VOTER, true, PD_BOOST_ICL_MA, true);
+			schedule_delayed_work(&chip->pd_boost_icl_disable_work, PD_BOOST_DISABLE_ICL_DELAY);
 			mutex_lock(&chip->icl_lock);
 			rc = oplus_wired_set_pd_config(OPLUS_PD_9V_PDO);
 			mutex_unlock(&chip->icl_lock);
@@ -941,6 +947,8 @@ static void oplus_wired_pd_config_work(struct work_struct *work)
 		/* Set the current to 500ma before stepping down */
 		vote(chip->icl_votable, SPEC_VOTER, true, PDQC_BUCK_DEF_CURR_MA,
 		     true);
+		vote(chip->icl_votable, BOOST_VOTER, false, 0, true);
+		cancel_delayed_work_sync(&chip->pd_boost_icl_disable_work);
 		mutex_lock(&chip->icl_lock);
 		rc = oplus_wired_set_pd_config(OPLUS_PD_5V_PDO);
 		mutex_unlock(&chip->icl_lock);
@@ -1285,7 +1293,7 @@ static void oplus_wired_plugin_work(struct work_struct *work)
 		vote(chip->icl_votable, HIDL_VOTER, false, 0, true);
 		vote(chip->icl_votable, MAX_VOTER, false, 0, true);
 		vote(chip->icl_votable, STRATEGY_VOTER, false, 0, true);
-		vote(chip->icl_votable, TCPC_NOTIFY_ICL_VOTER, false, 0, true);
+		vote(chip->icl_votable, PD_PDO_ICL_VOTER, false, 0, true);
 		chip->pd_retry_count = 0;
 		chip->qc_retry_count = 0;
 		chip->qc_action = OPLUS_ACTION_NULL;
@@ -1296,6 +1304,8 @@ static void oplus_wired_plugin_work(struct work_struct *work)
 		complete_all(&chip->pd_check_ack);
 		cancel_delayed_work_sync(&chip->qc_config_work);
 		cancel_delayed_work_sync(&chip->pd_config_work);
+		vote(chip->icl_votable, BOOST_VOTER, false, 0, true);
+		cancel_delayed_work_sync(&chip->pd_boost_icl_disable_work);
 		cancel_delayed_work_sync(&chip->switch_end_recheck_work);
 		cancel_work_sync(&chip->qc_check_work);
 		cancel_work_sync(&chip->pd_check_work);
@@ -2201,9 +2211,6 @@ static int oplus_wired_parse_dt(struct oplus_chg_wired *chip)
 			default_config.non_standard_ibatmax_ma;
 	}
 
-	chip->common_charge_icl_support = of_property_read_bool(node,
-								"oplus,common-charge-icl-support");
-
 	rc = read_unsigned_data_from_node(node, "oplus_spec,input-power-mw",
 					  (u32 *)(spec->input_power_mw),
 					  OPLUS_WIRED_CHG_MODE_MAX);
@@ -2459,6 +2466,7 @@ static int oplus_wired_probe(struct platform_device *pdev)
 		  oplus_wired_temp_region_update_work);
 	INIT_WORK(&chip->gauge_update_work, oplus_wired_gauge_update_work);
 	INIT_DELAYED_WORK(&chip->switch_end_recheck_work, oplus_pdqc_switch_end_recheck_work);
+	INIT_DELAYED_WORK(&chip->pd_boost_icl_disable_work, oplus_wired_pd_boost_icl_disable_work);
 	INIT_DELAYED_WORK(&chip->qc_config_work, oplus_wired_qc_config_work);
 	INIT_DELAYED_WORK(&chip->pd_config_work, oplus_wired_pd_config_work);
 	INIT_DELAYED_WORK(&chip->retention_disconnect_work,

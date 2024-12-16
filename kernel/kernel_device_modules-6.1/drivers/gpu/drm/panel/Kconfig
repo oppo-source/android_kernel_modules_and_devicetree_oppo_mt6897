@@ -199,6 +199,17 @@ config DRM_PANEL_AC232_P_7_A0014_DSI_CMD_PANEL_T0
 	  resolution and uses 30-bits RGB per pixel. It provides a
 	  MIPI DSI interface to host.
 
+config DRM_PANEL_PANEL_AE016_P_7_A0014_DSI_CMD
+        tristate "oplus FHD DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for TM nt37707
+          DPHY vdo mode Full HD Plus 120HZ panel. The panel has a 1272x2800
+          resolution and uses 30-bits RGB per pixel. It provides a
+          MIPI DSI interface to host.
+
 config DRM_PANEL_AC164_P_7_A0001_CMD_PANEL
 	tristate "oplus FHD DPHY cmd mode panel"
 	depends on OF

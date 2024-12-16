@@ -948,11 +948,9 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsi
 static int lcm_setbacklight_pack(void *dsi, dcs_write_gce_pack cb, void *handle, unsigned int level)
 {
 	unsigned int mapped_level = 0;
-	//unsigned char bl_level[] = {0x51, 0x03, 0xFF};
 	struct LCM_setting_table bl_level[] = {
 		{REGFLAG_CMD, 3, {0x51,0x03,0xFF}},
 	};
-	//unsigned int i = 0;
 
 	if (!dsi || !cb) {
 		return -EINVAL;
@@ -966,9 +964,6 @@ static int lcm_setbacklight_pack(void *dsi, dcs_write_gce_pack cb, void *handle,
 	if (oplus_ofp_is_supported()) {
 		if (lhbm_pressed_icon_grayscale_cmd[2].count == 5) {
 			if (panel_lhbm_pressed_icon_grayscale_update(lhbm_pressed_icon_grayscale_cmd[2].para_list, level) == 1) {
-				//for(i = 0; i < (sizeof(lhbm_pressed_icon_grayscale_cmd) / sizeof(struct LCM_setting_table)); i++) {
-				//	cb(dsi, handle, lhbm_pressed_icon_grayscale_cmd[i].para_list, lhbm_pressed_icon_grayscale_cmd[i].count);
-				//}
 				panel_send_pack_hs_cmd(dsi, lhbm_pressed_icon_grayscale_cmd,
 					sizeof(lhbm_pressed_icon_grayscale_cmd) / sizeof(struct LCM_setting_table), cb, handle);
 			}
@@ -994,9 +989,8 @@ static int lcm_setbacklight_pack(void *dsi, dcs_write_gce_pack cb, void *handle,
 
 	bl_level[0].para_list[1] = level >> 8;
 	bl_level[0].para_list[2] = level & 0xFF;
-	//cb(dsi, handle, bl_level, ARRAY_SIZE(bl_level));
 	panel_send_pack_hs_cmd(dsi, bl_level, sizeof(bl_level) / sizeof(struct LCM_setting_table), cb, handle);
-	DISP_ERR("ac230_p_7_a0014_t1 backlight = %d bl_level[1]=%x, bl_level[2]=%x\n", level, bl_level[0].para_list[1], bl_level[0].para_list[2]);
+	DISP_INFO("ac230_p_7_a0014_t1 backlight = %d bl_level[1]=%x, bl_level[2]=%x\n", level, bl_level[0].para_list[1], bl_level[0].para_list[2]);
 	oplus_display_brightness = level;
 	lcdinfo_notify(LCM_BRIGHTNESS_TYPE, &level);
 	return 0;
@@ -1221,11 +1215,11 @@ static int oplus_ofp_set_lhbm_pressed_icon(struct drm_panel *panel, void *dsi_dr
 		if (temp_seed_mode == VIVID) {
 			seed_gain = 423;
 		} else if (temp_seed_mode == EXPERT) {
-			seed_gain = 437;
+			seed_gain = 440;
 		} else if (temp_seed_mode == NATURAL) {
-			seed_gain = 440;
+			seed_gain = 437;
 		} else {
-			seed_gain = 440;
+			seed_gain = 437;
 		}
 		r_reg1 = ((((regs1[AC178_GAMMA_COMPENSATION_REG_INDEX1] << 8)
 				| regs1[AC178_GAMMA_COMPENSATION_REG_INDEX2]) * seed_gain / 100U) >> 8) & 0xFF;

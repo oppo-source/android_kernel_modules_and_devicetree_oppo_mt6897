@@ -179,6 +179,7 @@
 		oplus,chg_framework_v2;
 		oplus,smart_charging_screenoff;
 		oplus,chg_spec_version = <OPLUS_CHG_SPEC_VER_V3P7>;
+		oplus,common-charge-icl-support;
 		oplus,eco_region_list = /bits/ 8 <0x44>;
 
 		oplus-charger {
@@ -219,7 +220,6 @@
 					OPLUS_IC_FUNC_IS_OPLUS_SVID
 					OPLUS_IC_FUNC_BUCK_GET_USB_BTB_TEMP
 					OPLUS_IC_FUNC_BUCK_GET_BATT_BTB_TEMP
-					OPLUS_IC_FUNC_BUCK_SHIPMODE_ENABLE
 					OPLUS_IC_FUNC_BUCK_SET_AICL_POINT
 					OPLUS_IC_FUNC_SET_OTG_BOOST_CURR_LIMIT
 					OPLUS_IC_FUNC_BUCK_GET_FV
@@ -306,6 +306,17 @@
 					OPLUS_IC_FUNC_GAUGE_GET_REG_INFO
 					OPLUS_IC_FUNC_GAUGE_GET_CALIB_TIME
 					OPLUS_IC_FUNC_GAUGE_GET_GAUGE_TYPE
+					OPLUS_IC_FUNC_GAUGE_GET_BATT_SN
+					OPLUS_IC_FUNC_GAUGE_GET_MANU_DATE
+					OPLUS_IC_FUNC_GAUGE_GET_FIRST_USAGE_DATE
+					OPLUS_IC_FUNC_GAUGE_SET_FIRST_USAGE_DATE
+					OPLUS_IC_FUNC_GAUGE_GET_UI_CC
+					OPLUS_IC_FUNC_GAUGE_SET_UI_CC
+					OPLUS_IC_FUNC_GAUGE_GET_UI_SOH
+					OPLUS_IC_FUNC_GAUGE_SET_UI_SOH
+					OPLUS_IC_FUNC_GAUGE_GET_USED_FLAG
+					OPLUS_IC_FUNC_GAUGE_SET_USED_FLAG
+					OPLUS_IC_FUNC_GAUGE_SET_SEAL_FLAG
 				>;
 				virqs = <
 					OPLUS_IC_VIRQ_ERR
@@ -397,9 +408,6 @@
 	oplus,usbtemp_dischg_enable = <0x2>;
 	oplus,usbtemp_dischg_disable = <0x0>;
 
-	/* mt6878 for common charge icl fail, such as TEST.PD.PS.SNK.01 PDO Transitions As Sink */
-	oplus,tcpc-notify-icl-support;
-
 	oplus,ic_type = <OPLUS_CHG_IC_BUCK>;
 	oplus,ic_index = <0>;
 
@@ -428,6 +436,7 @@
 	is_support_mt6375;
 	support_tuv_authentication;
 	charger_no_wiress;
+	support_external_gauge_bq28z610;
 	support_battery_type = <2>;
 
 	sub_board_temp_support;
@@ -540,7 +549,7 @@
 			oplus,gauge_ic = <&oplus_ext_gauge &oplus_mt6895_gauge>;
 			oplus,gauge_ic_index = <0 1>;
 			oplus,gauge_ic_func_group = <&bq27541_groups &mt6895_gauge_groups>;
-			oplus,batt_capacity_mah = <5000>;
+			oplus,batt_capacity_mah = <5800>;
 			oplus,ic_type = <OPLUS_CHG_IC_VIRTUAL_GAUGE>;
 			oplus,ic_index = <0>;
 		};
@@ -557,7 +566,6 @@
 		compatible = "oplus,wired";
 
 		oplus,vooc-support;
-		oplus,common-charge-icl-support; /* mtk common charge TD.4.10.2.V.29 TD4.10.1.V3/5/6/11 fail. */
 
 		oplus_spec,vbatt_pdqc_to_5v_thr = <4435>;
 		oplus_spec,vbatt_pdqc_to_9v_thr = <4500>;
@@ -632,7 +640,7 @@
 
 		oplus_spec,full_pre_ffc_judge;
 		oplus_spec,full-pre-ffc-mv = <4485>;
-		oplus_spec,ffc-temp-thr = <120 210 350 430>;
+		oplus_spec,ffc-temp-thr = <120 210 350 440>;
 		oplus_spec,wired-ffc-step-max = <2>;
 		oplus_spec,wired-ffc-fv-mv = <4630 4630>;
 
@@ -644,10 +652,6 @@
 						      900 900 900>;
 		oplus_spec,vbat_uv_thr_mv = <3300>;
 		oplus_spec,vbat_charging_uv_thr_mv = <3200>;
-		oplus_spec,wired-aging-ffc-version = <AGING_FFC_V1>;
-		oplus_spec,wired-aging-ffc-offset-mv = <10 15
-						 	10 15>;
-		oplus_spec,wired-aging-ffc-cycle-thr = <500 1000>;
 
 		/*If use subboard NTC as battery temp, config it as 20, otherwise 0 */
 		oplus_spec,tbatt_power_off_cali_temp = <0>;

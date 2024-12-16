@@ -1732,6 +1732,23 @@ int oplus_get_gauge_type(void)
 	return gauge_type;
 }
 
+int oplus_gauge_set_seal_flag(int seal_flag)
+{
+	int rc;
+
+	if (!g_mms_gauge) {
+		return -1;
+	} else {
+		rc = oplus_chg_ic_func(g_mms_gauge->gauge_ic, OPLUS_IC_FUNC_GAUGE_SET_SEAL_FLAG, seal_flag);
+		if (rc < 0 && rc != -ENOTSUPP) {
+			chg_err("can't set seal_flag, rc=%d\n", rc);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static int oplus_mms_gauge_set_err_code(struct oplus_mms_gauge *chip,
 					unsigned int err_code)
 {
@@ -3356,6 +3373,112 @@ static void oplus_mms_gauge_update(struct oplus_mms *mms, bool publish)
 	}
 }
 
+static int oplus_gauge_ic_get_qmax(struct oplus_chg_ic_dev *ic_dev, int *qmax)
+{
+	int rc;
+	int batt_num;
+	int temp_qmax;
+	int i;
+
+	if (ic_dev == NULL || qmax == NULL) {
+		chg_err("ic_dev or qmax is NULL\n");
+		return -EINVAL;
+	}
+
+	*qmax = 0;
+	rc = oplus_chg_ic_func(ic_dev, OPLUS_IC_FUNC_GAUGE_GET_BATT_NUM, &batt_num);
+	if (rc < 0) {
+		chg_err("can't get batt_num from ic:%s, set default to 1\n", ic_dev->name);
+		batt_num = 1;
+	}
+	for (i = 0; i < batt_num; i++) {
+		rc = oplus_chg_ic_func(ic_dev, OPLUS_IC_FUNC_GAUGE_GET_QMAX, i, &temp_qmax);
+		if (rc < 0) {
+			if (rc != -ENOTSUPP)
+				chg_err("can't get qmax from ic:%s, set default to 0\n", ic_dev->name);
+			temp_qmax = 0;
+		}
+		*qmax += temp_qmax;
+	}
+	return 0;
+}
+
+static int oplus_mms_gauge_update_qmax(struct oplus_mms *mms, union mms_msg_data *data)
+{
+	struct oplus_mms_gauge *chip;
+	struct oplus_chg_ic_dev *ic;
+	int batt_qmax = 0;
+	int temp_qmax = 0;
+	int rc = 0;
+	int i;
+
+	if (mms == NULL) {
+		chg_err("mms is NULL\n");
+		return -EINVAL;
+	}
+
+	if (data == NULL) {
+		chg_err("data is NULL\n");
+		return -EINVAL;
+	}
+
+	chip = oplus_mms_get_drvdata(mms);
+	if (strcmp("gauge", mms->desc->name) == 0) {
+		for (i = 0; i < chip->child_num; i++) {
+			temp_qmax = 0;
+			ic = chip->child_list[i].ic_dev;
+			rc = oplus_gauge_ic_get_qmax(ic, &temp_qmax);
+			if (rc < 0) {
+				chg_err("gauge[%d](%s): can't get batt qmax, rc=%d\n",
+					i, ic->manu_name, rc);
+				continue;
+			}
+			batt_qmax += temp_qmax;
+		}
+	} else {
+		for (i = 0; i < chip->child_num; i++) {
+			if (mms != chip->gauge_topic_parallel[i])
+				continue;
+			ic = chip->gauge_ic_comb[i];
+			rc = oplus_gauge_ic_get_qmax(ic, &batt_qmax);
+			if (rc < 0) {
+				chg_err("gauge[%d](%s): can't get batt qmax, rc=%d\n", i, ic->manu_name, rc);
+				batt_qmax = 0;
+				return -EINVAL;
+			}
+			break;
+		}
+	}
+	data->intval = batt_qmax;
+	return 0;
+}
+
+static int oplus_mms_gauge_update_car_c(struct oplus_mms *mms, union mms_msg_data *data)
+{
+	struct oplus_mms_gauge *chip;
+	int rc = 0;
+	int car_c = 0;
+
+	if (mms == NULL) {
+		chg_err("mms is NULL\n");
+		return -EINVAL;
+	}
+
+	if (data == NULL) {
+		chg_err("data is NULL\n");
+		return -EINVAL;
+	}
+	chip = oplus_mms_get_drvdata(mms);
+	rc = oplus_chg_ic_func(chip->gauge_ic, OPLUS_IC_FUNC_GAUGE_GET_GAUGE_CAR_C, &car_c);
+	if (rc < 0) {
+		if (rc != -ENOTSUPP)
+			chg_err("get mtk car_c failed, rc = %d", rc);
+		return rc;
+	}
+	data->intval = car_c;
+	return 0;
+}
+
 static void oplus_mms_sub_gauge_update(struct oplus_mms *mms, bool publish)
 {
 	struct mms_msg *msg;
@@ -3622,6 +3745,24 @@ static struct mms_item oplus_mms_gauge_item[] = {
 			.dead_thr_enable = false,
 			.update = oplus_mms_gauge_update_ratio_trange,
 		}
+	}, {
+		.desc = {
+			.item_id = GAUGE_ITEM_QMAX,
+			.str_data = false,
+			.up_thr_enable = false,
+			.down_thr_enable = false,
+			.dead_thr_enable = false,
+			.update = oplus_mms_gauge_update_qmax,
+		}
+	}, {
+		.desc = {
+			.item_id = GAUGE_ITEM_CAR_C,
+			.str_data = false,
+			.up_thr_enable = false,
+			.down_thr_enable = false,
+			.dead_thr_enable = false,
+			.update = oplus_mms_gauge_update_car_c,
+		}
 	}
 };
 
@@ -3734,6 +3875,15 @@ static struct mms_item oplus_mms_sub_gauge_item[] = {
 			.dead_thr_enable = false,
 			.update = oplus_mms_gauge_update_fcc, /* todo not read when xxx_subscribe_main(sub)_gauge_topic  */
 		}
+	}, {
+		.desc = {
+			.item_id = GAUGE_ITEM_QMAX,
+			.str_data = false,
+			.up_thr_enable = false,
+			.down_thr_enable = false,
+			.dead_thr_enable = false,
+			.update = oplus_mms_gauge_update_qmax,
+		}
 	}
 };
 
@@ -3749,6 +3899,8 @@ static const u32 oplus_mms_gauge_update_item[] = {
 	GAUGE_ITEM_SOH,
 	GAUGE_ITEM_RM,
 	GAUGE_ITEM_REAL_TEMP,
+	GAUGE_ITEM_QMAX,
+	GAUGE_ITEM_CAR_C,
 };
 
 static const u32 oplus_mms_main_sub_gauge_update_item[] = {

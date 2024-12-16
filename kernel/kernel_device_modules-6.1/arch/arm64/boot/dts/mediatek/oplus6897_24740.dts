@@ -3,7 +3,6 @@
  * Copyright (C) 2022 MediaTek Inc.
  */
 #include "k6897v1_64.dts"
-#include "mediatek/nfc/mt6897_24740_pn560.dtsi"
 /* #ifdef CONFIG_UFF_FINGERPRINT */
 #include "mediatek/oplus_uff_24740.dtsi"
 /* #endif CONFIG_UFF_FINGERPRINT */
@@ -53,8 +52,8 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	panel4@3 {
-		compatible = "ac232,p,7,a0014,cmd,t0";
+	panel10@9 {
+		compatible = "panel,ae016,p,7,a0014,dsi,cmd";
 		reg = <0>;
 		reset-gpios = <&pio 41 0>;
 		1p2-gpios = <&pio 64 0>;
@@ -76,65 +75,10 @@
 			};
 		};
 	};
-	panel8@7 {
-		compatible = "ac230,p,7,a0014,cmd,t1";
-		reg = <1>;
-		reset-gpios = <&pio 41 0>;
-		1p2-gpios = <&pio 64 0>;
-		1p8-supply = <&mt6368_vrf18_aif>;
-		3p0-supply = <&mt6368_vmc>;
-		oplus,dsi-serial-number-enabled= <1>;
-		oplus,dsi-serial-number-switch-page;
-		oplus,dsi-serial-number-index= <0>;
-		oplus,dsi-serial-number-switch-page-command= <0xF0 0x55 0xAA 0x52 0x08 0x01>;
-		oplus,dsi-serial-number-default-switch-page-command= <0xF0 0x55 0xAA 0x52 0x08 0x00>;
-		oplus,dsi-serial-number-reg= <0xD7>;
-		oplus,dsi-serial-number-read-count= <7>;
-		oplus_bl_demura_dbv_support = <1>;
-		demura_dbv_cfg1 = <1154>;
-		demura_dbv_cfg2 = <4095>;
-		oplus,ofp-fp-type = <0x10>;
-		res-switch = <2>;
-		pinctrl-names = "default";
-		port {
-			oplus_panel_in2: endpoint {
-				remote-endpoint = <&oplus_dsi_out2>;
-			};
-		};
-	};
-	panel9@8 {
-		compatible = "ac230,p,3,a0004,cmd,t1";
-		reg = <2>;
-		reset-gpios = <&pio 41 0>;
-		1p2-gpios = <&pio 64 0>;
-		1p8-supply = <&mt6368_vrf18_aif>;
-		3p0-supply = <&mt6368_vmc>;
-		oplus,dsi-serial-number-enabled= <1>;
-		oplus,dsi-serial-number-switch-page;
-		oplus,dsi-serial-number-index= <0>;
-		oplus,dsi-serial-number-switch-page-command= <0xFF 0x08 0x38 0x1D>;
-		oplus,dsi-serial-number-default-switch-page-command= <0xFF 0x08 0x38 0x00>;
-		oplus,dsi-serial-number-reg= <0x81>;
-		oplus,dsi-serial-number-read-count= <7>;
-		oplus,ofp-fp-type = <0x10>;
-		res-switch = <2>;
-		pinctrl-names = "default";
-		port {
-			oplus_panel_in3: endpoint {
-				remote-endpoint = <&oplus_dsi_out3>;
-			};
-		};
-	};
 	ports {
 		port {
 			oplus_dsi_out: endpoint {
 				remote-endpoint = <&oplus_panel_in1>;
-			};
-			oplus_dsi_out2: endpoint2 {
-				remote-endpoint = <&oplus_panel_in2>;
-			};
-			oplus_dsi_out3: endpoint3 {
-				remote-endpoint = <&oplus_panel_in3>;
 			};
 		};
 	};

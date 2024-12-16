@@ -1816,20 +1816,10 @@ static struct oplus_eeprom_info_struct  oplus_eeprom_info = {0};
 
 static int get_eeprom_common_data(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
-	u32 addr_sensorver = 0x0018;
 	struct oplus_eeprom_info_struct* infoPtr;
 	memcpy(para, (u8*)(&oplus_eeprom_info), sizeof(oplus_eeprom_info));
 	infoPtr = (struct oplus_eeprom_info_struct*)(para);
 	*len = sizeof(oplus_eeprom_info);
-	if (subdrv_i2c_rd_u8(ctx, addr_sensorver) != 0x00) {
-		printk("need to convert to 10bit");
-		infoPtr->afInfo[0] = (kal_uint8)((infoPtr->afInfo[1] << 4) | (infoPtr->afInfo[0] >> 4));
-		infoPtr->afInfo[1] = (kal_uint8)(infoPtr->afInfo[1] >> 4);
-		infoPtr->afInfo[2] = (kal_uint8)((infoPtr->afInfo[3] << 4) | (infoPtr->afInfo[2] >> 4));
-		infoPtr->afInfo[3] = (kal_uint8)(infoPtr->afInfo[3] >> 4);
-		infoPtr->afInfo[4] = (kal_uint8)((infoPtr->afInfo[5] << 4) | (infoPtr->afInfo[4] >> 4));
-		infoPtr->afInfo[5] = (kal_uint8)(infoPtr->afInfo[5] >> 4);
-	}
 	return 0;
 }
 

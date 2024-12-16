@@ -700,8 +700,8 @@
 		oplus_spec,batt-them-thr = <(-100) 0 50 120 160 450 530>;
 		oplus_spec,iterm-ma = <500>; /* 9510*0.05+10 */
 		oplus_spec,removed_bat_decidegc = <390>; /*-39 degree*/
-		oplus_spec,fv-mv = <0 4430 4465 4465 4465 4465 4130 4130>;
-		oplus_spec,sw-fv-mv = <0 4420 4420 4420 4420 4420 4080 4080>;
+		oplus_spec,fv-mv = <0 4440 4465 4465 4465 4465 4130 4130>;
+		oplus_spec,sw-fv-mv = <0 4410 4420 4420 4420 4420 4080 4080>;
 		oplus_spec,hw-fv-inc-mv = <0 18 18 18 18 18 18 0>;
 		oplus_spec,sw-over-fv-mv = <0 4440 4475 4475 4475 4475 4140 4140>;
 		oplus_spec,sw-over-fv-dec-mv = <8>;
@@ -1241,6 +1241,7 @@
 	pinctrl-names = "i2c-state", "output-low-state";
 	pinctrl-0 = <&i2c12_i2c_state>;
 	pinctrl-1 = <&i2c12_output_low_state>;
+	mediatek,request-cpu-qos;
 	oplus_sc8547a: oplus,sc8547a@6F {
 		status = "okay";
 		compatible = "oplus,sc8547a";

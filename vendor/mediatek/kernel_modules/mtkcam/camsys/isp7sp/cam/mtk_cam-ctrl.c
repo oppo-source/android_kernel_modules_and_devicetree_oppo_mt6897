@@ -811,7 +811,12 @@ static void ctrl_vsync_preprocess(struct mtk_cam_ctrl *ctrl,
 	}
 
 	if (vsync_res->is_last) {
+		#ifndef OPLUS_FEATURE_CAMERA_COMMON
 		ctrl->r_info.sof_l_ts_ns = irq_info->ts_ns;
+		#else /*OPLUS_FEATURE_CAMERA_COMMON*/
+		ctrl->r_info.sof_l_ts_ns =
+			max(irq_info->ts_ns, ctrl->r_info.sof_ts_ns);
+		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		ctrl->r_info.sof_l_ts_mono_ns = ktime_get_ns();
 
 		if (cq_ref) {

@@ -9,6 +9,9 @@
 #include <linux/proc_fs.h>
 
 #include "game_ctrl.h"
+#ifdef CONFIG_HMBIRD_SCHED
+#include "es4g_assist.h"
+#endif /* CONFIG_HMBIRD_SCHED */
 
 struct proc_dir_entry *game_opt_dir = NULL;
 struct proc_dir_entry *early_detect_dir = NULL;
@@ -33,12 +36,18 @@ static int __init game_ctrl_init(void)
 	rt_info_init();
 	fake_cpufreq_init();
 	debug_init();
+#if defined(CONFIG_HMBIRD_SCHED)
+	es4g_assist_init();
+#endif /* CONFIG_HMBIRD_SCHED */
 
 	return 0;
 }
 
 static void __exit game_ctrl_exit(void)
 {
+#if defined(CONFIG_HMBIRD_SCHED)
+	es4g_assist_exit();
+#endif /* CONFIG_HMBIRD_SCHED */
 }
 
 module_init(game_ctrl_init);

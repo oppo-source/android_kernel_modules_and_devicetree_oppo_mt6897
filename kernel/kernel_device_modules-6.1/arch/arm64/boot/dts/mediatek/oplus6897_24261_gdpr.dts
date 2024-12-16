@@ -15,6 +15,10 @@
 #include "mediatek/oplus_sensor_24021.dtsi"
 /* #endif */
 
+/* #ifdef OPLUS_FEATURE_PERFORMANCE_MM */
+#include "mediatek/oplus_mm_24261.dtsi"
+/* #endif */
+
 /* Add for Milkyway(24021/24261) fingerprint device-tree */
 /* #ifdef CONFIG_UFF_FINGERPRINT */
 #include "mediatek/oplus_uff_24021.dtsi"

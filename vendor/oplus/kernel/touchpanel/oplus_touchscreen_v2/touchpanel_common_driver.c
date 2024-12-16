@@ -306,7 +306,7 @@ void operate_mode_switch(struct touchpanel_data *ts)
 		}
 
 		if (ts->glove_mode_v2_support) {
-			mode_switch_health(ts, MODE_GLOVE, ts->glove_enable);
+			mode_switch_health(ts, MODE_GLOVE, ts->glove_enable && (!ts->pocket_prevent_mode));
 		}
 
 		if (ts->glove_mode_support || ts->leather_cover_mode_support) {

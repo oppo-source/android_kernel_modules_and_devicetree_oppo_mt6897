@@ -697,15 +697,6 @@ struct LCM_setting_table aod_off_cmd_insert_black[] = {
 	{REGFLAG_CMD, 1, {0x38}},
 };
 
-struct LCM_setting_table aod_off_cmd_insert_black[] = {
-        {REGFLAG_CMD, 6, {0xF0,0x55,0xAA,0x52,0x08,0x00}},
-	{REGFLAG_CMD, 2, {0xC0,0x70}},
-	{REGFLAG_CMD, 6, {0xF0,0x55,0xAA,0x52,0x08,0x01}},
-	{REGFLAG_CMD, 2, {0x6F,0x01}},
-	{REGFLAG_CMD, 2, {0xD2,0x11}},
-	{REGFLAG_CMD, 1, {0x38}},
-};
-
 struct LCM_setting_table aod_high_mode[] = {
 	{REGFLAG_CMD, 2, {0x6F,0x04}},
 	{REGFLAG_CMD, 3, {0x51,0x03,0xFF}},
@@ -796,7 +787,7 @@ struct LCM_setting_table dsi_set_seed_expert[] = {
 
 struct LCM_setting_table dsi_set_seed_vivid[] = {
 	{REGFLAG_CMD, 6, {0xF0,0x55,0xAA,0x52,0x08,0x00}},
-	{REGFLAG_CMD, 2, {0x5F,0x04}},
+	{REGFLAG_CMD, 2, {0x5F,0x00}},
 };
 
 struct LCM_setting_table dsi_switch_hbm_apl_on[] = {

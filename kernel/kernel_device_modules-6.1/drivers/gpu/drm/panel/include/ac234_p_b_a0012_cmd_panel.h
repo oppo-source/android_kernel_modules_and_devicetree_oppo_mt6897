@@ -283,8 +283,8 @@ static struct LCM_setting_table HBM_on_setting[] = {
 
 static struct LCM_setting_table HBM_off_setting[] = {
 	{REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x00}},
-	{REGFLAG_CMD, 3, {0x51, 0x00, 0x00}},
-	//{REGFLAG_DELAY, 16, {}},
+	{REGFLAG_CMD, 3, {0x51, 0x0D, 0xBB}},
+	{REGFLAG_DELAY, 20, {}},
 };
 /* -------------------------doze mode setting end------------------------- */
 

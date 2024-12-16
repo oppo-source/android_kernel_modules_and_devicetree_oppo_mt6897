@@ -2042,6 +2042,28 @@ static ssize_t gauge_type_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(gauge_type);
 
+static ssize_t  battery_seal_flag_store(struct device *dev,
+			       struct device_attribute *attr, const char *buf,
+			       size_t count)
+{
+	int ret = 0;
+	int bq27z561_seal_flag;
+
+	if (kstrtos32(buf, 0, &bq27z561_seal_flag)) {
+		chg_err("buf error\n");
+		return -EINVAL;
+	}
+
+	ret = oplus_gauge_set_seal_flag(bq27z561_seal_flag);
+	if (ret < 0 && ret != -ENOTSUPP) {
+		chg_err("set bq27z561_seal_flag error");
+		 return -EINVAL;
+	}
+
+	return count;
+}
+static DEVICE_ATTR_WO(battery_seal_flag);
+
 static ssize_t vbat_uv_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -2220,6 +2242,7 @@ static struct device_attribute *oplus_battery_attributes[] = {
 	&dev_attr_eis_current,
 	&dev_attr_batt_bal_data,
 	&dev_attr_gauge_type,
+	&dev_attr_battery_seal_flag,
 	NULL
 };
 

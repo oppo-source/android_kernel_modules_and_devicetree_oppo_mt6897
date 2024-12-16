@@ -3878,7 +3878,11 @@ void oplus_chg_test_gpio_info_init(struct oplus_chg_chip *chip)
 
 	switch2_gpio = of_get_named_gpio(node, "oplus,switch2-ctrl-gpio", 0);
 	if (gpio_is_valid(switch2_gpio)) {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0))
 		gpio_chip = gpio_to_chip(switch2_gpio);
+#else
+		gpio_chip = gpiod_to_chip(gpio_to_desc(switch2_gpio));
+#endif
 		g_chg_switch2_gpio_info[SWITCH2_GPIO_INFO_INDEX].chip = gpio_chip;
 		g_chg_switch2_gpio_info[SWITCH2_GPIO_INFO_INDEX].num =
 			switch2_gpio - gpio_chip->base;
@@ -3890,11 +3894,19 @@ void oplus_chg_test_gpio_info_init(struct oplus_chg_chip *chip)
 	uart_tx = of_get_named_gpio(node, "oplus,uart_tx-gpio", 0);
 	uart_rx = of_get_named_gpio(node, "oplus,uart_rx-gpio", 0);
 	if (gpio_is_valid(uart_tx) && gpio_is_valid(uart_rx)) {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0))
 		gpio_chip = gpio_to_chip(uart_tx);
+#else
+		gpio_chip = gpiod_to_chip(gpio_to_desc(uart_tx));
+#endif
 		g_chg_uart_gpio_info[UART_TX_GPIO_INFO_INDEX].chip = gpio_chip;
 		g_chg_uart_gpio_info[UART_TX_GPIO_INFO_INDEX].num =
 			uart_tx - gpio_chip->base;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0))
 		gpio_chip = gpio_to_chip(uart_rx);
+#else
+		gpio_chip = gpiod_to_chip(gpio_to_desc(uart_rx));
+#endif
 		g_chg_uart_gpio_info[UART_RX_GPIO_INFO_INDEX].chip = gpio_chip;
 		g_chg_uart_gpio_info[UART_RX_GPIO_INFO_INDEX].num =
 			uart_rx - gpio_chip->base;
@@ -13620,10 +13632,7 @@ int oplus_chg_show_vooc_logo_ornot(void)
 		return 1;
 	} else if (oplus_pps_get_pps_dummy_started() ||
 		   oplus_pps_get_pps_fastchg_started()) {
-		if (oplus_pps_get_adapter_type() == PPS_ADAPTER_THIRD)
-			return 0;
-		else
-			return 1;
+		return 1;
 	} else if (oplus_ufcs_show_vooc()) {
 		return 1;
 	} else if (oplus_vooc_get_fastchg_to_normal() == true ||

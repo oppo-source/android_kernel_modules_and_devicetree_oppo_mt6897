@@ -3791,7 +3791,8 @@ static void oplus_ufcs_check_slow_chg_curr(struct oplus_ufcs *chip, struct puc_s
 	if (curve_current > 0)
 		slow_chg_current = min(slow_chg_current, curve_current * chip->slow_chg_pct / 100);
 
-	slow_chg_current = max(slow_chg_current, SLOW_CHG_MIN_CURR);
+	if (slow_chg_current != 0)
+		slow_chg_current = max(slow_chg_current, SLOW_CHG_MIN_CURR);
 
 	/* convert slow ibus current to ibat, show to upper-layer */
 	chip->slow_chg_batt_limit = slow_chg_current * ibat_factor;

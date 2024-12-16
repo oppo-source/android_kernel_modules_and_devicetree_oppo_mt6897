@@ -1671,8 +1671,13 @@ void oplus_comm_get_rechg_soc_limit(struct oplus_mms *topic, int *rechg_soc, boo
 	}
 	if (!rechg_soc || !en) {
 		chg_err("invalid value");
+		return;
 	}
 	chip = oplus_mms_get_drvdata(topic);
+	if (!chip) {
+		chg_err("oplus_chg_comm chip is NULL\n");
+		return;
+	}
 
 	*rechg_soc = chip->rechg_soc;
 	*en = chip->rechg_soc_en;
@@ -2233,7 +2238,7 @@ static int oplus_comm_push_uisoc_drop_msg(struct oplus_chg_comm *chip,  int err,
 		    MSG_TYPE_ITEM, MSG_PRIO_MEDIUM, COMM_ITEM_UISOC_DROP_ERROR,
 		    "$$Vterm@@%d$$start_UISoc@@%d$$start_Soc@@%d$$start_volt@@%d$$start_voltmin@@%d$$start_battemp@@%d"
 		    "$$start_curr@@%d$$time_uisoc@@%d$$target_uisoc@@%d$$avg_current@@%d$$end_UISoc@@%d$$end_Soc@@%d"
-		    "$$end_volt@@%d$$end_voltmin@@%d$$end_battemp@@%d$$end_curr@@%d$$start_utc_t@@%d$$end_utc_t@@%d$$cc@@%d"
+		    "$$end_volt@@%d$$end_voltmin@@%d$$end_battemp@@%d$$end_curr@@%d$$start_utc_t@@%lu$$end_utc_t@@%lu$$cc@@%d"
 		    "$$end_reason@@%s",
 		    Vterm, start_UISoc, start_Soc, start_volt, start_voltmin, start_battemp, start_curr, time_uisoc,
 		    target_uisoc, avg_current, chip->ui_soc, chip->soc, chip->vbat_mv, chip->vbat_min_mv, chip->batt_temp,
@@ -3310,7 +3315,7 @@ static int oplus_enforce_chg_up_limit_result(struct oplus_chg_comm *chip, bool c
 	return rc;
 }
 
-#define CHG_UP_DELAY_COUNT		3
+#define CHG_UP_DELAY_COUNT		4
 static void monitor_ui_soc_to_enable_chg_up_limit(struct oplus_chg_comm *chip, bool immediate_execut)
 {
 	static int over_count = 0;

@@ -481,6 +481,13 @@ unlock:
 	}
 }
 
+bool task_is_fair(struct task_struct *task)
+{
+	if ((task->prio >= MAX_RT_PRIO) && (task->prio <= MAX_PRIO-1))
+		return true;
+	return false;
+}
+
 static void sched_stat_runtime_hook(void *unused, struct task_struct *p, u64 runtime, u64 vruntime)
 {
 	update_task_runtime(p, runtime);
