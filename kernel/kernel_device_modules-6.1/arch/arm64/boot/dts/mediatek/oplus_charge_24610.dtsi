@@ -571,7 +571,7 @@
 		oplus_spec,vbatt-ov-thr-mv = <4600>;
 
 		oplus_spec,full_pre_ffc_judge;
-		oplus_spec,full-pre-ffc-mv = <4495>;
+		oplus_spec,full-pre-ffc-mv = <4485>;
 		oplus_spec,ffc-temp-thr = <120 210 350 440>;
 		oplus_spec,wired-ffc-step-max = <2>;
 		oplus_spec,wired-ffc-fv-mv = <4630 4630>;
@@ -1656,8 +1656,8 @@
 								4570 10 1 0 0>;
 				strategy_temp_little_cool_high =	<4560 15 0 0 0
 								4570 10 1 0 0>;
-				strategy_temp_normal_low =	<4540 15 0 0 0
-								4550 10 1 0 0>;
+				strategy_temp_normal_low =	<4560 15 0 0 0
+								4570 10 1 0 0>;
 				strategy_temp_normal_high =	<4560 20 0 0 0
 								4560 15 0 0 0
 								4570 13 1 0 0>;

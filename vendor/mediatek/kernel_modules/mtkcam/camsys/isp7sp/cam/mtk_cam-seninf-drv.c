@@ -4452,6 +4452,7 @@ int mtk_cam_seninf_aov_runtime_resume(unsigned int sensor_id,
 			return -EINVAL;
 		}
 		/* SCP side to AP */
+		#ifndef OPLUS_FEATURE_CAMERA_COMMON
 		if (core->aov_csi_clk_switch_flag == CSI_CLK_130) {
 			/* set the parent of clk as parent_clk */
 			if (core->clk[ctx->clk_index] && core->clk[ctx->clk_src_index]) {
@@ -4483,6 +4484,9 @@ int mtk_cam_seninf_aov_runtime_resume(unsigned int sensor_id,
 				return -EINVAL;
 			}
 		}
+		#else /*OPLUS_FEATURE_CAMERA_COMMON*/
+		dev_info(ctx->dev, "[%s] set csi_ck in power on.\n", __func__);
+		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		/* set register to switch phya clock source */
 		ret = enable_phya_clk(ctx);
 		if (ret < 0) {

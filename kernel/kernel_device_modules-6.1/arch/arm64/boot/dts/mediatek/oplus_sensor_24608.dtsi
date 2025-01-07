@@ -137,12 +137,12 @@
 			step_min = <100>;
 			step_div = <2000>;
 			anti_shake_delta = <120>;
-			dynamic_cali_max = <1400>;
+			dynamic_cali_max = <3000>;
 			raw2offset_radio = <5000>;
 			offset_max = <15000>;
 			offset_range_min = <0>;
 			offset_range_max = <65534>;
-			force_cali_limit = <310>;
+			force_cali_limit = <3000>;
 			cali_jitter_limit = <70>;
 			cal_offset_margin = <3000>;
 			60hz_psd_us = <12620>;
@@ -155,6 +155,47 @@
 			dmc_flt_thr = <100>;
 			multi_oft_level = <3>;
 			multi_oft_coef = <130 26 1>;
+		};
+		proximity_2: proximity_2 {
+			status = "okay";
+			sensor_name = <9>; // TCS3720
+			device_name = "tcs3720";
+			i2c_num = <5>;
+			i2c_addr = <0x39>;
+			direction = <0>;
+			eint_num = <10>;
+			low_step = <300>;
+			high_step = <400>;
+			low_limit = <400>;
+			high_limit = <520>;
+			dirty_low_step = <180>;
+			dirty_high_step = <280>;
+			ps_dirty_limit = <1800>;
+			ps_ir_limit = <500>;
+			ps_adjust_min = <0>;
+			ps_adjust_max = <800>;
+			sampling_count = <5>;
+			step_max = <400>;
+			step_min = <100>;
+			step_div = <2000>;
+			anti_shake_delta = <120>;
+			dynamic_cali_max = <3000>;
+			raw2offset_radio = <1000>;
+			offset_max = <15000>;
+			offset_range_min = <0>;
+			offset_range_max = <65534>;
+			force_cali_limit = <3000>;
+			cali_jitter_limit = <70>;
+			cal_offset_margin = <3000>;
+			60hz_psd_us = <13000>;
+			90hz_psd_us = <9550>;
+			120hz_psd_us = <7800>;
+			ps_check_num = <2>;
+			ps_mid_filter = <0>;
+			dmc_flt_thr = <100>;
+			need_to_sync_lcd_rate = <0>;
+			sensor-reg = <0xB1 0x0C 0x82 0xE2 0xD9 0xB0>;
+			ps_power_config = <4>;
 		};
 		light_1: light_1 {
 			status = "okay";
@@ -180,6 +221,30 @@
 			scale_gain = <256>;
 			als_buffer_length = <2>;
 			atime = <25000>;
+			need_gain_cali = <1>;
+		};
+		light_2: light_2 {
+			status = "okay";
+			sensor_name = <9>; // TCS3720
+			i2c_num = <5>;
+			i2c_addr = <0x39>;
+			direction = <0>;
+			eint_num = <10>;
+			als_ratio = <110>;
+			cct_type = <0x02>; //0x01 CCT_NORMAL 0x02 CCT_WISE
+			device_name = "tcs3720";
+			gold_cct_3k = <7690 4213 1882 13097 1001 1001>;
+			gold_cct_6k = <5723 4646 2640 12377 1001 1001>;
+			sup_changing_rpt = <0>;
+			lb_bri_max = <4096>;
+			ir_ratio = <10>; // *1000
+			als_delay = <390>;
+			decision_table_index = <9>;
+			available_sensor = <14>;
+			gold_cct_factor = <941 946 924 966 1001 1001>;
+			high_pwm_cct = <1>;
+			als_timer_ms = <100>;
+			als_buffer_length = <2>;
 			need_gain_cali = <1>;
 		};
 		/*

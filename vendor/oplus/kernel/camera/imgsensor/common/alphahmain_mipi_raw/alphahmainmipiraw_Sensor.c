@@ -28,7 +28,13 @@
 #define OPLUS_CAMERA_COMMON_DATA_LENGTH 40
 #define PFX "alphahmain_camera_sensor"
 #define LOG_INF(format, args...) pr_err(PFX "[%s] " format, __func__, ##args)
-#define OTP_SIZE    0x8000
+#define OTP_SIZE              0x8000
+#define OTP_PDC_ADDR          0x1900
+#define OTP_PDC_SIZE          0x1CA
+#define SENSOR_PDC_ADDR       0x59F0
+#define PDC_IS_VALID_VAL      0x01
+#define PDC_TYPE              0x03
+#define alphahmain_burst_write_cmos_sensor(...) subdrv_i2c_wr_p8(__VA_ARGS__)
 
 #define OTP_QSC_VALID_ADDR    0x2E10
 #define QSC_IS_VALID_VAL      0x01
@@ -77,6 +83,7 @@ static int alphahmain_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 *
 static void alphahmain_write_frame_length(struct subdrv_ctx *ctx, u32 fll);
 static int alphahmain_get_unique_sensorid(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int alphahmain_get_cloud_otp_info(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int alphahmain_set_cali_data(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 /* STRUCT */
 
 static BYTE alphahmain_common_data[OPLUS_CAMERA_COMMON_DATA_LENGTH] = { 0 };
@@ -136,6 +143,7 @@ static struct subdrv_feature_control feature_control_list[] = {
 	{SENSOR_FEATURE_SET_MAX_FRAME_RATE_BY_SCENARIO, alphahmain_set_max_framerate_by_scenario},
 	{SENSOR_FEATURE_GET_UNIQUE_SENSORID, alphahmain_get_unique_sensorid},
 	{SENSOR_FEATURE_GET_CLOUD_OTP_INFO, alphahmain_get_cloud_otp_info},
+	{SENSOR_FEATURE_SET_CALI_DATA, alphahmain_set_cali_data},
 };
 
 static struct eeprom_info_struct eeprom_info[] = {
@@ -1101,6 +1109,19 @@ static struct eeprom_addr_table_struct oplus_eeprom_addr_table = {
 	.addr_qrcodeflag = 0x00C7,
 };
 
+static kal_uint8 otp_pdc_data[OTP_PDC_SIZE] = {0};
+
+static void read_eeprom_pdc_data(struct subdrv_ctx *ctx)
+{
+	u32 pdVersion = 0, pdCompensation = 0;
+	if(!read_cmos_eeprom_p8(ctx, OTP_PDC_ADDR, otp_pdc_data, OTP_PDC_SIZE)) {
+		LOG_INF("read pdc data failed!\n");
+	}
+	pdVersion      = otp_pdc_data[3] << 24 | otp_pdc_data[2] << 16 | otp_pdc_data[1] << 8 | otp_pdc_data[0];
+	pdCompensation = otp_pdc_data[7] << 24 | otp_pdc_data[6] << 16 | otp_pdc_data[5] << 8 | otp_pdc_data[4];
+	LOG_INF("pdVersion = 0x%x, pdCompensation = 0x%x\n", pdVersion, pdCompensation);
+}
+
 static struct SENSOR_OTP_INFO_STRUCT cloud_otp_info[OPLUS_CAM_CAL_DATA_MAX] = {
 	{
 		.OtpInfoLen = 1,
@@ -1146,6 +1167,10 @@ static struct SENSOR_OTP_INFO_STRUCT cloud_otp_info[OPLUS_CAM_CAL_DATA_MAX] = {
 		.OtpInfoLen = 1,
 		.OtpInfo = {{0x0000, 16384}},
 	}, /*OPLUS_CAM_CAL_DATA_ALL*/
+	{
+		.OtpInfoLen = 1,
+		.OtpInfo = {{0x1900, 458}},
+	}, /*OPLUS_CAM_CAL_DATA_PDC*/
 };
 
 static int alphahmain_get_cloud_otp_info(struct subdrv_ctx *ctx, u8 *para, u32 *len)
@@ -1166,6 +1191,7 @@ static int alphahmain_get_cloud_otp_info(struct subdrv_ctx *ctx, u8 *para, u32 *
 	case OPLUS_CAM_CAL_DATA_QSC:
 	case OPLUS_CAM_CAL_DATA_LRC:
 	case OPLUS_CAM_CAL_DATA_ALL:
+	case OPLUS_CAM_CAL_DATA_PDC:
 		memcpy((void *)cloudinfo, (void *)&cloud_otp_info[*feature_data], sizeof(struct SENSOR_OTP_INFO_STRUCT));
 		break;
 	default:
@@ -1523,6 +1549,7 @@ static int get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id)
 				*sensor_id = ctx->s_ctx.sensor_id;
 				if (first_read) {
 					read_eeprom_common_data(ctx, &oplus_eeprom_info, oplus_eeprom_addr_table);
+					read_eeprom_pdc_data(ctx);
 					read_unique_sensorid(ctx);
 					memcpy(&pw_seq, &oplus_pw_seq, sizeof(oplus_pw_seq));
 					first_read = KAL_FALSE;
@@ -2040,6 +2067,22 @@ static int alphahmain_set_shutter_frame_length(struct subdrv_ctx *ctx, u8 *para,
 	return 0;
 }
 
+static void alphahmain_write_pdc_data(struct subdrv_ctx *ctx)
+{
+	DRV_LOG(ctx, "E!\n");
+
+	if (ctx->s_ctx.eeprom_info->preload_pdc_table) {
+		alphahmain_burst_write_cmos_sensor(ctx, SENSOR_PDC_ADDR, &ctx->s_ctx.eeprom_info->preload_pdc_table[8], OTP_PDC_SIZE - 8);
+		DRV_LOG(ctx, "Cloud burning Data Writing!\n");
+	}
+	else {
+		alphahmain_burst_write_cmos_sensor(ctx, SENSOR_PDC_ADDR, &otp_pdc_data[8], OTP_PDC_SIZE - 8);
+		DRV_LOG(ctx, "Otp Data Writing!\n");
+	}
+
+	DRV_LOG(ctx, "X!\n");
+}
+
 static int open(struct subdrv_ctx *ctx)
 {
 	u32 sensor_id = 0;
@@ -2051,6 +2094,8 @@ static int open(struct subdrv_ctx *ctx)
 	/* initail setting */
 	subdrv_i2c_wr_u8(ctx, 0x0103, 0x01);
 	sensor_init(ctx);
+	/* PDC setting */
+	alphahmain_write_pdc_data(ctx);
 	/*QSC&SPC setting*/
 /* 	if (ctx->s_ctx.s_cali != NULL) {
 		ctx->s_ctx.s_cali((void*)ctx);
@@ -2538,5 +2583,44 @@ static int alphahmain_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 *
 			(ctx->frame_length > (ctx->exposure[0] + ctx->s_ctx.exposure_margin))) {
 		alphahmain_set_dummy(ctx);
 	}
+	return 0;
+}
+
+static int alphahmain_set_cali_data(struct subdrv_ctx *ctx, u8 *para, u32 *len) {
+	u16 idx = 0;
+	u8 support = FALSE;
+	u8 *buf = NULL;
+	u32 size = 0;
+	u8 pdc_is_valid = 0;
+	u8 type = 0;
+	struct eeprom_info_struct *info = ctx->s_ctx.eeprom_info;
+
+	if (ctx->is_read_preload_eeprom >= 2) {
+        return 0;
+	}
+	type = para[(*len) + 1];
+	if (type == PDC_TYPE) {
+		/* PDC data */
+		support = info[idx].pdc_support;
+		info[idx].pdc_size = *len;
+		size = *len;
+		buf = para;
+		if (support && size > 0 && buf != NULL) {
+			/* Check PDC validation */
+			pdc_is_valid = buf[*len];
+			if (pdc_is_valid == PDC_IS_VALID_VAL) {
+				DRV_LOG(ctx, "PDC data is valid, flag(%02x)", pdc_is_valid);
+				if (info[idx].preload_pdc_table == NULL) {
+					info[idx].preload_pdc_table = kmalloc(size, GFP_KERNEL);
+				}
+				memcpy(info[idx].preload_pdc_table, buf, size);
+				ctx->is_read_preload_eeprom = 2;
+				DRV_LOG(ctx, "preload PDC data %u bytes", size);
+			} else {
+				DRV_LOGE(ctx, "PDC data is invalid, flag(%02x)", pdc_is_valid);
+			}
+		}
+	}
+
 	return 0;
 }

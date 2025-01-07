@@ -3210,7 +3210,6 @@ static irqreturn_t mt6375_int_chrdet_ext_handler(int irq, void *data)
 			ddata->psy_usb_type[ddata->active_idx] = POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		}
 #endif
-		mt6375_chg_attach_pre_process(ddata, ATTACH_TRIG_TYPEC, val);
 	} else {
 		mt_dbg(ddata->dev, "chrdet attach\n");
 #ifdef OPLUS_FEATURE_CHG_BASIC
@@ -3218,7 +3217,6 @@ static irqreturn_t mt6375_int_chrdet_ext_handler(int irq, void *data)
 		//ddata->bc12_dn[ddata->active_idx] = false;
 #endif
 		tcpci_notify_chrdet_state(tcpc, true);
-		mt6375_chg_attach_pre_process(ddata, ATTACH_TRIG_TYPEC, val);
 	}
 	return IRQ_HANDLED;
 }

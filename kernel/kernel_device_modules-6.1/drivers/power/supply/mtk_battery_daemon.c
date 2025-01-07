@@ -2937,7 +2937,20 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		ret_msg->fgd_data_len += sizeof(fg_coulomb);
 		memcpy(ret_msg->fgd_data,
 			&fg_coulomb, sizeof(fg_coulomb));
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.total_car = gm->total_car;
+		if (fg_coulomb != 0)
+			gm->total_car += fg_coulomb - gm->car_c;
+		gm->pre_info.car_c = gm->car_c;
+		gm->car_c = fg_coulomb;
+		if (gm->oplus_track_ops != NULL &&
+		    gm->gauge_cali_track_update_state.begin_flag) {
+			if (gauge_cali_track_check_state(&gm->gauge_cali_track_update_state,
+			    GAUGE_TRACK_CAR_C_FLAG_BIT_OFFSET))
+				gauge_cali_track_trig_upload(gm,
+					&gm->gauge_cali_track_update_state, GAUGE_TRACK_CALI_FLAG_ZCV);
+		}
+#endif
 		bm_debug(
 			"[K]BATTERY_METER_CMD_GET_FG_HW_CAR=%d\n",
 			fg_coulomb);
@@ -3310,6 +3323,16 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		zcv = gauge_get_int_property(GAUGE_PROP_ZCV);
 		ret_msg->fgd_data_len += sizeof(zcv);
 		memcpy(ret_msg->fgd_data, &zcv, sizeof(zcv));
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.zcv = gm->zcv;
+		gm->zcv = zcv;
+		if (gm->oplus_track_ops != NULL && gm->gauge_cali_track_update_state.begin_flag) {
+			if (gauge_cali_track_check_state(&gm->gauge_cali_track_update_state,
+			    GAUGE_TRACK_ZCV_FLAG_BIT_OFFSET))
+				gauge_cali_track_trig_upload(gm,
+					&gm->gauge_cali_track_update_state, GAUGE_TRACK_CALI_FLAG_ZCV);
+		}
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 		bm_debug("[K]FG_DAEMON_CMD_GET_ZCV=%d\n", zcv);
 	}
 	break;
@@ -3559,8 +3582,18 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 
 		memcpy(&daemon_soc, &msg->fgd_data[0], sizeof(daemon_soc));
 		if (soc_type == 0)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+			gm->pre_info.soc = gm->soc;
+#endif
 			gm->soc = (daemon_soc + 50) / 100;
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (gm->oplus_track_ops != NULL && gm->gauge_cali_track_update_state.begin_flag) {
+			if (gauge_cali_track_check_state(&gm->gauge_cali_track_update_state,
+			    GAUGE_TRACK_SOC_FLAG_BIT_OFFSET))
+				gauge_cali_track_trig_upload(gm,
+					&gm->gauge_cali_track_update_state, GAUGE_TRACK_CALI_FLAG_ZCV);
+		}
+#endif
 		bm_debug(
 		"[K]FG_DAEMON_CMD_SET_KERNEL_SOC = %d %d, type:%d\n",
 		daemon_soc, gm->soc, soc_type);
@@ -3582,7 +3615,9 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 				daemon_ui_soc);
 			daemon_ui_soc = 0;
 		}
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.ui_soc = gm->ui_soc;
+#endif
 		gm->fg_cust_data.ui_old_soc = daemon_ui_soc;
 		old_uisoc = gm->ui_soc;
 
@@ -3852,6 +3887,10 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 
 		ret_msg->fgd_data_len += sizeof(vbat);
 		memcpy(ret_msg->fgd_data, &vbat, sizeof(vbat));
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.vbat = gm->batt_volt;
+		gm->batt_volt = vbat;
+#endif
 		bm_debug("[K]FG_DAEMON_CMD_GET_VBAT = %d\n", vbat);
 	}
 	break;
@@ -3975,6 +4014,14 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	{
 		memcpy(&int_value, &msg->fgd_data[0], sizeof(int_value));
 		gm->soc = (int_value + 50) / 100;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (gm->oplus_track_ops != NULL && gm->gauge_cali_track_update_state.begin_flag) {
+			if (gauge_cali_track_check_state(&gm->gauge_cali_track_update_state,
+			    GAUGE_TRACK_SOC_FLAG_BIT_OFFSET))
+				gauge_cali_track_trig_upload(gm,
+					&gm->gauge_cali_track_update_state, GAUGE_TRACK_CALI_FLAG_ZCV);
+		}
+#endif
 		bm_debug("[K]FG_DAEMON_CMD_SET_SOC %d\n",
 			gm->soc);
 	}
@@ -3998,7 +4045,18 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	case FG_DAEMON_CMD_SET_C_SOC:
 	{
 		memcpy(&int_value, &msg->fgd_data[0], sizeof(int_value));
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.c_soc = gm->fg_cust_data.c_soc;
+#endif
 		gm->fg_cust_data.c_soc = int_value;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (gm->oplus_track_ops != NULL && gm->gauge_cali_track_update_state.begin_flag) {
+			if (gauge_cali_track_check_state(&gm->gauge_cali_track_update_state,
+			    GAUGE_TRACK_C_SOC_FLAG_BIT_OFFSET))
+				gauge_cali_track_trig_upload(gm,
+					&gm->gauge_cali_track_update_state, GAUGE_TRACK_CALI_FLAG_ZCV);
+		}
+#endif
 		bm_debug("[K]FG_DAEMON_CMD_SET_C_SOC %d\n",
 		gm->fg_cust_data.c_soc);
 	}
@@ -4006,7 +4064,19 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	case FG_DAEMON_CMD_SET_V_SOC:
 	{
 		memcpy(&int_value, &msg->fgd_data[0], sizeof(int_value));
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.v_soc = gm->fg_cust_data.v_soc;
+#endif
 		gm->fg_cust_data.v_soc = int_value;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (gm->oplus_track_ops != NULL && gm->gauge_cali_track_update_state.begin_flag) {
+			if (gauge_cali_track_check_state(&gm->gauge_cali_track_update_state,
+			    GAUGE_TRACK_V_SOC_FLAG_BIT_OFFSET))
+				gauge_cali_track_trig_upload(gm,
+					&gm->gauge_cali_track_update_state, GAUGE_TRACK_CALI_FLAG_ZCV);
+
+		}
+#endif
 		bm_debug("[K]FG_DAEMON_CMD_SET_V_SOC %d\n",
 		gm->fg_cust_data.v_soc);
 	}
@@ -4028,6 +4098,11 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	case FG_DAEMON_CMD_SET_AGING_FACTOR:
 	{
 		memcpy(&int_value, &msg->fgd_data[0], sizeof(int_value));
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.aging_factor = gm->aging_factor;
+		/*Delay 1s to ensure qmax updates*/
+		schedule_delayed_work(&gm->aging_trigger_work, msecs_to_jiffies(1000));
+#endif
 		gm->aging_factor = int_value;
 		bm_debug("[K]FG_DAEMON_CMD_SET_AGING_FACTOR %d\n",
 		gm->aging_factor);
@@ -4036,6 +4111,9 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	case FG_DAEMON_CMD_SET_QMAX:
 	{
 		memcpy(&int_value, &msg->fgd_data[0], sizeof(int_value));
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.qmax = gm->algo_qmax;
+#endif
 		gm->algo_qmax = int_value;
 		bm_debug("[K]FG_DAEMON_CMD_SET_QMAX %d\n",
 		gm->algo_qmax);
@@ -4044,6 +4122,9 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	case FG_DAEMON_CMD_SET_BAT_CYCLES:
 	{
 		memcpy(&int_value, &msg->fgd_data[0], sizeof(int_value));
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.batt_cc = gm->bat_cycle;
+#endif
 		gm->bat_cycle = int_value;
 		bm_debug("[K]FG_DAEMON_CMD_SET_BAT_CYCLES %d\n",
 		gm->bat_cycle);
@@ -4196,8 +4277,11 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		memcpy(&param, prcv->input, sizeof(struct fgd_cmd_param_t_8));
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
+		gm->pre_info.quse = gm->prev_batt_fcc;
 		gm->prev_batt_fcc = param.data[4];
 		gm->prev_batt_remaining_capacity = param.data[4] /10 * param.data[6] / 10000;
+		gm->soh = param.data[10];
+		bm_err("test-tag: soh=%d", gm->soh);
 #endif /* OPLUS_FEATURE_CHG_BASIC */
 		bm_err("[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
 				param.data[0],
@@ -4797,6 +4881,12 @@ static void zcv_irq_handler(struct mtk_battery *gm)
 
 	if (abs(zcv_intr_curr) < gm->fg_cust_data.sleep_current_avg) {
 		wakeup_fg_algo(gm, FG_INTR_FG_ZCV);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (gm->oplus_track_ops != NULL && !gm->gauge_cali_track_update_state.begin_flag) {
+			gauge_cali_track_init_state(gm,
+				&gm->gauge_cali_track_update_state, GAUGE_TRACK_CALI_FLAG_ZCV);
+		}
+#endif
 		zcv_intr_en = 0;
 		gauge_set_property(GAUGE_PROP_ZCV_INTR_EN, zcv_intr_en);
 	} else

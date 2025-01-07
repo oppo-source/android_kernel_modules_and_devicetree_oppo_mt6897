@@ -1,7 +1,7 @@
 //ifdef OPLUS_FEATURE_CHG_BASIC
 &oplus_cpa {
 	oplus,cpa_region_cfg_pps {
-		oplus,region_id = /bits/ 8 <0x00 0x44>; /* t0 machine: 0x00, europe: 0x44 */
+		oplus,region_id = /bits/ 8 <0x00 0x44 0x83 0x5a>; /* t0 machine: 0x00, europe: 0x44  Saudi Arabia: 0x83  Serbia: 0x5a*/
 		oplus,protocol_list = <CHG_PROTOCOL_VOOC 80
 					CHG_PROTOCOL_PPS  55
 					CHG_PROTOCOL_PD   18

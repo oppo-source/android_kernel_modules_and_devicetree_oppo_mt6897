@@ -51,13 +51,14 @@
 		oplus,ic_index = <0>;
 		oplus,batt_num = <1>;
 		oplus,mtk_gauge_power_sel_support;
+		oplus,mtk_gauge_cali_track_support;
 	};
 };
 
 &u2port0 {
 	mediatek,eye-vrt = <7>;
 	mediatek,eye-term = <7>;
-	mediatek,rev6 = <3>;
+	mediatek,rev6 = <2>;
 	mediatek,eye-vrt-host = <4>;
 	mediatek,eye-term-host = <2>;
 	mediatek,rev6-host = <2>;
@@ -262,6 +263,7 @@
 					OPLUS_IC_FUNC_GAUGE_GET_QMAX
 					OPLUS_IC_FUNC_GAUGE_GET_QMAX_PASSED_Q
 					OPLUS_IC_FUNC_GAUGE_SET_BATTERY_CURVE
+					OPLUS_IC_FUNC_GAUGE_GET_GAUGE_CAR_C
 				>;
 				virqs = <
 					OPLUS_IC_VIRQ_ERR

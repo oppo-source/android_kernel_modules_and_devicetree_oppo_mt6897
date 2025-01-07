@@ -802,19 +802,36 @@ static void streaming_ctrl(struct subdrv_ctx *ctx, bool enable)
 	check_current_scenario_id_bound(ctx);
 
 	if (enable) {
+		/* sw power up begin */
+		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
+		subdrv_i2c_wr_u8_u8(ctx, 0x21, 0x0e);
+		subdrv_i2c_wr_u8_u8(ctx, 0x21, 0x00);
+		/* sw power up end */
 		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
 		subdrv_i2c_wr_u8_u8(ctx, 0x01, 0x03);
 		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
 		subdrv_i2c_wr_u8_u8(ctx, 0x20, 0x0f);
 		subdrv_i2c_wr_u8_u8(ctx, 0xe7, 0x03);
 		subdrv_i2c_wr_u8_u8(ctx, 0xe7, 0x00);
-		subdrv_i2c_wr_u8_u8(ctx, 0xa0, 0x01);
+		subdrv_i2c_wr_u8_u8(ctx, 0xc2, 0x30);
+		/* drop one frame begin */
 		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
+		subdrv_i2c_wr_u8_u8(ctx, 0x15, 0x10);
+		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
+		/* drop one frame end */
+		subdrv_i2c_wr_u8_u8(ctx, 0xa0, 0x01);
 	} else {
 		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
 		subdrv_i2c_wr_u8_u8(ctx, 0xa0, 0x00);
 		subdrv_i2c_wr_u8_u8(ctx, 0x20, 0x0b);
-		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
+		/* add for drop frame begin */
+		subdrv_i2c_wr_u8_u8(ctx, 0xe7, 0x03);
+		subdrv_i2c_wr_u8_u8(ctx, 0xe7, 0x00);
+		/* add for drop frame end */
+		/* sw power down begin */
+		subdrv_i2c_wr_u8_u8(ctx, 0xc2, 0x32);
+		subdrv_i2c_wr_u8_u8(ctx, 0x21, 0x0f);
+		/* sw power down end  */
 	}
 
 	ctx->is_streaming = enable;

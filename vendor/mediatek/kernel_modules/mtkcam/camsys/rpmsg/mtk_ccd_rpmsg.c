@@ -399,7 +399,8 @@ EXPORT_SYMBOL_GPL(mtk_create_client_msgdevice);
 
 struct mtk_rpmsg_device *
 mtk_get_client_msgdevice(struct rproc_subdev *subdev,
-			    struct rpmsg_channel_info *info)
+			    struct rpmsg_channel_info *info,
+			    rpmsg_rx_cb_t cb, void *priv)
 {
 	struct mtk_rpmsg_rproc_subdev *mtk_subdev = to_mtk_subdev(subdev);
 	struct device *dev;
@@ -423,6 +424,14 @@ mtk_get_client_msgdevice(struct rproc_subdev *subdev,
 
 	dev_info(&mtk_subdev->pdev->dev, "%s: src:%d, %p\n",
 		__func__, info->src, rpdev);
+
+	mdev->rpdev.ept = rpmsg_create_ept(&mdev->rpdev, cb, priv, *info);
+
+	if (IS_ERR(mdev->rpdev.ept)) {
+		dev_info(&mtk_subdev->pdev->dev, "%s: creat ept faile(src:%lu)\n",
+		__func__, (unsigned long)mdev->rpdev.ept);
+		goto get_failed;
+	}
 
 	mutex_lock(&mtk_subdev->master_listen_lock);
 

@@ -1139,7 +1139,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.ana_gain_max = BASEGAIN * 16,
 		.coarse_integ_step = 1,
-		.min_exposure_line = 9,
+		.min_exposure_line = 16,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = RMSC_MASK,
 			.equivalent_fps = 11,
@@ -1243,7 +1243,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.ana_gain_max = BASEGAIN * 16,
 		.coarse_integ_step = 1,
-		.min_exposure_line = 9,
+		.min_exposure_line = 16,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = INSENSORZOOM_MASK,
 			.equivalent_fps = 30,
@@ -1453,6 +1453,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.pdaf_cap = TRUE,
 		.imgsensor_pd_info = &imgsensor_pd_info_full,
 		.ae_binning_ratio = 1000,
+		.coarse_integ_step = 1,
+		.min_exposure_line = 16,
 		.fine_integ_line = 503,
 		.delay_frame = 2,
 		// .csi_param = {

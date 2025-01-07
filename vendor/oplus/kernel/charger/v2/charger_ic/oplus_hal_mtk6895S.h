@@ -24,6 +24,7 @@
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 #include <oplus_chg_ic.h>
+#include <oplus_chg_pps.h>
 #endif
 
 #define CHARGING_INTERVAL 10
@@ -340,8 +341,6 @@ struct mtk_charger {
 	int wls_set_boost_vol;
 	struct oplus_mms *gauge_topic;
 	int low_batt_otg_boost_curr_ua;
-	struct oplus_mms *pps_topic;
-	struct oplus_mms *cpa_topic;
 #endif
 
 	struct platform_device *pdev;
@@ -551,9 +550,11 @@ struct mtk_charger {
 	int usbtemp_dischg_disable;
 	int wls_boost_vol_start_mv;
 	int wls_boost_vol_max_mv;
-	bool tcpc_notify_icl_support;
-	struct votable *wired_suspend_votable;
-	struct votable *wired_icl_votable;
+
+	int pd_chg_volt;
+	struct delayed_work sourcecap_done_work;
+	pd_msg_data pdo[PPS_PDO_MAX];
+	int cap_nr;
 #endif
 };
 

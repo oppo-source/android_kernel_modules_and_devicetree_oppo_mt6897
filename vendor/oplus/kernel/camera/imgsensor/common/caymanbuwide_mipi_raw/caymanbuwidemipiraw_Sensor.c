@@ -126,6 +126,11 @@ static struct eeprom_info_struct eeprom_info[] = {
 		.addr_header_id = 0x00000006,
 		.i2c_write_id = 0xA2,
 	},
+	{
+		.header_id = 0x016D009A,
+		.addr_header_id = 0x00000006,
+		.i2c_write_id = 0xA2,
+	},
 };
 
 static struct mtk_mbus_frame_desc_entry frame_desc_prev_cap[] = {

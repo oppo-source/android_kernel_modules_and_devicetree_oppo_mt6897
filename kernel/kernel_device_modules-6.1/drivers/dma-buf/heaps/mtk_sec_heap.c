@@ -47,7 +47,7 @@
 static gfp_t order_flags[] = { HIGH_ORDER_GFP, HIGH_ORDER_GFP, LOW_ORDER_GFP };
 
 // int orders[3] = { 9, 4, 0 };
-int orders[3] = { 9, 4, 2 };
+int orders[3] = { 9, 4, 3 };
 #define NUM_ORDERS ARRAY_SIZE(orders)
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 
@@ -119,6 +119,9 @@ struct secure_heap_page {
 	struct dma_heap *heap;
 	struct device *heap_dev;
 	struct page *bitmap;
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+	struct rsv_page_pool *rsv_pool;
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 	enum TRUSTED_MEM_REQ_TYPE tmem_type;
 	enum HEAP_BASE_TYPE heap_type;
 };
@@ -164,6 +167,129 @@ static int sec_buf_priv_dump(const struct dma_buf *dmabuf, struct seq_file *s);
 
 static int mtee_assign_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr);
 static int mtee_unassign_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr);
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+#ifdef CONFIG_DEBUG_RSV_POOL
+static int order_to_index(int order)
+{
+	int i;
+
+	for (i = 0; i < NUM_ORDERS; i++)
+		if (order == orders[i])
+			return i;
+	return 0;
+}
+
+static int rsv_page_pool_count(struct rsv_page_pool *pool)
+{
+	if (!pool)
+		return 0;
+
+	return pool->count;
+}
+#endif /* CONFIG_DEBUG_RSV_POOL */
+
+static struct page *rsv_page_pool_remove(struct rsv_page_pool *pool)
+{
+	struct page *page;
+
+	spin_lock(&pool->lock);
+	page = list_first_entry_or_null(&pool->items, struct page, lru);
+	if (page) {
+		pool->count--;
+		list_del(&page->lru);
+		spin_unlock(&pool->lock);
+		goto out;
+	}
+	spin_unlock(&pool->lock);
+out:
+	return page;
+}
+
+static inline bool rsv_pool_check_suitable(struct rsv_page_pool *pool,
+					   unsigned long size)
+{
+	/* allocator service is system_uid */
+	return pool && size >= pool->display_sz &&
+		uid_eq(current_uid(), KUIDT_INIT(1000));
+
+}
+
+struct page *rsv_page_pool_alloc(struct rsv_page_pool *pool)
+{
+	if (WARN_ON(!pool))
+		return NULL;
+
+	return rsv_page_pool_remove(pool);
+}
+
+static void rsv_page_pool_add(struct rsv_page_pool *pool, struct page *page)
+{
+	spin_lock(&pool->lock);
+	list_add_tail(&page->lru, &pool->items);
+	pool->count++;
+	spin_unlock(&pool->lock);
+}
+
+bool rsv_page_pool_free(struct rsv_page_pool *pool, struct page *page)
+{
+	if (!pool || !PageSecRsv(page))
+		return false;
+
+	rsv_page_pool_add(pool, page);
+	return true;
+}
+
+struct rsv_page_pool *rsv_page_pool_create(u32 size, u32 display_sz)
+{
+	struct rsv_page_pool *pool = kmalloc(sizeof(*pool), GFP_KERNEL);
+	int i;
+	int nr = size / 2;
+
+	if (!pool)
+		return NULL;
+
+	pool->count = 0;
+	pool->order = orders[0];
+	pool->display_sz = display_sz;
+	INIT_LIST_HEAD(&pool->items);
+	spin_lock_init(&pool->lock);
+
+	for (i = 0; i < nr; i++) {
+		struct page *p = alloc_pages(HIGH_ORDER_GFP, pool->order);
+
+		if (!p)
+			break;
+		SetPageSecRsv(p);
+		rsv_page_pool_add(pool, p);
+	}
+	pr_info("%s: sz:%d display_sz:%d count:%d +\n", __func__, (int)size,
+		pool->display_sz, pool->count);
+	return pool;
+}
+
+static void oplus_rsv_pool_init(struct secure_heap_page *sec_heap)
+{
+	struct device *dev = sec_heap->heap_dev;
+	const struct device_node *node = dev->of_node;
+	u32 pool_sz, display_sz;
+	int ret;
+
+	/* only support for order-9 cuz rsv_page_pool_create */
+	if (orders[0] != 9)
+		return;
+
+	ret = of_property_read_u32(node, "rsv-pool-size", &pool_sz);
+	if (ret)
+		return;
+
+	ret = of_property_read_u32(node, "display-size", &display_sz);
+	if (ret)
+		return;
+
+	sec_heap->rsv_pool = rsv_page_pool_create(pool_sz, display_sz);
+}
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 
 static struct iova_cache_data *get_iova_cache(struct mtk_sec_heap_buffer *buffer, u64 tab_id)
 {
@@ -357,6 +483,11 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 	struct scatterlist *sg = NULL;
 	int smc_ret, i, j, page_count = 0;
 	uint32_t *bitmap = page_address(sec_heap->bitmap);
+#ifdef CONFIG_DEBUG_RSV_POOL
+	unsigned long long stage0, stage1, start;
+
+	start = sched_clock();
+#endif
 
 	smc_ret = mtee_unassign_buffer_v2(buffer->ssheap, sec_heap->tmem_type);
 	if (smc_ret) {
@@ -364,6 +495,10 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 		       smc_ret);
 		return -EINVAL;
 	}
+#ifdef CONFIG_DEBUG_RSV_POOL
+	stage0 = sched_clock() - start;
+	start = sched_clock();
+#endif /* CONFIG_DEBUG_RSV_POOL */
 
 	/* free the pmm_msg_pages */
 	pmm_page = buffer->ssheap->pmm_page;
@@ -404,6 +539,11 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 			if (compound_order(page) == orders[j])
 				break;
 		}
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+		if (sec_heap->rsv_pool &&
+		    rsv_page_pool_free(sec_heap->rsv_pool, page))
+			continue;
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 		if (j < NUM_ORDERS)
 			dmabuf_page_pool_free(pools[j], page);
 		else
@@ -436,6 +576,12 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 		memset(page_address(sec_heap->bitmap), 0, PAGE_SIZE);
 	}
 
+#ifdef CONFIG_DEBUG_RSV_POOL
+	stage1 = sched_clock() - start;
+	pr_info("%s: len:%lu total:%llu us {%llu, %llu}us\n",
+		__func__, buffer->len,
+		(stage0 + stage1) / 1000, stage0 / 1000, stage1 / 1000);
+#endif /* CONFIG_DEBUG_RSV_POOL */
 	pr_debug("%s done, [%s] size:%#lx, total_size:%#llx\n", __func__,
 		 dma_heap_get_name(buffer->heap), buffer->len,
 		 atomic64_read(&sec_heap->total_size));
@@ -1290,8 +1436,14 @@ free_buffer:
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+static struct page *alloc_largest_available(unsigned long size,
+					    unsigned int max_order,
+					    struct rsv_page_pool *rsv_pool)
+#else
 static struct page *alloc_largest_available(unsigned long size,
 					    unsigned int max_order)
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 {
 	struct page *page;
 	int i;
@@ -1302,6 +1454,13 @@ static struct page *alloc_largest_available(unsigned long size,
 		if (max_order < orders[i])
 			continue;
 		page = dmabuf_page_pool_alloc(pools[i]);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+		if (page)
+			return page;
+
+		if (i == 0 && rsv_pool)
+			page = rsv_page_pool_alloc(rsv_pool);
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 		if (!page)
 			continue;
 		return page;
@@ -1476,15 +1635,36 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 	struct list_head pages;
 	struct page *page, *tmp_page, *pmm_page;
 	int i = 0, smc_ret = 0;
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+	struct rsv_page_pool *rsv_pool = sec_heap->rsv_pool;
+#ifdef CONFIG_DEBUG_RSV_POOL
+	int order_debug[NUM_ORDERS] = {0};
+	unsigned long long stage0, stage1, start;
+
+	start = sched_clock();
+#endif /* CONFIG_DEBUG_RSV_POOL */
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 
 	size_remaining = ROUNDUP(req_sz, SZ_64K);
 	pr_debug("%s: req_sz=%#lx, size_remaining=%#lx\n", __func__, req_sz,
 		 size_remaining);
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+	if (rsv_pool_check_suitable(rsv_pool, req_sz))
+		size_remaining = ROUNDUP(req_sz, SZ_2M);
+	else
+		rsv_pool = NULL;
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
+
 	// allocage pages by dma-poll
 	INIT_LIST_HEAD(&pages);
 
 	while (size_remaining > 0) {
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+		page = alloc_largest_available(size_remaining, max_order, rsv_pool);
+#else /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 		page = alloc_largest_available(size_remaining, max_order);
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 		if (!page) {
 			pr_err("%s: Failed to alloc pages!!\n", __func__);
 			goto free_pages;
@@ -1492,6 +1672,9 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 		list_add_tail(&page->lru, &pages);
 		size_remaining -= page_size(page);
 		max_order = compound_order(page);
+#ifdef CONFIG_DEBUG_RSV_POOL
+		order_debug[order_to_index(max_order)]++;
+#endif /* CONFIG_DEBUG_RSV_POOL */
 		i++;
 	}
 	// sort pages by pa
@@ -1539,6 +1722,10 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 	buffer->ssheap->elems = table->orig_nents;
 	buffer->len = buffer->ssheap->aligned_req_size;
 	atomic64_add(buffer->len, &sec_heap->total_size);
+#ifdef CONFIG_DEBUG_RSV_POOL
+	stage0 = sched_clock() - start;
+	start = sched_clock();
+#endif /* CONFIG_DEBUG_RSV_POOL */
 
 	trusted_mem_enable_high_freq();
 	// mtee_assign assign pa to protected pa
@@ -1551,6 +1738,14 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 		kfree(buffer->ssheap);
 		goto free_pmm_page;
 	}
+#ifdef CONFIG_DEBUG_RSV_POOL
+	stage1 = sched_clock() - start;
+	pr_info("%s: len:%lu total:%llu us {%llu, %llu}us orders:{%d, %d, %d} bpp: %d\n",
+		__func__, req_sz,
+		(stage0 + stage1) / 1000, stage0 / 1000, stage1 / 1000,
+		order_debug[0], order_debug[1], order_debug[2],
+		rsv_page_pool_count(sec_heap->rsv_pool));
+#endif /* CONFIG_DEBUG_RSV_POOL */
 	return 0;
 
 free_pmm_page:
@@ -2163,6 +2358,9 @@ static int mtk_page_heap_create(void)
 		mtk_sec_heap_page[i].bitmap = alloc_page(GFP_KERNEL | __GFP_ZERO);
 		pr_info("%s add heap[%s][%d] success\n", __func__,
 			exp_info.name, mtk_sec_heap_page[i].tmem_type);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+		oplus_rsv_pool_init(&mtk_sec_heap_page[i]);
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 	}
 	return 0;
 }

@@ -178,6 +178,7 @@ mgk_64_k61_device_modules = [
     "drivers/gpu/drm/panel/oplus_panel/ac230_p_3_a0004_dsi_cmd_panel_t1.ko",
     "drivers/gpu/drm/panel/oplus_panel/ac230_p_7_a0014_dsi_cmd_panel_t0.ko",
     "drivers/gpu/drm/panel/oplus_panel/ac232_p_7_a0014_dsi_cmd_panel_t0.ko",
+    "drivers/gpu/drm/panel/oplus_panel/panel_ae016_p_7_a0014_dsi_cmd.ko",
     "drivers/gpu/drm/panel/ac164_p_3_a0001_cmd_panel.ko",
     "drivers/gpu/drm/panel/ac164_p_7_a0001_cmd_panel.ko",
     "drivers/gpu/drm/panel/ac158_p_7_a0001_cmd_panel.ko",

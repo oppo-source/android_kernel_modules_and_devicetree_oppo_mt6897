@@ -325,6 +325,64 @@ void nfc_gpio_release(struct nfc_info *nfc)
     }
 }
 
+int nfc_enable_rf_clk(struct nfc_info *nfc)
+{
+    int ret;
+
+    if (!nfc->tms->feature.rf_clk_enable_support) {
+        return SUCCESS;
+    }
+
+    ret = IS_ERR(nfc->clk);
+    if (ret) {
+        TMS_ERR("Check platform clock error, ret = %d\n", ret);
+        return ret;
+    }
+
+    ret = IS_ERR(nfc->clk_enable);
+    if (ret) {
+        TMS_ERR("Check clock enable error, ret = %d\n", ret);
+        return ret;
+    }
+
+    ret = clk_prepare_enable(nfc->clk);
+    if (ret) {
+        TMS_ERR("Platform clock enable failed, ret = %d\n", ret);
+        return ret;
+    }
+
+    ret = clk_prepare_enable(nfc->clk_enable);
+    if (ret) {
+        TMS_ERR("Clock enable failed, ret = %d\n", ret);
+    }
+
+    return ret;
+}
+
+void nfc_disable_rf_clk(struct nfc_info *nfc)
+{
+    int ret;
+
+    if (!nfc->tms->feature.rf_clk_enable_support) {
+        return;
+    }
+
+    ret = IS_ERR(nfc->clk);
+    if (ret) {
+        TMS_ERR("Check platform clock error, ret = %d\n", ret);
+        return;
+    }
+
+    ret = IS_ERR(nfc->clk_enable);
+    if (ret) {
+        TMS_ERR("Check clock enable error, ret = %d\n", ret);
+        return;
+    }
+
+    clk_disable_unprepare(nfc->clk);
+    clk_disable_unprepare(nfc->clk_enable);
+}
+
 static int nfc_gpio_configure_init(struct nfc_info *nfc)
 {
     int ret;
@@ -362,32 +420,48 @@ static int nfc_gpio_configure_init(struct nfc_info *nfc)
 
 static int nfc_platform_clk_init(struct nfc_info *nfc)
 {
+    int ret = SUCCESS;
+
     nfc->clk = devm_clk_get(nfc->i2c_dev, "clk_aux");
 
-    if (IS_ERR(nfc->clk)) {
-        TMS_ERR("Platform clock not specified\n");
-        return -ERROR;
+    ret = IS_ERR(nfc->clk);
+    if (ret) {
+        TMS_ERR("Platform clock not specified\n, ret = %d\n", ret);
+        return ret;
     }
 
     nfc->clk_parent = devm_clk_get(nfc->i2c_dev, "source");
 
-    if (IS_ERR(nfc->clk_parent)) {
-        TMS_ERR("Clock parent not specified\n");
-        return -ERROR;
+    ret = IS_ERR(nfc->clk_parent);
+    if (ret) {
+        TMS_ERR("Clock parent not specified\n, ret = %d\n", ret);
+        return ret;
     }
 
     clk_set_parent(nfc->clk, nfc->clk_parent);
     clk_set_rate(nfc->clk, 26000000);
     nfc->clk_enable = devm_clk_get(nfc->i2c_dev, "enable");
 
-    if (IS_ERR(nfc->clk_enable)) {
-        TMS_ERR("Clock enable not specified\n");
-        return -ERROR;
+    ret = IS_ERR(nfc->clk_enable);
+    if (ret) {
+        TMS_ERR("Clock enable not specified\n, ret = %d\n", ret);
+        return ret;
     }
 
-    clk_prepare_enable(nfc->clk);
-    clk_prepare_enable(nfc->clk_enable);
-    return SUCCESS;
+    if (!nfc->tms->feature.rf_clk_enable_support) {
+        ret = clk_prepare_enable(nfc->clk);
+        if (ret) {
+            TMS_ERR("Platform clock enable failed, ret = %d\n", ret);
+            return ret;
+        }
+
+        ret = clk_prepare_enable(nfc->clk_enable);
+        if (ret) {
+            TMS_ERR("Clock enable failed, ret = %d\n", ret);
+        }
+    }
+
+    return ret;
 }
 
 static int nfc_parse_dts_init(struct nfc_info *nfc)
@@ -396,6 +470,7 @@ static int nfc_parse_dts_init(struct nfc_info *nfc)
     struct device_node *np;
 
     np = nfc->i2c_dev->of_node;
+    nfc->tms->feature.rf_clk_enable_support = of_property_read_bool(np, "rf_clk_enable_support");
     rcv = of_property_read_string(np, "tms,device-name", &nfc->dev.name);
 
     if (rcv < 0) {
@@ -497,11 +572,11 @@ int nfc_common_info_init(struct nfc_info *nfc)
         return ret;
     }
 
-    /* step3 : set platform clock */
+    /* step3 : Configure platform clock */
     ret = nfc_platform_clk_init(nfc);
 
     if (ret) {
-        TMS_WARN("Not set platform clock\n");
+        TMS_WARN("Do not configure platform clock\n");
     }
 
     /* step4 : set gpio work mode */

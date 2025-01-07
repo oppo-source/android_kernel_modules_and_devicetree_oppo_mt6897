@@ -43,7 +43,7 @@ bool is_support_chip(chip_type chip)
 			target_chipset = "NQ330";
 			break;
 		case SN100T:
-			target_chipset = "SN100T";
+			target_chipset = "SN100T|PN560";
 			break;
 		case SN100F:
 			target_chipset = "SN100F";

@@ -8,8 +8,22 @@ def define_oplus_local_modules():
         name = "oplus_bsp_game_opt",
         srcs = native.glob([
             "**/*.h",
-            "**/*.c",
+            "cpu_load.c",
+            "cpufreq_limits.c",
+            "debug.c",
+            "early_detect.c",
+            "fake_cpufreq.c",
+            "game_ctrl.c",
+            "rt_info.c",
+            "task_util.c",
         ]),
+        conditional_srcs = {
+            "CONFIG_HMBIRD_SCHED": {
+                True:  [
+                    "es4g_assist.c",
+                ],
+            },
+        },
         includes = ["."],
         copts = select({
             "//build/kernel/kleaf:kocov_is_true": ["-fprofile-arcs", "-ftest-coverage"],

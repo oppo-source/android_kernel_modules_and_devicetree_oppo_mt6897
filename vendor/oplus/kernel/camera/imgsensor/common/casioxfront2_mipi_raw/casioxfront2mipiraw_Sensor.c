@@ -706,7 +706,7 @@ static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
 	{HW_ID_RST, 0, 11},
 	{HW_ID_AVDD, 2825000, 1},
-	{HW_ID_DVDD, 1100000, 1},
+	{HW_ID_DVDD, 1050000, 1},
 	{HW_ID_DOVDD, 1800000, 1},
 	{HW_ID_MCLK_DRIVING_CURRENT, 6, 1},
 	{HW_ID_RST, 1, 2},
@@ -716,7 +716,7 @@ static struct subdrv_pw_seq_entry oplus_pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
 	{HW_ID_RST, 0, 1},
 	{HW_ID_AVDD, 2825000, 1},
-	{HW_ID_DVDD, 1100000, 1},
+	{HW_ID_DVDD, 1050000, 1},
 	{HW_ID_DOVDD, 1800000, 1},
 	{HW_ID_MCLK_DRIVING_CURRENT, 6, 1},
 	{HW_ID_RST, 1, 2},
@@ -1507,7 +1507,8 @@ static int casioxfront2_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *
 	/* 1:Solid Color 2:Color Bar 5:Black */
 	if (mode) {
 		if (mode == 5) {
-			subdrv_i2c_wr_u8(ctx, 0x0600, 0x0001); /*black*/
+			subdrv_i2c_wr_u8(ctx, 0x0600, mode >> 4); /*black*/
+			subdrv_i2c_wr_u8(ctx, 0x0601, mode); /*black*/
 		} else {
 			subdrv_i2c_wr_u8(ctx, 0x0600, mode); /*100% Color bar*/
 		}

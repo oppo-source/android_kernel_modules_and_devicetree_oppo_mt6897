@@ -1357,6 +1357,34 @@ struct drm_display_mode *get_mode_by_id(struct drm_connector *connector, unsigne
 	return NULL;
 }
 
+static int mtk_panel_ext_param_get(struct drm_panel *panel, struct drm_connector *connector,
+		struct mtk_panel_params **ext_param, unsigned int id)
+{
+	int ret = 0;
+	int m_vrefresh = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, id);
+
+	m_vrefresh = drm_mode_vrefresh(m);
+	DISP_INFO("%s: vrefresh=%d\n", __func__, drm_mode_vrefresh(m));
+
+	if (m_vrefresh == 60) {
+		*ext_param = &ext_params[2];
+	} else if (m_vrefresh == 90) {
+		*ext_param = &ext_params[1];
+	} else if (m_vrefresh == 120) {
+		*ext_param = &ext_params[0];
+	} else {
+		*ext_param = &ext_params[0];
+	}
+
+	if (*ext_param)
+		DISP_DEBUG("[LCM] ac230_p_3_a0004_t1 data_rate:%d\n", (*ext_param)->data_rate);
+	else
+		DISP_ERR("[LCM] ac230_p_3_a0004_t1 ext_param is NULL;\n");
+
+	return ret;
+}
+
 enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
 {
 	pr_info("res_switch_type: %d\n", res_switch_type);
@@ -1466,6 +1494,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.panel_reset = lcm_panel_reset,
 	.panel_poweroff = lcm_panel_poweroff,
 	.ata_check = panel_ata_check,
+	.ext_param_get = mtk_panel_ext_param_get,
 	.ext_param_set = mtk_panel_ext_param_set,
 	.get_res_switch_type = mtk_get_res_switch_type,
 	.scaling_mode_mapping = mtk_scaling_mode_mapping,

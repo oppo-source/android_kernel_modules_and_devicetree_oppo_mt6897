@@ -12,6 +12,13 @@
 #include "tcpci_config.h"
 #include "tcpm_pd.h"
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+struct power_caps {
+	uint8_t nr;
+	uint32_t pdos[7];
+};
+#endif
+
 struct tcpc_device;
 
 /*
@@ -161,6 +168,7 @@ enum {
 	TCP_NOTIFY_CHRDET_STATE,
 	TCP_NOTIFY_BC12_COMPLETE_STATE,
 	TCP_NOTIFY_HVDCP_DETECT_DN,
+	TCP_NOTIFY_PD_SOURCECAP_DONE,
 #endif
 	TCP_NOTIFY_PS_CHANGE,
 	TCP_NOTIFY_CC_HI,
@@ -378,6 +386,10 @@ struct tcp_ny_bc12_complete_state {
 struct tcp_ny_hvdcp_detect_dn {
 	bool hvdcp_detect_dn;
 };
+
+struct tcp_ny_srccap {
+	const struct power_caps *caps;
+};
 #endif
 
 struct tcp_notify {
@@ -409,6 +421,7 @@ struct tcp_notify {
 		struct tcp_ny_chrdet_state chrdet_state;
 		struct tcp_ny_bc12_complete_state bc12_complete_state;
 		struct tcp_ny_hvdcp_detect_dn hvdcp_detect;
+		struct tcp_ny_srccap caps_msg;
 #endif
 		int vbus_level;
 		int cc_hi;

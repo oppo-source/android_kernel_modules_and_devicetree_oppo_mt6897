@@ -3021,6 +3021,8 @@ void milkywayc1tele_write_frame_length(struct subdrv_ctx *ctx, u32 fll)
 			set_i2c_buffer(ctx,	addr_h, (fll >> 8) & 0xFF);
 			set_i2c_buffer(ctx,	addr_l, fll & 0xFF);
 		}
+		/* update FL RG value after setting buffer for writting RG */
+		ctx->frame_length_rg = ctx->frame_length;
 	}
 	LOG_INF("fll[0x%x] multiply %u, fll_step:%u ctx->extend_frame_length_en:%d\n",
 		fll, dol_cnt, fll_step, ctx->extend_frame_length_en);

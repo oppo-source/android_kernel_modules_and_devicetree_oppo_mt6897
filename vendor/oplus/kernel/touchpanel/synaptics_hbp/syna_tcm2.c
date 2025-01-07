@@ -86,6 +86,13 @@
 #include <linux/mtk_panel_ext.h>
 #include <linux/mtk_disp_notify.h>
 #endif
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
+#ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
+#include<mt-plat/mtk_boot_common.h>
+#else
+#include <soc/oplus/system/boot_mode.h>
+#endif
+#endif
 
 #include <linux/wait.h>
 #ifdef CONFIG_HMBIRD_SCHED_GKI
@@ -214,6 +221,25 @@ void film_call_notifier_fp(struct syna_tcm *tcm, struct touch_film_info *film_in
 		   (void *)film_info);
 }
 
+
+bool inline is_ftm_boot_mode(struct syna_tcm *tcm)
+{
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
+#ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
+
+	if ((tcm->boot_mode == META_BOOT || tcm->boot_mode == FACTORY_BOOT))
+#else
+	if ((tcm->boot_mode == MSM_BOOT_MODE__FACTORY
+	     || tcm->boot_mode == MSM_BOOT_MODE__RF || tcm->boot_mode == MSM_BOOT_MODE__WLAN))
+#endif
+	{
+		return true;
+	}
+
+#endif
+	return false;
+}
+
 /**
  * syna_dev_update_lpwg_status()
  *
@@ -227,7 +253,7 @@ void film_call_notifier_fp(struct syna_tcm *tcm, struct touch_film_info *film_in
  */
 void syna_dev_update_lpwg_status(struct syna_tcm *tcm)
 {
-	tcm->lpwg_enabled = (tcm->gesture_type || tcm->touch_and_hold || tcm->fp_active) ? true : false;
+	tcm->lpwg_enabled = (tcm->gesture_type || tcm->touch_and_hold || tcm->fp_active || tcm->under_water_detect) ? true : false;
 	return;
 }
 
@@ -778,6 +804,25 @@ static void syna_dev_report_input_events(struct syna_tcm *tcm)
 					LOGI("unknown fingerprint error type: 0x%x\n", touch_data->extra_gesture_info[0]);
 					break;
 				}
+			} else if (touch_data->gesture_id == UNDER_WATER) {
+				if(!tcm->under_water){
+					tcm->under_water = TRUE;
+					input_report_key(input_dev, KEY_UNDER_WATER, 1);
+					input_sync(input_dev);
+					input_report_key(input_dev, KEY_UNDER_WATER, 0);
+					input_sync(input_dev);
+					touchpanel_event_call_notifier(EVENT_ACTION_UNDER_WATER, (void *)&tcm->under_water);
+					syna_send_signal(tcm, SIG_UNDER_WATER);
+				}
+			} else if (touch_data->gesture_id == ON_WATER) {
+				if(tcm->under_water){
+					tcm->under_water = FALSE;
+					input_report_key(input_dev, KEY_ON_WATER, 1);
+					input_sync(input_dev);
+					input_report_key(input_dev, KEY_ON_WATER, 0);
+					input_sync(input_dev);
+					touchpanel_event_call_notifier(EVENT_ACTION_UNDER_WATER, (void *)&tcm->under_water);
+				}
 			} else {
 				input_report_key(input_dev, KEY_F4, 1);
 				input_sync(input_dev);
@@ -945,6 +990,10 @@ static int syna_dev_create_input_device(struct syna_tcm *tcm)
 #ifdef ENABLE_WAKEUP_GESTURE
 	set_bit(KEY_F4, input_dev->keybit);
 	input_set_capability(input_dev, EV_KEY, KEY_F4);
+	set_bit(KEY_UNDER_WATER, input_dev->keybit);
+	input_set_capability(input_dev, EV_KEY, KEY_UNDER_WATER);
+	set_bit(KEY_ON_WATER, input_dev->keybit);
+	input_set_capability(input_dev, EV_KEY, KEY_ON_WATER);
 #endif
 
 	input_set_abs_params(input_dev,
@@ -2114,6 +2163,7 @@ static void syna_speedup_resume(struct work_struct *work)
 	}
 #endif
 	tcm->pwr_state = PWR_ON;
+	tcm->under_water = false;
 
 	LOGI("Prepare to set up application firmware\n");
 
@@ -3452,6 +3502,25 @@ static int syna_dev_probe(struct platform_device *pdev)
 		goto err_connect;
 	}
 #endif
+
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
+	/*step10 : FTM process*/
+	tcm->boot_mode = get_boot_mode();
+#endif
+	if (is_ftm_boot_mode(tcm)) {
+		retval = syna_tcm_sleep(tcm->tcm_dev, true);
+		if (retval < 0) {
+			LOGE("Fail to enter deep sleep\n");
+		}
+		syna_dev_release_irq(tcm);
+
+		if (tcm->health_monitor_support) {
+			tp_healthinfo_report(&tcm->monitor_data, HEALTH_PROBE, &time_counter);
+		}
+
+		LOGI("%s: not in normal mode, return.\n", __func__);
+		return 0;
+	}
 
 #ifdef HAS_SYSFS_INTERFACE
 	/* create the device file and register to char device classes */

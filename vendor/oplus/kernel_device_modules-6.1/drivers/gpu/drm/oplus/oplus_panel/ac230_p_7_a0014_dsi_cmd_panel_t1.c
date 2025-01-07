@@ -344,7 +344,7 @@ static void lcm_panel_init(struct lcm *ctx)
 		break;
 	}
 
-	DISP_ERR("%s,ac230_p_3_a0004_t1 restore seed_mode:%d\n", __func__, temp_seed_mode);
+	DISP_ERR("%s,ac230_p_7_a0014_t1 restore seed_mode:%d\n", __func__, temp_seed_mode);
 	if (temp_seed_mode == NATURAL){
 		push_table(ctx, dsi_set_seed_natural, sizeof(dsi_set_seed_natural) / sizeof(struct LCM_setting_table));
 	} else if (temp_seed_mode == EXPERT){
@@ -523,7 +523,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.lcm_esd_check_table[2] = {
 			.cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
 		},
-
+		.vdo_mix_mode_en = true,
 //	.round_corner_en = 0,
 //	.corner_pattern_height = ROUND_CORNER_H_TOP,
 //	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
@@ -629,7 +629,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.lcm_esd_check_table[2] = {
 			.cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
 		},
-
+		.vdo_mix_mode_en = true,
 //	.round_corner_en = 0,
 //	.corner_pattern_height = ROUND_CORNER_H_TOP,
 //	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
@@ -735,7 +735,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.lcm_esd_check_table[2] = {
 			.cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
 		},
-
+		.vdo_mix_mode_en = true,
 //	.round_corner_en = 0,
 //	.corner_pattern_height = ROUND_CORNER_H_TOP,
 //	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
@@ -940,6 +940,57 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsi
 	bl_level[2] = level & 0xFF;
 	cb(dsi, handle, bl_level, ARRAY_SIZE(bl_level));
 	DISP_ERR("ac230_p_7_a0014_t1 backlight = %d bl_level[1]=%x, bl_level[2]=%x\n", level, bl_level[1], bl_level[2]);
+	oplus_display_brightness = level;
+	lcdinfo_notify(LCM_BRIGHTNESS_TYPE, &level);
+	return 0;
+}
+
+static int lcm_setbacklight_pack(void *dsi, dcs_write_gce_pack cb, void *handle, unsigned int level)
+{
+	unsigned int mapped_level = 0;
+	struct LCM_setting_table bl_level[] = {
+		{REGFLAG_CMD, 3, {0x51,0x03,0xFF}},
+	};
+
+	if (!dsi || !cb) {
+		return -EINVAL;
+	}
+
+	if (level == 0) {
+		DISP_ERR("[%s:%d]backlight lvl:%u\n", __func__, __LINE__, level);
+	}
+
+#ifdef OPLUS_FEATURE_DISPLAY_ONSCREENFINGERPRINT
+	if (oplus_ofp_is_supported()) {
+		if (lhbm_pressed_icon_grayscale_cmd[2].count == 5) {
+			if (panel_lhbm_pressed_icon_grayscale_update(lhbm_pressed_icon_grayscale_cmd[2].para_list, level) == 1) {
+				panel_send_pack_hs_cmd(dsi, lhbm_pressed_icon_grayscale_cmd,
+					sizeof(lhbm_pressed_icon_grayscale_cmd) / sizeof(struct LCM_setting_table), cb, handle);
+			}
+		}
+	}
+#endif /* OPLUS_FEATURE_DISPLAY_ONSCREENFINGERPRINT */
+
+	if (level == 1) {
+		DISP_ERR("[%s:%d]backlight lvl:%u\n", __func__, __LINE__, level);
+		return 0;
+	} else if (level > 4094) {
+		level = 4094;
+	}
+
+	if (get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT && level > 0){
+		level = 2047;
+	}
+
+	mapped_level = level;
+	if (mapped_level > 1) {
+		lcdinfo_notify(LCM_BRIGHTNESS_TYPE, &mapped_level);
+	}
+
+	bl_level[0].para_list[1] = level >> 8;
+	bl_level[0].para_list[2] = level & 0xFF;
+	panel_send_pack_hs_cmd(dsi, bl_level, sizeof(bl_level) / sizeof(struct LCM_setting_table), cb, handle);
+	DISP_INFO("ac230_p_7_a0014_t1 backlight = %d bl_level[1]=%x, bl_level[2]=%x\n", level, bl_level[0].para_list[1], bl_level[0].para_list[2]);
 	oplus_display_brightness = level;
 	lcdinfo_notify(LCM_BRIGHTNESS_TYPE, &level);
 	return 0;
@@ -1164,11 +1215,11 @@ static int oplus_ofp_set_lhbm_pressed_icon(struct drm_panel *panel, void *dsi_dr
 		if (temp_seed_mode == VIVID) {
 			seed_gain = 423;
 		} else if (temp_seed_mode == EXPERT) {
-			seed_gain = 437;
+			seed_gain = 440;
 		} else if (temp_seed_mode == NATURAL) {
-			seed_gain = 440;
+			seed_gain = 437;
 		} else {
-			seed_gain = 440;
+			seed_gain = 437;
 		}
 		r_reg1 = ((((regs1[AC178_GAMMA_COMPENSATION_REG_INDEX1] << 8)
 				| regs1[AC178_GAMMA_COMPENSATION_REG_INDEX2]) * seed_gain / 100U) >> 8) & 0xFF;
@@ -1262,7 +1313,7 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 		reg_count = sizeof(aod_off_cmd) / sizeof(struct LCM_setting_table);
 	}
 
-	for (i = 0; i < (sizeof(aod_off_cmd) / sizeof(struct LCM_setting_table)); i++) {
+	for (i = 0; i < reg_count; i++) {
 		cmd = aod_off_cmd_set[i].cmd;
 
 		switch (cmd) {
@@ -1547,6 +1598,34 @@ struct drm_display_mode *get_mode_by_id(struct drm_connector *connector, unsigne
 	return NULL;
 }
 
+static int mtk_panel_ext_param_get(struct drm_panel *panel, struct drm_connector *connector,
+		struct mtk_panel_params **ext_param, unsigned int id)
+{
+	int ret = 0;
+	int m_vrefresh = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, id);
+
+	m_vrefresh = drm_mode_vrefresh(m);
+	DISP_INFO("%s: vrefresh=%d\n", __func__, drm_mode_vrefresh(m));
+
+	if (m_vrefresh == 60) {
+		*ext_param = &ext_params[2];
+	} else if (m_vrefresh == 90) {
+		*ext_param = &ext_params[1];
+	} else if (m_vrefresh == 120) {
+		*ext_param = &ext_params[0];
+	} else {
+		*ext_param = &ext_params[0];
+	}
+
+	if (*ext_param)
+		DISP_DEBUG("[LCM] ac230_p_7_a0014_t1 data_rate:%d\n", (*ext_param)->data_rate);
+	else
+		DISP_ERR("[LCM] ac230_p_7_a0014_t1 ext_param is NULL;\n");
+
+	return ret;
+}
+
 enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
 {
 	pr_info("res_switch_type: %d\n", res_switch_type);
@@ -1698,11 +1777,12 @@ static int oplus_display_panel_set_demura_bl(void *dsi, dcs_write_gce_pack cb, v
 
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
-	.set_backlight_cmdq = lcm_setbacklight_cmdq,
+	.set_backlight_pack = lcm_setbacklight_pack,
 	.panel_poweron = lcm_panel_poweron,
 	.panel_reset = lcm_panel_reset,
 	.panel_poweroff = lcm_panel_poweroff,
 	.ata_check = panel_ata_check,
+	.ext_param_get = mtk_panel_ext_param_get,
 	.ext_param_set = mtk_panel_ext_param_set,
 	.get_res_switch_type = mtk_get_res_switch_type,
 	.scaling_mode_mapping = mtk_scaling_mode_mapping,

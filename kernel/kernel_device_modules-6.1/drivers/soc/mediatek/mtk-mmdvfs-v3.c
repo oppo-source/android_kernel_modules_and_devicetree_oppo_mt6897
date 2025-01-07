@@ -860,6 +860,10 @@ struct mmdvfs_mux {
 #define LEVEL2OPP(mux, level)	(level >= mmdvfs_mux[mux].freq_num ? 0 : \
 					mmdvfs_mux[mux].freq_num - 1 - (level))
 
+#define CLKLEVEL2OPP(clk, level)	(level >= mtk_mmdvfs_clks[clk].freq_num ? 0 : \
+					mtk_mmdvfs_clks[clk].freq_num - 1 - (level))
+
+
 static struct mmdvfs_mux mmdvfs_mux[MMDVFS_MUX_NUM];
 static struct mtk_mux_user mmdvfs_user[MMDVFS_USER_NUM];
 static struct clk *mmdvfs_user_clk[MMDVFS_USER_NUM];
@@ -1449,29 +1453,33 @@ static inline void mmdvfs_reset_ccu(void)
 static inline void mmdvfs_reset_clk(bool enable_vcp)
 {
 	int i, ret;
+	bool vcp_enabled = false;
 
-	if (!mmdvfs_rst_clk_num || mmdvfs_rst_clk_done)
+	if (!mmdvfs_clk_num || mmdvfs_rst_clk_done)
 		return;
 
-	if (enable_vcp)
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
-	if (log_level & (1 << log_rst_clk)) {
-		MMDVFS_DBG("Before reset clk:");
-		raw_notifier_call_chain(&mmdvfs_fmeter_notifier_list, 0, NULL);
-	}
-	for (i = 0; i < mmdvfs_rst_clk_num; i++) {
-		if (!IS_ERR_OR_NULL(mmdvfs_rst_clk[i])) {
-			ret = clk_set_rate(mmdvfs_rst_clk[i], 0);
+	for (i = 0; i < mmdvfs_clk_num; i++) {
+		if (CLKLEVEL2OPP(i, mtk_mmdvfs_clks[i].opp)) {
+			if (enable_vcp && !vcp_enabled) {
+				vcp_enabled = true;
+				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
+			}
+			if (log_level & (1 << log_rst_clk)) {
+				MMDVFS_DBG("Before reset clk:");
+				raw_notifier_call_chain(&mmdvfs_fmeter_notifier_list, 0, NULL);
+			}
+			ret = clk_set_rate(mtk_mmdvfs_clks[i].clk_hw.clk, 0);
 			if (ret)
 				MMDVFS_ERR("reset clk:%d to 0 failed:%d", i, ret);
+			if (log_level & (1 << log_rst_clk)) {
+				MMDVFS_DBG("After reset clk:");
+				raw_notifier_call_chain(&mmdvfs_fmeter_notifier_list, 0, NULL);
+			}
 		}
 	}
+
 	mmdvfs_rst_clk_done = true;
-	if (log_level & (1 << log_rst_clk)) {
-		MMDVFS_DBG("After reset clk:");
-		raw_notifier_call_chain(&mmdvfs_fmeter_notifier_list, 0, NULL);
-	}
-	if (enable_vcp)
+	if (enable_vcp && vcp_enabled)
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
 }
 

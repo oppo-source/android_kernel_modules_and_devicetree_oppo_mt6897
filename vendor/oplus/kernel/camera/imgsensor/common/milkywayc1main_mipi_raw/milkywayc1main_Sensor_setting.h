@@ -27,6 +27,63 @@
 // SONY sensor: VCID of 2nd frame at 0x3070; VCID of 3rd frame at 0x3080
 // must be two different value
 
+#define OPTIMIZE_OB  \
+	0x825B, 0x01,    \
+	0xEC12, 0x01,    \
+	0xEC14, 0x3C,    \
+	0xEC15, 0x00,    \
+	0xEC16, 0x38,    \
+	0xEC17, 0x00,    \
+	0xEC18, 0x30,    \
+	0xEC19, 0x00,    \
+	0xEC1A, 0x00,    \
+	0xEC1B, 0x00,    \
+	0x3A20, 0x04,    \
+	0x3A21, 0xFF,    \
+	0x3A22, 0xFB,    \
+	0x3A23, 0xFA,    \
+	0x3A24, 0x07,    \
+	0x3A25, 0x03,    \
+	0x3A26, 0x00,    \
+	0x3A27, 0x00,    \
+	0x3A28, 0x07,    \
+	0x3A29, 0x03,    \
+	0x3A2A, 0x00,    \
+	0x3A2B, 0x00,    \
+	0x3A2C, 0x04,    \
+	0x3A2D, 0xFF,    \
+	0x3A2E, 0xFB,    \
+	0x3A2F, 0xFA,    \
+
+
+#define DEFAULT_OB  \
+	0x825B, 0x01,   \
+	0xEC12, 0x01,   \
+	0xEC14, 0x3D,   \
+	0xEC15, 0x55,   \
+	0xEC16, 0x30,   \
+	0xEC17, 0x00,   \
+	0xEC18, 0x2F,   \
+	0xEC19, 0xFE,   \
+	0xEC1A, 0x00,   \
+	0xEC1B, 0x00,   \
+	0x3A20, 0x00,   \
+	0x3A21, 0x00,   \
+	0x3A22, 0x00,   \
+	0x3A23, 0x00,   \
+	0x3A24, 0x00,   \
+	0x3A25, 0x00,   \
+	0x3A26, 0x00,   \
+	0x3A27, 0x00,   \
+	0x3A28, 0x00,   \
+	0x3A29, 0x00,   \
+	0x3A2A, 0x00,   \
+	0x3A2B, 0x00,   \
+	0x3A2C, 0x00,   \
+	0x3A2D, 0x00,   \
+	0x3A2E, 0x00,   \
+	0x3A2F, 0x00,   \
+
 static u16 milkywayc1main_addition_setting[] = {
     0x4C15 ,0x07,
     0x4C17 ,0x1B,
@@ -793,6 +850,17 @@ static u16 milkywayc1main_init_setting[] = {
 	0x6441, 0x1E,
 	0x33F2, 0x02,
 	0x1F08, 0x00,
+// OPTIMIZE_OB init
+	0x825B, 0x01,
+	0xEC12, 0x01,
+	0xEC14, 0x3C,
+	0xEC15, 0x00,
+	0xEC16, 0x38,
+	0xEC17, 0x00,
+	0xEC18, 0x30,
+	0xEC19, 0x00,
+	0xEC1A, 0x00,
+	0xEC1B, 0x00,
 };
 
 /* reg_B6-S7   4096x3072 @30fps QBIN(VBIN) w/ PD VB Max. Seamless F2-S7*/
@@ -984,6 +1052,7 @@ static u16 milkywayc1main_preview_setting[] = {
 	0x30A4,	0x01,
 	0xBCEC,	0x00,
 	0xBCED,	0xF2,
+	DEFAULT_OB
 };
 
 /* Reg_K-5-1_4096x3072_30FPS */
@@ -1175,6 +1244,7 @@ static u16 milkywayc1main_capture_setting[] = {
 	0x30A4,	0x01,
 	0xBCEC,	0x00,
 	0xBCED,	0xF2,
+	DEFAULT_OB
 };
 
 static u16 milkywayc1main_normal_video_setting[] = {
@@ -1406,6 +1476,7 @@ static u16 milkywayc1main_normal_video_setting[] = {
 	0x0856, 0x00,
 	0x0858, 0x00,
 	0x0859, 0x1F,
+	DEFAULT_OB
 };
 
 /* Reg_S_1_4096x2304_60FPS */
@@ -1567,6 +1638,7 @@ static u16 milkywayc1main_hs_video_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 
 /* Reg_M-1 QBIN(HVBIN) - V2H2_FHD_2048x1152_120FPS */
@@ -1730,6 +1802,7 @@ static u16 milkywayc1main_slim_video_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 
 /* Reg_M_2048x1152_240FPS */
@@ -1894,6 +1967,7 @@ static u16 milkywayc1main_custom1_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 
 /* reg_B2 QBIN(VBIN)_4096x3072 @24FPS*/
@@ -2089,6 +2163,7 @@ static u16 milkywayc1main_custom2_setting[] = {
     0x30A4, 0x01,
     0xBCEC, 0x00,
     0xBCED, 0xF2,
+    DEFAULT_OB
 };
 
 /* Reg_A 8192x6144_11FPS remosaic*/
@@ -2253,6 +2328,7 @@ static u16 milkywayc1main_custom3_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 
 /* mode2*/
@@ -2459,6 +2535,7 @@ static u16 milkywayc1main_custom4_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 
 /* reg_F2-S7   4096x3072 @30FPS Full-crop w/ PD VB Max. Seamless B6-S7&F2-RAW-S7 insensor zoom*/
@@ -2650,6 +2727,7 @@ static u16 milkywayc1main_custom5_setting[] = {
 	0x30A4,	0x01,
 	0xBCEC,	0x00,
 	0xBCED,	0xF2,
+	OPTIMIZE_OB
 };
 
 /* Reg_L_1296x736_480FPS */
@@ -2814,6 +2892,7 @@ static u16 milkywayc1main_custom6_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 
 /* reg_B7 1776x1332 @24FPS QBIN(VBIN) Crop w/ PD VB Max. */
@@ -3023,6 +3102,7 @@ static u16 milkywayc1main_custom7_setting[] = {
 	0x0856, 0x00,
 	0x0858, 0x00,
 	0x0859, 0x1F,
+	DEFAULT_OB
 };
 
  /* reg_F2_RAW-S7   4096x3072 @30FPS Full_RAW-crop w/ PD VB Max. Seamless B6-S7&F2-S7 */
@@ -3214,6 +3294,7 @@ static u16 milkywayc1main_custom8_setting[] = {
 	0x30A4,	0x01,
 	0xBCEC,	0x00,
 	0xBCED,	0xF2,
+	OPTIMIZE_OB
 };
 
 
@@ -3410,6 +3491,7 @@ static u16 milkywayc1main_custom9_setting[] = {
 	0x30A4, 0x01,
 	0xBCEC, 0x00,
 	0xBCED, 0xF2,
+	OPTIMIZE_OB
 };
 static u16 milkywayc1main_custom10_setting[] = {
 	//reg_F3_RAW-S9
@@ -3603,6 +3685,7 @@ static u16 milkywayc1main_custom10_setting[] = {
 	0x30A4, 0x01,
 	0xBCEC, 0x00,
 	0xBCED, 0xF2,
+	OPTIMIZE_OB
 };
 
 static u16 milkywayc1main_custom11_setting[] = {
@@ -3834,6 +3917,7 @@ static u16 milkywayc1main_custom11_setting[] = {
 	0x0856, 0x00,
 	0x0858, 0x00,
 	0x0859, 0x1F,
+	DEFAULT_OB
 };
 // reg_B11  4096x2048 @30fps QBIN(VBIN) w/ PD VB Max.
 static u16 milkywayc1main_custom12_setting[] = {
@@ -4042,6 +4126,7 @@ static u16 milkywayc1main_custom12_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 // reg_V2   2048x1024 @30fps QBIN(VBIN) V2H2 w/ PD VB Max.
 static u16 milkywayc1main_custom13_setting[] = {
@@ -4250,6 +4335,7 @@ static u16 milkywayc1main_custom13_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 /* Reg_R-2-4_4096x2304_30FPS*/
 static u16 milkywayc1main_custom14_setting[] = {
@@ -4412,6 +4498,7 @@ static u16 milkywayc1main_custom14_setting[] = {
     0x0856, 0x00,
     0x0858, 0x00,
     0x0859, 0x1F,
+    DEFAULT_OB
 };
 
 static u16 milkywayc1main_custom15_setting[] = {
@@ -4554,6 +4641,7 @@ static u16 milkywayc1main_custom15_setting[] = {
 	0x0856, 0x00,
 	0x0858, 0x00,
 	0x0859, 0x1F,
+	DEFAULT_OB
 };
 
 /* seamless_switch */
@@ -4640,6 +4728,7 @@ static u16 milkywayc1main_seamless_custom14[] = {
 };
 
 static u16 milkywayc1main_seamless_capture[] = {
+// reg_B6-S7
 	0x0342, 0x3D,
 	0x0343, 0x00,
 	0x0340, 0x0E,
@@ -4668,6 +4757,7 @@ static u16 milkywayc1main_seamless_capture[] = {
 	0x3803, 0x00,
 	0x3804, 0x17,
 	0x3805, 0xC0,
+	DEFAULT_OB
 };
 
 // static u16 milkywayc1main_seamless_custom8[] = {
@@ -4678,6 +4768,7 @@ static u16 milkywayc1main_seamless_capture[] = {
 // };
 
 static u16 milkywayc1main_seamless_custom5[] = {
+//reg_F2-S7
 	0x0342, 0x2D,
 	0x0343, 0x20,
 	0x0340, 0x14,
@@ -4706,9 +4797,11 @@ static u16 milkywayc1main_seamless_custom5[] = {
 	0x3803, 0x01,
 	0x3804, 0x16,
 	0x3805, 0xB0,
+	OPTIMIZE_OB
 };
 
 static u16 milkywayc1main_seamless_custom8[] = {
+//Reg_F2_RAW-S7
 	0x0342, 0x2D,
 	0x0343, 0x20,
 	0x0340, 0x14,
@@ -4736,6 +4829,7 @@ static u16 milkywayc1main_seamless_custom8[] = {
 	0x3803, 0x01,
 	0x3804, 0x16,
 	0x3805, 0xB0,
+	OPTIMIZE_OB
 };
 
 static u16 milkywayc1main_seamless_custom7[] = {
@@ -4743,6 +4837,7 @@ static u16 milkywayc1main_seamless_custom7[] = {
 };
 
 static u16 milkywayc1main_seamless_custom9[] = {
+//Reg_F3-S9
 	0x0342, 0x2D,
 	0x0343, 0x20,
 	0x0340, 0x19,
@@ -4771,9 +4866,11 @@ static u16 milkywayc1main_seamless_custom9[] = {
 	0x3803, 0x01,
 	0x3804, 0x16,
 	0x3805, 0xB0,
+	OPTIMIZE_OB
 };
 
 static u16 milkywayc1main_seamless_custom2[] = {
+//reg_B9-S9
 	0x0342, 0x3D,
 	0x0343, 0x00,
 	0x0340, 0x12,
@@ -4802,10 +4899,12 @@ static u16 milkywayc1main_seamless_custom2[] = {
 	0x3803, 0x00,
 	0x3804, 0x17,
 	0x3805, 0xC0,
+	DEFAULT_OB
 };
 
 
 static u16 milkywayc1main_seamless_custom10[] = {
+//Reg_F3_RAW-S9
 	0x0342, 0x2D,
 	0x0343, 0x20,
 	0x0340, 0x19,
@@ -4833,6 +4932,7 @@ static u16 milkywayc1main_seamless_custom10[] = {
 	0x3803, 0x01,
 	0x3804, 0x16,
 	0x3805, 0xB0,
+	OPTIMIZE_OB
 };
 
 

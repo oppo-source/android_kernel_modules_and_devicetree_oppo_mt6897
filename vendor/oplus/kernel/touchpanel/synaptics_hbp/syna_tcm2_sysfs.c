@@ -1545,10 +1545,11 @@ static int syna_cdev_ioctl_get_frame(struct syna_tcm *tcm,
 
 	if (retval >= 0)
 		retval = pfifo_data->data_length;
-
-	kfree(pfifo_data->fifo_data);
+	if (pfifo_data->fifo_data)
+		kfree(pfifo_data->fifo_data);
 	mb();/* memory barrier */
-	kfree(pfifo_data);
+	if (pfifo_data)
+		kfree(pfifo_data);
 	if (tcm->fifo_remaining_frame != 0)
 		tcm->fifo_remaining_frame--;
 
@@ -1913,6 +1914,12 @@ send_cmd_again:
 			if (tcm->touch_and_hold) {
 				tcm->is_fp_down = false;
 			}
+		} else if (data[3] == DC_UNDER_WATER_DETECT) {
+			tcm->under_water_detect = (unsigned short)syna_pal_le2_to_uint(&data[4]);
+			syna_dev_update_lpwg_status(tcm);
+			syna_sysfs_set_fingerprint_prepare(tcm);
+			LOGE("HBP set under_water_detect(0x%04x)\n", tcm->under_water_detect);
+			tcm->under_water_detect = (tcm->under_water_detect >> UNDER_WATER_BIT) & 0x1;
 		}
 	}
 
@@ -1932,7 +1939,7 @@ send_cmd_again:
 	}
 
 	if ((data[0] == CMD_SET_DYNAMIC_CONFIG) && (payload_length == 3)) {
-		if ((data[3] == DC_GESTURE_TYPE_ENABLE) || (data[3] == DC_TOUCH_AND_HOLD)) {
+		if ((data[3] == DC_GESTURE_TYPE_ENABLE) || (data[3] == DC_TOUCH_AND_HOLD) || (data[3] == DC_UNDER_WATER_DETECT)) {
 			if (!tcm->fp_active) {
 				syna_pal_sleep_ms(50);
 				syna_sysfs_set_fingerprint_post(tcm);
@@ -3751,6 +3758,7 @@ void syna_cdev_remove_sysfs(struct syna_tcm *tcm)
 		LOGE("Invalid tcm driver handle\n");
 		return;
 	}
+	wake_up_interruptible(&(tcm->wait_frame));
 
 	syna_sysfs_remove_dir(tcm);
 

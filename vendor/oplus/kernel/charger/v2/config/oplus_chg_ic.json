@@ -726,6 +726,13 @@
                     "str": "lifetime_info"
                 },
                 {
+                    "lable": "TRACK_GAGUE_MTK_CALI_INFO",
+                    "desc": {
+                        "zh": "MTK平台电量计校准信息"
+                    },
+                    "str": "mtk_cali_info"
+                },
+                {
                     "lable": "TRACK_GAGUE_ERR_MAX",
                     "desc": {
                         "zh": "异常上限"

@@ -23,4 +23,17 @@
 #define HYP_PMM_UNASSIGN_BUFFER_V2 (0XBB00FFAC)
 #define HYP_PMM_MERGED_TABLE (0XBB00FFAD)
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+#define PG_sec_rsv (PG_cont_ext_alloc + 4)
+#define PageSecRsv(page) test_bit(PG_sec_rsv, &(page)->flags)
+#define SetPageSecRsv(page) set_bit(PG_sec_rsv, &(page)->flags)
+
+#define CONFIG_DEBUG_RSV_POOL
+
+struct rsv_page_pool {
+	int count, display_sz, order;
+	struct list_head items;
+	spinlock_t lock;
+};
+#endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 #endif /* _MTK_SEC_HEAP_H */

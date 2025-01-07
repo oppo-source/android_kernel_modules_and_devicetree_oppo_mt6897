@@ -105,6 +105,7 @@ static int panel_send_pack_hs_cmd(void *dsi,
 		unsigned int lcm_cmd_count,
 		dcs_write_gce_pack cb,
 		void *handle);
+void oplus_display_panel_pwm_switch_prepare(unsigned int level);
 
 enum PANEL_ES {
 	ES_DV2 = 2,
@@ -1170,6 +1171,7 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsi
 {
 	unsigned int mapped_level = 0;
 	unsigned char bl_level[] = {0x51, 0x03, 0xFF};
+	unsigned int i = 0;
 
 	if (!dsi || !cb) {
 		return -EINVAL;
@@ -1179,6 +1181,17 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsi
 		LCM_INFO("backlight level:%u\n", level);
 	} else {
 		LCM_BACKLIGHT("backlight level:%u\n", level);
+	}
+
+	if (oplus_panel_pwm_onepulse_is_enabled()) {
+		oplus_display_panel_pwm_switch_prepare(level);
+	}
+
+	if (level <= 10 && last_backlight > BRIGHTNESS_HALF) {
+		LCM_INFO("Vinit2/ELVSS dimming setting.\n");
+		for(i = 0; i < (sizeof(dimming_setting_cmd) / sizeof(struct LCM_setting_table)); i++) {
+			cb(dsi, handle, dimming_setting_cmd[i].para_list, dimming_setting_cmd[i].count);
+		}
 	}
 
 	last_backlight = level;
@@ -1209,7 +1222,7 @@ void oplus_display_panel_pwm_switch_prepare(unsigned int level) {
 	bool condition1 = (last_backlight <= get_pwm_turbo_plus_bl()) && (level > get_pwm_turbo_plus_bl());
 	bool condition2 = (last_backlight > get_pwm_turbo_plus_bl()) && (level <= get_pwm_turbo_plus_bl());
 
-	if (!oplus_panel_pwm_onepulse_is_enabled() && (last_backlight > 10)) {
+	if (!oplus_panel_pwm_onepulse_is_enabled() && (last_backlight > 10) && (level > 10)) {
 		if (condition1) {
 			pulse_flg = true;
 			pwm_params->pwm_pul_cmd_id = PWM_SWITCH_18TO3;
@@ -1219,6 +1232,11 @@ void oplus_display_panel_pwm_switch_prepare(unsigned int level) {
 			pwm_params->pwm_pul_cmd_id = PWM_SWITCH_3TO18;
 			set_pwm_turbo_switch_state(PWM_SWITCH_HPWM_STATE);
 		}
+	} else if (oplus_panel_pwm_onepulse_is_enabled() && (last_backlight <= 1) && (level > 1)) {
+		LCM_INFO("Send pwm_switch_3to1 when power-on\n");
+		pulse_flg = true;
+		pwm_params->pwm_pul_cmd_id = PWM_SWITCH_3TO1;
+		set_pwm_turbo_switch_state(PWM_SWITCH_ONEPULSE_STATE);
 	}
 }
 
@@ -1351,6 +1369,11 @@ static int oplus_display_panel_set_pwm_plus_bl(void *dsi, dcs_write_gce_pack cb,
 	if (silence_mode) {
 		LCM_INFO("pwm_turbo silence_mode is %d, set backlight to 0\n", silence_mode);
 		level = 0;
+	}
+
+	if (level <= 10 && last_backlight > BRIGHTNESS_HALF) {
+		LCM_INFO("Vinit2/ELVSS dimming setting.\n");
+		panel_send_pack_hs_cmd(dsi, dimming_setting_cmd, sizeof(dimming_setting_cmd) / sizeof(struct LCM_setting_table), cb, handle);
 	}
 
 	oplus_display_panel_pwm_switch_prepare(level);

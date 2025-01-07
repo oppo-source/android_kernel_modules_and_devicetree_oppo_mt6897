@@ -28,6 +28,11 @@
 #include "audio/codecs/oplus_typec_switch/oplus_typec_switch.h"
 #endif
 
+#if IS_ENABLED(CONFIG_SND_SOC_FSA)
+/* 2024/10/29, support mic and ground switch to fix headset detect bug */
+#include "audio/codecs/fsa44xx/fsa4480-i2c.h"
+#endif
+
 /* global variables definition */
 #define REGISTER_VAL(x)	(x - 1)
 #define HAS_CAP(_c, _x)	(((_c) & (_x)) == (_x))
@@ -226,6 +231,13 @@ static void send_status_event(u32 cable_type, u32 status);
 static bool b_mic_ground_switch = false;
 extern int typec_switch_event(struct device_node *node, enum typec_switch_function event);
 #endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_FSA)
+/* 2024/10/29, support mic and ground switch to fix headset detect bug */
+static bool b_mic_ground_switch_fsa = false;
+extern int fsa4480_switch_event(struct device_node *node, enum fsa_function event);
+#endif /* CONFIG_SND_SOC_FSA */
+
 /* global function declaration */
 inline u32 accdet_read(u32 addr)
 {
@@ -952,6 +964,14 @@ static void send_status_event(u32 cable_type, u32 status)
 			typec_switch_event(NULL,0);
 			b_mic_ground_switch = true;
 			pr_info("typec_switch_event  mic and ground switch\n");
+		}
+		#endif
+		#if IS_ENABLED(CONFIG_SND_SOC_FSA)
+		/* 2024/10/29, support mic and ground switch to fix headset detect bug */
+		if (status) {
+			fsa4480_switch_event(NULL,0);
+			b_mic_ground_switch_fsa = true;
+			pr_info("fsa4480_switch_event  mic and ground switch\n");
 		}
 		#endif
 		snd_soc_jack_report(&accdet->jack, report,
@@ -1713,6 +1733,14 @@ static void dis_micbias_work_callback(struct work_struct *work)
 			typec_switch_event(NULL,0);
 			b_mic_ground_switch = false;
 			pr_info("typec_switch_event  mic and ground switch back\n");
+		}
+		#endif
+		#if IS_ENABLED(CONFIG_SND_SOC_FSA)
+		/* 2024/10/29, support mic and ground switch to fix headset detect bug */
+		if (b_mic_ground_switch_fsa) {
+			fsa4480_switch_event(NULL,0);
+			b_mic_ground_switch_fsa = false;
+			pr_info("typec_switch_event  mic and ground switch\n");
 		}
 		#endif
 	}

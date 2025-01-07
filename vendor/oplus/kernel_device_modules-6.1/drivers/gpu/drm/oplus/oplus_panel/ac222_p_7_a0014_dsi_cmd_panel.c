@@ -1738,7 +1738,6 @@ static int oplus_display_panel_set_demura_bl(void *dsi, dcs_write_gce_pack cb, v
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_pack = lcm_setbacklight_pack,
-	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	.panel_poweron = lcm_panel_poweron,
 	.panel_reset = lcm_panel_reset,
 	.panel_poweroff = lcm_panel_poweroff,

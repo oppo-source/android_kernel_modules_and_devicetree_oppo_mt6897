@@ -138,6 +138,8 @@ unsigned int gamma97_120[5];
 unsigned int gamma95_90[5];
 unsigned int gamma96_90[5];
 unsigned int gamma97_90[5];
+static unsigned int pul_swtich = 0;
+
 
 extern unsigned int last_backlight;
 extern unsigned int oplus_display_brightness;
@@ -1698,19 +1700,27 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsi
 	}
 
 	if(oplus_panel_pwm_onepulse_is_enabled() && (level > 1)) {
-		if (panel_last_brightness == 0 || panel_last_brightness == 1 || ofp_aod_off_swtich_pulse == true) {
+		if (panel_last_brightness == 0 || panel_last_brightness == 1 || ofp_aod_off_swtich_pulse == true
+			|| (atomic_read(&esd_pending) == 1)) {
 			set_pwm_turbo_power_on(true);
-			ofp_aod_off_swtich_pulse = false;
 		}
 
 		oplus_display_panel_pwm_switch_prepare(level);
 		pr_info("%s pwm switch, pulse_flg: %d", __func__, pulse_flg);
 		if((m_db >= ES_DV5) && pulse_flg) {
 			if (atomic_read(&esd_pending) == 1) {
+				pul_swtich = 1;
 				aod_off_swtich_pulse = true;
 				oplus_panel_pwm_compatible_mode_aodoff_handle();
 			}
-			pr_info("%s need up pwm switch, pwm_params->pwm_pul_cmd_id:%d", __func__, pwm_params->pwm_pul_cmd_id);
+			pr_info("%s pwm switch, aod_off_swtich_pulse:%d, ofp_aod_off_swtich_pulse:%d, pwm_params->pwm_pul_cmd_id:%d",
+					__func__, aod_off_swtich_pulse, ofp_aod_off_swtich_pulse, pwm_params->pwm_pul_cmd_id);
+			if ((aod_off_swtich_pulse == true) && (ofp_aod_off_swtich_pulse == true)) {
+				pr_info("%s backlight recovery pwm switch, delay 17ms", __func__);
+				ofp_aod_off_swtich_pulse = false;
+				usleep_range(17000, 17200);
+			}
+
 			oplus_display_panel_set_pwm_pul_lp(dsi, cb, handle, pwm_params->pwm_pul_cmd_id);
 			set_pwm_turbo_power_on(false);
 			pulse_flg = false;
@@ -1915,10 +1925,18 @@ static int oplus_display_panel_set_pwm_pul_lp(void *dsi, dcs_write_gce cb, void 
 {
 	unsigned int i = 0;
 	unsigned int level = oplus_display_brightness;
+	static unsigned int pwm_swtich_last_mode = 0;
 
 	if (silence_mode) {
 		pr_info("pwm_turbo silence_mode is %d, set backlight to 0\n", silence_mode);
 		level = 0;
+	}
+	pr_info("%s pwm_turbo, pul_swtich:%d, pwm_swtich_last_mode:%d", __func__, pul_swtich, pwm_swtich_last_mode);
+	if ((pwm_swtich_last_mode == mode && pul_swtich == 1
+		&& (mode == PWM_SWITCH_18TO1 || mode == PWM_SWITCH_1TO18)) && level > 1) {
+		pr_info("%s pwm_turbo, set same mode return", __func__);
+		pul_swtich = 0;
+		return 0;
 	}
 
 	switch (mode) {
@@ -2051,6 +2069,8 @@ static int oplus_display_panel_set_pwm_pul_lp(void *dsi, dcs_write_gce cb, void 
 		default:
 		break;
 	}
+
+	pwm_swtich_last_mode = mode;
 
 	return 0;
 }

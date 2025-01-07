@@ -36,7 +36,7 @@ static struct STRUCT_CALIBRATION_LAYOUT_STRUCT cal_layout_table = {
 		{0x00000001, 0x00000000, 0x00000000, do_pdaf_caymanbfront},
 		{0x00000000, 0x00000000, 0x00000000, do_stereo_data},
 		{0x00000001, 0x00000000, 0x00002000, do_dump_all},
-		{0x00000001, 0x00000001, 0x00000004, do_lens_id_caymanbfront}
+		{0x00000001, 0x00000008, 0x00000002, do_lens_id_caymanbfront}
 	}
 };
 
@@ -287,7 +287,7 @@ static unsigned int do_single_lsc_caymanbfront(struct EEPROM_DRV_FD_DATA *pdata,
 	pr_debug("lsc table_size %d\n", table_size);
 	pCamCalData->SingleLsc.LscTable.MtkLcsData.TableSize = table_size;
 	if (table_size > 0) {
-		pCamCalData->SingleLsc.TableRotation = 1;
+		pCamCalData->SingleLsc.TableRotation = 0;
 		debug_log("u4Offset=%d u4Length=%d", start_addr, table_size);
 		read_data_size = read_data(pdata,
 			pCamCalData->sensorID, pCamCalData->deviceID,

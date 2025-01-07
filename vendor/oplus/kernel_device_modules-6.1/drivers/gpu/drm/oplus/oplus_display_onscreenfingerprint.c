@@ -1730,6 +1730,7 @@ EXPORT_SYMBOL(oplus_ofp_backlight_filter);
 int oplus_ofp_aod_off_backlight_recovery(void *drm_crtc, void *mtk_crtc_state, void *cmdq_pkt)
 {
 	int rc = 0;
+	char *panel_name;
 	uint64_t hbm_enable = 0;
 	static bool last_aod_layer_status = false;
 	bool new_aod_layer_status = false;
@@ -1763,6 +1764,14 @@ int oplus_ofp_aod_off_backlight_recovery(void *drm_crtc, void *mtk_crtc_state, v
 	if (last_aod_layer_status && !new_aod_layer_status) {
 		mtk_drm_send_lcm_cmd_prepare(crtc, &cmdq_handle);
 		OFP_INFO("recovery backlight level = %d after aod layer disappear\n", oplus_display_brightness);
+		if (oplus_panel_pwm_onepulse_is_enabled() && oplus_display_brightness > 1) {
+			mtk_ddp_comp_io_cmd(comp, NULL, GET_PANEL_NAME, &panel_name);
+			if (!strcmp(panel_name, "panel_ac094_p_3_a0004_dsi_cmd")) {
+				cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_TE]);
+				if (mtk_drm_lcm_is_connect(mtk_crtc))
+					cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_TE]);
+			}
+		}
 
 		oplus_disp_trace_begin("mtk_drm_send_aod_off_bl_recovery");
 		ofp_aod_off_swtich_pulse = true;

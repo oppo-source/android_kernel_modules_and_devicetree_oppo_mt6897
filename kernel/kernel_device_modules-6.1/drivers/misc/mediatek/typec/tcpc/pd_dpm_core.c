@@ -347,6 +347,11 @@ static bool dpm_build_request_info(
 	for (i = 0; i < src_cap->nr; i++)
 		DPM_INFO("SrcCap%d: 0x%08x\n", i+1, src_cap->pdos[i]);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (src_cap->pdos[0])
+		tcpci_notify_sourcecap_done(tcpc, (struct power_caps *)src_cap);
+#endif
+
 	if (pd_event_data_msg_match(pd_event, PD_DATA_SOURCE_CAP) &&
 		pd_port->pe_data.explicit_contract) {
 		pd_update_connect_state(pd_port, PD_CONNECT_NEW_SRC_CAP);

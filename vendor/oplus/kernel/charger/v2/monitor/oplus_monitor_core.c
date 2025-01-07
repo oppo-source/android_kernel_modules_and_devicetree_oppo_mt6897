@@ -341,13 +341,14 @@ static int comm_info_dump_log_data(char *buffer, int size, void *dev_data)
 
 	snprintf(buffer, size, ",%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
 		"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,"
-		"%d,%d,%d,%d,%d,%d,%d,%d,%d",
+		"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 		chip->batt_temp, chip->shell_temp, chip->vbat_mv, chip->vbat_min_mv, chip->ibat_ma,
 		chip->batt_soc, chip->ui_soc, chip->wired_online, chip->wired_charge_type, chip->notify_code,
 		chip->wired_ibus_ma, chip->wired_vbus_mv, chip->smooth_soc, chip->led_on, chip->fv_mv,
 		chip->fcc_ma, chip->wired_icl_ma, chip->otg_switch_status, chip->cool_down, chip->bcc_current,
 		chip->normal_cool_down, chip->chg_cycle_status, chip->mmi_chg, chip->usb_status, chip->cc_detect,
-		chip->batt_full, chip->rechging, chip->pd_svooc, chip->batt_status);
+		chip->batt_full, chip->rechging, chip->pd_svooc, chip->batt_status, chip->batt_qmax,
+		chip->batt_soh, chip->gauge_car_c);
 
 	return 0;
 }
@@ -364,7 +365,8 @@ static int comm_info_get_log_head(char *buffer, int size, void *dev_data)
 		"batt_soc,ui_soc,wired_online,charge_type,notify_code,"
 		"wired_ibus_ma,wired_vbus_mv,smooth_soc,led_on,fv_mv,"
 		"fcc_ma,wired_icl_ma,otg_switch,cool_down,bcc_current,normal_cool_down,chg_cycle,"
-		"mmi_chg,usb_status,cc_detect,batt_full,rechging,pd_svooc,prop_status");
+		"mmi_chg,usb_status,cc_detect,batt_full,rechging,pd_svooc,prop_status,batt_qmax,"
+		"batt_soh,gauge_car_c");
 
 	return 0;
 }
@@ -468,6 +470,10 @@ static void oplus_monitor_gauge_subs_callback(struct mms_subscribe *subs,
 		chip->batt_fcc_comp = min(chip->batt_fcc + chip->batt_fcc_coeff * chip->batt_soh / 100,
 			oplus_gauge_get_batt_capacity_mah(chip->gauge_topic));
 		chip->batt_soh_comp = min(chip->batt_soh + chip->batt_soh_coeff * chip->batt_soh / 100, 100);
+		oplus_mms_get_item_data(chip->gauge_topic, GAUGE_ITEM_QMAX, &data, false);
+		chip->batt_qmax = data.intval;
+		oplus_mms_get_item_data(chip->gauge_topic, GAUGE_ITEM_CAR_C, &data, false);
+		chip->gauge_car_c = data.intval;
 		schedule_work(&chip->charge_info_update_work);
 		break;
 	case MSG_TYPE_ITEM:
@@ -556,6 +562,10 @@ static void oplus_monitor_subscribe_gauge_topic(struct oplus_mms *topic,
 	chip->batt_fcc_comp = min(chip->batt_fcc + chip->batt_fcc_coeff * chip->batt_soh / 100,
 		oplus_gauge_get_batt_capacity_mah(chip->gauge_topic));
 	chip->batt_soh_comp = min(chip->batt_soh + chip->batt_soh_coeff * chip->batt_soh / 100, 100);
+	oplus_mms_get_item_data(chip->gauge_topic, GAUGE_ITEM_QMAX, &data, true);
+	chip->batt_qmax = data.intval;
+	oplus_mms_get_item_data(chip->gauge_topic, GAUGE_ITEM_CAR_C, &data, true);
+	chip->gauge_car_c = data.intval;
 	chip->gauge_inited = true;
 }
 

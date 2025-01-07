@@ -1488,8 +1488,8 @@ static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_AFVDD, 2800000, 3},
 	{HW_ID_DVDD, 1110000, 4},
 	//{HW_ID_DOVDD, 1800000, 3},
-	{HW_ID_MCLK_DRIVING_CURRENT, 4, 6},
 	{HW_ID_RST, 1, 2},
+	{HW_ID_MCLK_DRIVING_CURRENT, 4, 11},
 };
 
 static struct subdrv_pw_seq_entry pw_off_seq[] = {

@@ -82,6 +82,7 @@
 };
 
 &mt6375_chg {
+	chg-tmr = <15>;
 	ircmp_v = <0>;
 };
 
@@ -94,6 +95,7 @@
 		oplus,ic_index = <0>;
 		oplus,batt_num = <1>;
 		oplus,mtk_gauge_power_sel_support;
+		oplus,mtk_gauge_cali_track_support;
 	};
 };
 
@@ -227,6 +229,8 @@
 		oplus,chg_framework_v2;
 		oplus,smart_charging_screenoff;
 		oplus,chg_spec_version = <OPLUS_CHG_SPEC_VER_V3P7>;
+		oplus,common-charge-icl-support;
+		oplus,eco_region_list = /bits/ 8 <0x44>;
 
 		oplus-charger {
 			mtk_6895_groups: oplus,mtk_6895-groups {
@@ -266,7 +270,6 @@
 					OPLUS_IC_FUNC_IS_OPLUS_SVID
 					OPLUS_IC_FUNC_BUCK_GET_USB_BTB_TEMP
 					OPLUS_IC_FUNC_BUCK_GET_BATT_BTB_TEMP
-					OPLUS_IC_FUNC_BUCK_SHIPMODE_ENABLE
 					OPLUS_IC_FUNC_BUCK_SET_AICL_POINT
 					OPLUS_IC_FUNC_SET_OTG_BOOST_CURR_LIMIT
 					OPLUS_IC_FUNC_BUCK_GET_FV
@@ -350,6 +353,7 @@
 					OPLUS_IC_FUNC_GAUGE_GET_QMAX_PASSED_Q
 					OPLUS_IC_FUNC_GAUGE_SET_BATTERY_CURVE
 					OPLUS_IC_FUNC_GAUGE_GET_GAUGE_TYPE
+					OPLUS_IC_FUNC_GAUGE_GET_GAUGE_CAR_C
 				>;
 				virqs = <
 					OPLUS_IC_VIRQ_ERR
@@ -440,8 +444,7 @@
 		gpio-addr-data-in = <0x10005200>;
 		gpio-addr-offset = <0x17>;
 
-		oplus,batt_info = /bits/ 8 <0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x30 0x36 0x36
-					    0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x35 0x33
+		oplus,batt_info = /bits/ 8 <0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x35 0x33
 					    0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x34 0x35
 					    0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x35 0x32
 					    0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x34 0x34>;
@@ -476,9 +479,6 @@
 	oplus,usbtemp_dischg_enable = <0x2>;
 	oplus,usbtemp_dischg_disable = <0x0>;
 
-	/* mt6878 for common charge icl fail, such as TEST.PD.PS.SNK.01 PDO Transitions As Sink */
-	oplus,tcpc-notify-icl-support;
-
 	oplus,ic_type = <OPLUS_CHG_IC_BUCK>;
 	oplus,ic_index = <0>;
 
@@ -498,12 +498,11 @@
 	data-gpio = <23>;
 	//cpu-id = <7>;
 	//key-id = <1>;
-	oplus,batt_info = /bits/ 8 <0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x30 0x36 0x36
-				    0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x35 0x33
+	oplus,batt_info = /bits/ 8 <0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x35 0x33
 				    0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x34 0x35
 				    0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x35 0x32
 				    0x36 0x31 0x31 0x33 0x30 0x33 0x30 0x30 0x30 0x31 0x34 0x34>;
-	oplus,batt_resource_info = /bits/ 8 <0 0 0 1 1>;
+	oplus,batt_resource_info = /bits/ 8 <0 0 1 1>;
 	sub_board_temp_support;
 	over_high_temp_thr = <60>;
 	sub_board_adc_channel = <18>;		/* AUXADC_CHAN_VIN1 in LK, Use the MT6368 PMIC */
@@ -611,7 +610,6 @@
 		compatible = "oplus,wired";
 
 		oplus,vooc-support;
-		oplus,common-charge-icl-support; /* mtk common charge TD.4.10.2.V.29 TD4.10.1.V3/5/6/11 fail. */
 
 		oplus_spec,vbatt_pdqc_to_5v_thr = <4435>;
 		oplus_spec,vbatt_pdqc_to_9v_thr = <4500>;
@@ -686,7 +684,7 @@
 
 		oplus_spec,full_pre_ffc_judge;
 		oplus_spec,full-pre-ffc-mv = <4485>;
-		oplus_spec,ffc-temp-thr = <120 210 350 400>;
+		oplus_spec,ffc-temp-thr = <120 210 350 440>;
 		oplus_spec,wired-ffc-step-max = <2>;
 		oplus_spec,wired-ffc-fv-mv = <4630 4630>;
 
@@ -708,6 +706,7 @@
 		oplus,gauge_stuck_jump_support;
 		oplus,gauge_stuck_threshold = <15>;
 		oplus,gauge_stuck_time = <50>;
+		oplus,eco_region_list = /bits/ 8 <0x44>;
 	};
 
 	oplus_monitor: oplus,monitor {
