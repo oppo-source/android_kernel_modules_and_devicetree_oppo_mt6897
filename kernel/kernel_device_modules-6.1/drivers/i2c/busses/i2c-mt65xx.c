@@ -2212,7 +2212,8 @@ static void olus_changeI2cSpeed(struct mtk_i2c *i2c, struct i2c_msg msgs[])
         mtk_i2c_writew(i2c, i2c->high_speed_reg, OFFSET_HS);
         mtk_i2c_writew(i2c, i2c->ltiming_reg, OFFSET_LTIMING);
     } else if ((project == 24679 || project == 24678 || project == 24606
-                || project == 24705 || project == 24706 || project == 24608) && (i2c->adap.nr == 2)) {
+                || project == 24705 || project == 24706 || project == 24608
+                || project == 24750) && (i2c->adap.nr == 2)) {
         if (msgs[0].addr == SC202CS_I2C_SLAVE_ADDR) {
             i2c->speed_hz = SC202CS_I2C_MAX_FREQUENCY;
         } else {

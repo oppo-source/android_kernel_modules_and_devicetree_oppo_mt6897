@@ -348,8 +348,10 @@ static bool dpm_build_request_info(
 		DPM_INFO("SrcCap%d: 0x%08x\n", i+1, src_cap->pdos[i]);
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
+#if IS_ENABLED(CONFIG_OPLUS_PD_SOURCECAP_UPDATE_SUPPORT)
 	if (src_cap->pdos[0])
 		tcpci_notify_sourcecap_done(tcpc, (struct power_caps *)src_cap);
+#endif
 #endif
 
 	if (pd_event_data_msg_match(pd_event, PD_DATA_SOURCE_CAP) &&

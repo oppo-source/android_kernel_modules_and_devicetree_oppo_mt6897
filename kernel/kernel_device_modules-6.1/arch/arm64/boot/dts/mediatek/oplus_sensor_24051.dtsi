@@ -105,7 +105,7 @@
 			step_min = <100>;
 			step_div = <2000>;
 			anti_shake_delta = <160>;
-			dynamic_cali_max = <2000>;
+			dynamic_cali_max = <4500>;
 			raw2offset_radio = <5000>;
 			offset_max = <15000>;
 			offset_range_min = <0>;
@@ -139,6 +139,8 @@
 			sup_changing_rpt = <0>;
 			lb_bri_max = <4096>;
 			ir_ratio = <38>; // *1000
+			lux_thod = <2000>;//add for high light mode
+			idac_thod = <20>;//add for high light mode
 			als_delay = <280>;
 			available_sensor = <14>;
 			gold_cct_factor = <941 946 924 966 1001 1001>;
@@ -160,7 +162,7 @@
 			status = "okay";
 			device_name = "sip3625";
 			support_panel = <8>;
-                        decision_table_index = <2>;
+                        decision_table_index = <3>;
 			gold_cct_3k = <84410 61800 38767 294186 1001 1001>;
 			gold_cct_6k = <73249 63430 48107 255370 1001 1001>;
 		};

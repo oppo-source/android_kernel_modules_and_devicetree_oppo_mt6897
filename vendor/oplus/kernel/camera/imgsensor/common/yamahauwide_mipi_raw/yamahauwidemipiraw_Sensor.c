@@ -22,6 +22,7 @@
  *============================================================================
  ****************************************************************************/
 #include "yamahauwidemipiraw_Sensor.h"
+
 #define SENSOR_NAME  SENSOR_DRVNAME_YAMAHAUWIDE_MIPI_RAW
 #define PFX "yamahauwide_camera_sensor"
 #define LOG_INF(format, args...) pr_err(PFX "[%s] " format, __func__, ##args)
@@ -33,6 +34,7 @@
 
 #define YAMAHAUWIDE_STEREO_START_ADDR    (0x1260)
 #define YAMAHAUWIDE_AESYNC_START_ADDR    (0x1A00)
+
 #define YAMAHAUWIDE_UNIQUE_SENSOR_ID_ADDR 0x00
 #define YAMAHAUWIDE_UNIQUE_SENSOR_ID_LENGTH 16
 static BYTE yamahauwide_unique_id[YAMAHAUWIDE_UNIQUE_SENSOR_ID_LENGTH] = { 0 };
@@ -65,18 +67,20 @@ static int yamahauwide_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 
 static bool read_cmos_eeprom_p8(struct subdrv_ctx *ctx, kal_uint16 addr, BYTE *data, int size);
 static int yamahauwide_set_register(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int yamahauwide_get_register(struct subdrv_ctx *ctx, u8 *para, u32 *len);
-static int vsync_notify(struct subdrv_ctx *ctx, unsigned int sof_cnt);
+static int vsync_notify(struct subdrv_ctx *ctx,	unsigned int sof_cnt);
 static int yamahauwide_extend_frame_length(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int yamahauwide_set_multi_shutter_frame_length_ctrl(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int yamahauwide_set_frame_length(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static void read_unique_sensorid(struct subdrv_ctx *ctx);
+
 static int yamahauwide_common_control(struct subdrv_ctx *ctx,
 	enum SENSOR_SCENARIO_ID_ENUM scenario_id,
 	MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data);
+
 static bool g_id_from_dts_flag = false;
 static void get_imgsensor_id_from_dts(struct subdrv_ctx *ctx, u32 *sensor_id);
-static int yamahauwide_get_unique_sensorid(struct subdrv_ctx *ctx, u8 *para, u32 *len);
-static int yamahauwide_get_cloud_otp_info(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+
 
 static struct eeprom_map_info yamahauwide_eeprom_info[] = {
 	{ EEPROM_META_MODULE_ID, 0x0000, 0x0010, 0x0011, 2, true },
@@ -112,12 +116,15 @@ static struct subdrv_feature_control feature_control_list[] = {
 	{SENSOR_FEATURE_SET_REGISTER, yamahauwide_set_register},
 	{SENSOR_FEATURE_GET_REGISTER, yamahauwide_get_register},
 	{SENSOR_FEATURE_SET_FRAMELENGTH, yamahauwide_set_frame_length},
-	{SENSOR_FEATURE_GET_UNIQUE_SENSORID, yamahauwide_get_unique_sensorid},
-	{SENSOR_FEATURE_GET_CLOUD_OTP_INFO, yamahauwide_get_cloud_otp_info},
 };
 
 
 static struct eeprom_info_struct eeprom_info[] = {
+	{
+		.header_id = 0x016d009a,
+		.addr_header_id = 0x00000006,
+		.i2c_write_id = 0xA2,
+	},
 	{
 		.header_id = 0x0065009a,
 		.addr_header_id = 0x00000006,
@@ -272,7 +279,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.ae_binning_ratio = 1,
 		.delay_frame = 2,
-		.csi_param = {},
+		.csi_param = {
+			.dphy_trail = 0x34,
+		},
 		.sensor_setting_info = {
 			.sensor_scenario_usage = NORMAL_MASK,
 			.equivalent_fps = 30,
@@ -468,7 +477,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.exp_cnt = 1,
 		.pclk = 36000000,
 		.linelength = 460,
-		.framelength = 3240,
+		.framelength = 3260,
 		.max_framerate = 240,
 		.mipi_pixel_rate = 288000000,
 		.readout_length = 0,
@@ -498,8 +507,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.delay_frame = 2,
 		.csi_param = {},
 		.sensor_setting_info = {
-			.sensor_scenario_usage = NORMAL_MASK,
-			.equivalent_fps = 24,
+			.sensor_scenario_usage = UNUSE_MASK,
+			.equivalent_fps = 0,
 		},
 	},
 
@@ -513,7 +522,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.exp_cnt = 1,
 		.pclk = 36000000,
 		.linelength = 478,
-		.framelength = 3132,
+		.framelength = 3136,
 		.max_framerate = 240,
 		.mipi_pixel_rate = 144000000,
 		.readout_length = 0,
@@ -558,7 +567,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.exp_cnt = 1,
 		.pclk = 36000000,
 		.linelength = 460,
-		.framelength = 3256,
+		.framelength = 3260,
 		.max_framerate = 240,
 		.mipi_pixel_rate = 288000000,
 		.readout_length = 0,
@@ -602,8 +611,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.raw_cnt = 1,
 		.exp_cnt = 1,
 		.pclk = 36000000,
-		.linelength = 548,
-		.framelength = 2732,
+		.linelength = 460,
+		.framelength = 3260,
 		.max_framerate = 240,
 		.mipi_pixel_rate = 288000000,
 		.readout_length = 0,
@@ -647,8 +656,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.raw_cnt = 1,
 		.exp_cnt = 1,
 		.pclk = 36000000,
-		.linelength = 598,
-		.framelength = 2504,
+		.linelength = 460,
+		.framelength = 3260,
 		.max_framerate = 240,
 		.mipi_pixel_rate = 288000000,
 		.readout_length = 0,
@@ -689,8 +698,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 static struct subdrv_static_ctx static_ctx = {
 	.sensor_id = YAMAHAUWIDE_SENSOR_ID,
 	.reg_addr_sensor_id = {0x0000}, /*page0, 0x00, 0x01, 0x02, 0x03*/
-	.i2c_addr_table = {0x20, 0x6c, 0xFF},
-	.i2c_burst_write_support = FALSE,
+	.i2c_addr_table = {0x6c, 0xFF},
+	.i2c_burst_write_support = TRUE,
 	.i2c_transfer_data_type = I2C_DT_ADDR_8_DATA_8,
 	.eeprom_info = eeprom_info,
 	.eeprom_num = ARRAY_SIZE(eeprom_info),
@@ -722,7 +731,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.frame_length_max = 0x1FFFFE,   /* (3ffffc / 2) */
 	.ae_effective_frame = 2,
 	.frame_time_delay_frame = 2,
-	.start_exposure_offset = 934000,
+	.start_exposure_offset = 1891000,
 	.pdaf_type = PDAF_SUPPORT_NA,
 	.g_gain2reg = get_gain2reg,
 	.s_gph = set_group_hold,
@@ -770,33 +779,10 @@ static struct subdrv_ops ops = {
 
 static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
-	{HW_ID_RST, 0, 6},
-	{HW_ID_DOVDD, 1800000, 0},
-	{HW_ID_AVDD, 2800000, 2},
-	{HW_ID_DVDD, 1200000, 5},
-	{HW_ID_AFVDD, 0, 0},
-	{HW_ID_RST, 1, 0},
-	{HW_ID_MCLK_DRIVING_CURRENT, 4, 8},
-};
-
-static struct subdrv_pw_seq_entry pw_off_seq[] = {
-	{HW_ID_MCLK, 24, 0},
-	{HW_ID_RST, 0, 6},
-	{HW_ID_DOVDD, 1800000, 0},
-	{HW_ID_AVDD, 2800000, 2},
-	{HW_ID_DVDD, 1200000, 5},
-	{HW_ID_AFVDD, 2800000, 0},
-	{HW_ID_RST, 1, 0},
-	{HW_ID_MCLK_DRIVING_CURRENT, 4, 8},
-};
-
-static struct subdrv_pw_seq_entry oplus_pw_seq[] = {
-	{HW_ID_MCLK, 24, 0},
 	{HW_ID_RST, 0, 1},
 	{HW_ID_DOVDD, 1800000, 0},
-	{HW_ID_AVDD, 2800000, 2},
+	{HW_ID_AVDD, 2800000, 0},
 	{HW_ID_DVDD, 1200000, 5},
-	{HW_ID_AFVDD, 2800000, 0},
 	{HW_ID_RST, 1, 0},
 	{HW_ID_MCLK_DRIVING_CURRENT, 4, 8},
 };
@@ -806,8 +792,6 @@ struct subdrv_entry yamahauwide_mipi_raw_entry = {
 	.id = YAMAHAUWIDE_SENSOR_ID,
 	.pw_seq = pw_seq,
 	.pw_seq_cnt = ARRAY_SIZE(pw_seq),
-	.pw_off_seq = pw_off_seq,
-	.pw_off_seq_cnt = ARRAY_SIZE(pw_off_seq),
 	.ops = &ops,
 };
 
@@ -818,13 +802,17 @@ static void streaming_ctrl(struct subdrv_ctx *ctx, bool enable)
 	check_current_scenario_id_bound(ctx);
 
 	if (enable) {
-		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
-		subdrv_i2c_wr_u8_u8(ctx, 0xa0, 0x01);
 		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
+		subdrv_i2c_wr_u8_u8(ctx, 0x01, 0x03);
+		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
+		subdrv_i2c_wr_u8_u8(ctx, 0x20, 0x0f);
+		subdrv_i2c_wr_u8_u8(ctx, 0xe7, 0x03);
+		subdrv_i2c_wr_u8_u8(ctx, 0xe7, 0x00);
+		subdrv_i2c_wr_u8_u8(ctx, 0xa0, 0x01);
 	} else {
 		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
 		subdrv_i2c_wr_u8_u8(ctx, 0xa0, 0x00);
-		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
+		subdrv_i2c_wr_u8_u8(ctx, 0x20, 0x0b);
 	}
 
 	ctx->is_streaming = enable;
@@ -888,82 +876,6 @@ static struct eeprom_addr_table_struct oplus_eeprom_addr_table = {
 	.addr_qrcode = 0x00B0,
 	.addr_qrcodeflag = 0x00C7,
 };
-
-static struct SENSOR_OTP_INFO_STRUCT cloud_otp_info[OPLUS_CAM_CAL_DATA_MAX] = {
-	{
-		.OtpInfoLen = 1,
-		.OtpInfo = {{0x0000, 17}}, /*{addr_modinfo, addr_modinfolen}*/
-	}, /*OPLUS_CAM_CAL_DATA_MODULE_VERSION*/
-	{
-		.OtpInfoLen = 1,
-		.OtpInfo = {{0x0000, 17}}, /*{addr_modinfo, addr_modinfolen}*/
-	}, /*OPLUS_CAM_CAL_DATA_PART_NUMBER*/
-	{
-		.OtpInfoLen = 1,
-		.OtpInfo = {{0x0b00, 1868}},
-	}, /*OPLUS_CAM_CAL_DATA_SHADING_TABLE--LSC*/
-	{
-		.OtpInfoLen = 5,
-		.OtpInfo = {{0x0020, 16}, {0x0044, 16}, {0x0060, 4}, {0x006c, 4}, {0x0092, 6}},
-		.isAFCodeOffset = KAL_TRUE,
-		.AFLeftOffsetLen = 7,
-		.AFRightOffsetLen = 1,
-	}, /*OPLUS_CAM_CAL_DATA_3A_GAIN-awb5000\awb2850\awb5000Light\awb2850light\af*/
-	{
-		.OtpInfoLen = 0,
-	}, /*OPLUS_CAM_CAL_DATA_PDAF*/
-	{
-		.OtpInfoLen = 8,
-		.OtpInfo = {{0x0000, 17}, {0x0006, 2}, {0x0008, 2}, {0x000a, 2}, {0x0092, 7}, {0x0092, 2}, {0x0094, 2}, {0x00b0, 24}},
-		.isAFCodeOffset = KAL_TRUE,
-		.AFLeftOffsetLen = 7,
-		.AFRightOffsetLen = 1,
-	}, /*OPLUS_CAM_CAL_DATA_CAMERA_INFO-modid\sensor\lens\vcmid\af\macpos\infpos\qrcode\*/
-	{
-		.OtpInfoLen = 1,
-		.OtpInfo = {{0x0008, 2}},
-	}, /*OPLUS_CAM_CAL_DATA_DUMP*/
-	{
-		.OtpInfoLen = 1,
-		.OtpInfo = {{0x0008, 2}},
-	}, /*OPLUS_CAM_CAL_DATA_LENS_ID*/
-	{
-		.OtpInfoLen = 0,
-	}, /*OPLUS_CAM_CAL_DATA_QSC*/
-	{
-		.OtpInfoLen = 0,
-	}, /*OPLUS_CAM_CAL_DATA_LRC*/
-	{
-		.OtpInfoLen = 1,
-		.OtpInfo = {{0x0000, 8192}},
-	}, /*OPLUS_CAM_CAL_DATA_ALL*/
-};
-
-static int yamahauwide_get_cloud_otp_info(struct subdrv_ctx *ctx, u8 *para, u32 *len)
-{
-	u64 *feature_data = (u64 *)para;
-	struct SENSOR_OTP_INFO_STRUCT *cloudinfo;
-	LOG_INF("SENSOR_FEATURE_GET_CLOUD_OTP_INFO otp_type:%d", (UINT32)(*feature_data));
-	cloudinfo = (struct SENSOR_OTP_INFO_STRUCT *)(uintptr_t)(*(feature_data + 1));
-	switch (*feature_data) {
-	case OPLUS_CAM_CAL_DATA_MODULE_VERSION:
-	case OPLUS_CAM_CAL_DATA_PART_NUMBER:
-	case OPLUS_CAM_CAL_DATA_SHADING_TABLE:
-	case OPLUS_CAM_CAL_DATA_3A_GAIN:
-	case OPLUS_CAM_CAL_DATA_PDAF:
-	case OPLUS_CAM_CAL_DATA_CAMERA_INFO:
-	case OPLUS_CAM_CAL_DATA_DUMP:
-	case OPLUS_CAM_CAL_DATA_LENS_ID:
-	case OPLUS_CAM_CAL_DATA_QSC:
-	case OPLUS_CAM_CAL_DATA_LRC:
-	case OPLUS_CAM_CAL_DATA_ALL:
-		memcpy((void *)cloudinfo, (void *)&cloud_otp_info[*feature_data], sizeof(struct SENSOR_OTP_INFO_STRUCT));
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
 
 static struct oplus_eeprom_info_struct  oplus_eeprom_info = {0};
 
@@ -1127,8 +1039,9 @@ static kal_int32 write_Module_data(struct subdrv_ctx *ctx,
 		data_length = pStereodata->dataLength;
 		pData = pStereodata->uData;
 		if ((pStereodata->uSensorId == YAMAHAUWIDE_SENSOR_ID)
-			&& (data_length == CALI_DATA_SLAVE_LENGTH) && (data_base == YAMAHAUWIDE_STEREO_START_ADDR)) {
-			/*LOG_INF("Write: %x %x %x %x\n", pData[0], pData[39], pData[40], pData[1556]);
+			&& (data_length == CALI_DATA_SLAVE_LENGTH)
+			&& (data_base == YAMAHAUWIDE_STEREO_START_ADDR)) {
+			LOG_INF("Write: %x %x %x %x\n", pData[0], pData[39], pData[40], pData[1556]);
 
 			eeprom_64align_write(ctx, data_base, pData, data_length);
 
@@ -1136,10 +1049,11 @@ static kal_int32 write_Module_data(struct subdrv_ctx *ctx,
 			LOG_INF("com_39:0x%x\n", read_cmos_eeprom_8(ctx, data_base+39));
 			LOG_INF("innal_40:0x%x\n", read_cmos_eeprom_8(ctx, data_base+40));
 			LOG_INF("innal_1556:0x%x\n", read_cmos_eeprom_8(ctx, data_base+1556));
-			LOG_INF("write_Module_data Write end\n");*/
+			LOG_INF("write_Module_data Write end\n");
 
 		} else if ((pStereodata->uSensorId == YAMAHAUWIDE_SENSOR_ID)
-			&& (data_length < AESYNC_DATA_LENGTH_TOTAL) && (data_base == YAMAHAUWIDE_AESYNC_START_ADDR)) {
+			&& (data_length < AESYNC_DATA_LENGTH_TOTAL)
+			&& (data_base == YAMAHAUWIDE_AESYNC_START_ADDR)) {
 			LOG_INF("write main aesync: %x %x %x %x %x %x %x %x\n", pData[0], pData[1],
 				pData[2], pData[3], pData[4], pData[5], pData[6], pData[7]);
 
@@ -1184,7 +1098,7 @@ static int yamahauwide_get_eeprom_calibration(struct subdrv_ctx *ctx, u8 *para, 
 	if(*len > CALI_DATA_SLAVE_LENGTH)
 		*len = CALI_DATA_SLAVE_LENGTH;
 	LOG_INF("feature_data mode:%d  lens:%d", *feature_data_16, *len);
-	read_yamahauwide_eeprom_info(ctx, EEPROM_META_STEREO_DATA,
+	read_yamahauwide_eeprom_info(ctx, EEPROM_META_STEREO_MW_MAIN_DATA,
 			(BYTE *)feature_return_para_32, *len);
 	return 0;
 }
@@ -1226,15 +1140,6 @@ static int yamahauwide_check_sensor_id(struct subdrv_ctx *ctx, u8 *para, u32 *le
 	return 0;
 }
 
-
-static kal_uint32 return_sensor_id(struct subdrv_ctx *ctx)
-{
-	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
-
-	return ((subdrv_i2c_rd_u8_u8(ctx, 0x00) << 24) | (subdrv_i2c_rd_u8_u8(ctx, 0x01) << 16)
-		  | (subdrv_i2c_rd_u8_u8(ctx, 0x02) << 8)  |  subdrv_i2c_rd_u8_u8(ctx, 0x03));
-}
-
 static u16 yamahauwide_unique_sensorid[] = {
 	0xfd, 0x00,
 	0x20, 0x0f,
@@ -1250,26 +1155,26 @@ static u16 yamahauwide_unique_sensorid[] = {
 	0xfd, 0x08,
 };
 
-static int yamahauwide_get_unique_sensorid(struct subdrv_ctx *ctx, u8 *para, u32 *len)
-{
-	u32 *feature_return_para_32 = (u32 *)para;
-	*len = YAMAHAUWIDE_UNIQUE_SENSOR_ID_LENGTH;
-	memcpy(feature_return_para_32, yamahauwide_unique_id,
-		YAMAHAUWIDE_UNIQUE_SENSOR_ID_LENGTH);
-	LOG_INF("para :%x, get unique sensorid", *para);
-	return 0;
-}
-
 static void read_unique_sensorid(struct subdrv_ctx *ctx)
 {
 	kal_uint8 i = 0;
-	LOG_INF("read sensor unique sensorid");
+
+	LOG_INF("read wide sensor unique sensorid");
 	subdrv_i2c_wr_regs_u8_u8(ctx, yamahauwide_unique_sensorid, ARRAY_SIZE(yamahauwide_unique_sensorid));
 	msleep(50);
 	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x08);
-	for (i = 0; i < YAMAHAUWIDE_UNIQUE_SENSOR_ID_LENGTH; i++) {
+	for (i = 0; i< YAMAHAUWIDE_UNIQUE_SENSOR_ID_LENGTH; i++) {
 		yamahauwide_unique_id[i] =  subdrv_i2c_rd_u8_u8(ctx, YAMAHAUWIDE_UNIQUE_SENSOR_ID_ADDR + i);
+		pr_err("%s unique_id[%d] = 0x%x", __func__, i, yamahauwide_unique_id[i]);
 	}
+}
+
+static kal_uint32 return_sensor_id(struct subdrv_ctx *ctx)
+{
+	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
+
+	return ((subdrv_i2c_rd_u8_u8(ctx, 0x00) << 24) | (subdrv_i2c_rd_u8_u8(ctx, 0x01) << 16)
+		  | (subdrv_i2c_rd_u8_u8(ctx, 0x02) << 8)  |  subdrv_i2c_rd_u8_u8(ctx, 0x03));
 }
 
 static int get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id)
@@ -1287,10 +1192,8 @@ static int get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id)
 			if (*sensor_id == SENSOR_ID) {
 				get_imgsensor_id_from_dts(ctx, sensor_id);
 				if (first_read) {
-					read_eeprom_common_data(ctx, &oplus_eeprom_info, oplus_eeprom_addr_table);
 					read_unique_sensorid(ctx);
-					memcpy(&pw_seq, &oplus_pw_seq, sizeof(oplus_pw_seq));
-					LOG_INF("rst delay = %d, func: %s, line: %d\n", pw_seq[1].delay, __FUNCTION__, __LINE__);
+					read_eeprom_common_data(ctx, &oplus_eeprom_info, oplus_eeprom_addr_table);
 					first_read = KAL_FALSE;
 				}
 				return ERROR_NONE;
@@ -1320,8 +1223,8 @@ static int open(struct subdrv_ctx *ctx)
 		return ERROR_SENSOR_CONNECT_FAIL;
 
 	/* initail setting */
-	subdrv_i2c_wr_regs_u8_u8(ctx, yamahauwide_soft_reset, ARRAY_SIZE(yamahauwide_soft_reset));
-	mdelay(3);
+	/*subdrv_i2c_wr_regs_u8_u8(ctx, yamahauwide_soft_reset, ARRAY_SIZE(yamahauwide_soft_reset));
+	mdelay(3);*/
 	subdrv_i2c_wr_regs_u8_u8(ctx, yamahauwide_init_setting, ARRAY_SIZE(yamahauwide_init_setting));
 
 	memset(ctx->exposure, 0, sizeof(ctx->exposure));
@@ -1403,10 +1306,7 @@ void yamahauwide_write_frame_length(struct subdrv_ctx *ctx, u32 fll)
 	/*	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
 		subdrv_i2c_wr_u8_u8(ctx, 0x01, 0x01);	*/
 	}
-
-	/* update FL RG value after setting buffer for writting RG */
 	ctx->frame_length_rg = ctx->frame_length;
-
 	DRV_LOG(ctx, "ctx->frame_length(%d), diff_frame_length(%d), vblank(%d)\n",
 		ctx->frame_length, diff_frame_length, vblank);
 	DRV_LOG(ctx, "fll[0x%x], fll_step:%u ctx->extend_frame_length_en:%d\n",
@@ -1499,23 +1399,24 @@ static int yamahauwide_set_frame_length(struct subdrv_ctx *ctx, u8 *para, u32 *l
 {
 	bool gph = !ctx->is_seamless && (ctx->s_ctx.s_gph != NULL);
 	u16 frame_length = (u16) (*para);
-	if (frame_length)
+	if (frame_length) {
 		ctx->frame_length = frame_length;
+	}
 	ctx->frame_length = max(ctx->frame_length, ctx->min_frame_length);
 	ctx->frame_length = min(ctx->frame_length, ctx->s_ctx.frame_length_max);
 
-	if (gph)
+	if (gph) {
 		ctx->s_ctx.s_gph((void *)ctx, 1);
+	}
 	yamahauwide_write_frame_length(ctx, ctx->frame_length);
-	if (gph)
+	if (gph) {
 		ctx->s_ctx.s_gph((void *)ctx, 0);
-	commit_i2c_buffer(ctx);
+	}
 
 	DRV_LOG(ctx, "fll(input/output/min):%u/%u/%u\n",
 		frame_length, ctx->frame_length, ctx->min_frame_length);
 	return 0;
 }
-
 
 static int yamahauwide_set_shutter_frame_length_convert(struct subdrv_ctx *ctx, u64 shutter, u32 frame_length)
 {
@@ -1539,7 +1440,6 @@ static int yamahauwide_set_shutter_frame_length_convert(struct subdrv_ctx *ctx, 
 	cit_step = ctx->s_ctx.mode[ctx->current_scenario_id].coarse_integ_step;
 	if (cit_step)
 		shutter = round_up(shutter, cit_step);
-
 	ctx->frame_length =	max(shutter + exposure_margin, (u64)ctx->frame_length);
 	ctx->frame_length =	max((u64)ctx->min_frame_length, (u64)ctx->frame_length);
 	ctx->frame_length =	min(ctx->frame_length, ctx->s_ctx.frame_length_max);
@@ -1588,6 +1488,20 @@ static int yamahauwide_set_shutter_convert(struct subdrv_ctx *ctx, u64 shutter)
 static int yamahauwide_set_shutter(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
 	return yamahauwide_set_shutter_frame_length_convert(ctx, ((u64*)para)[0], 0);
+}
+
+static int yamahauwide_set_multi_shutter_frame_length_ctrl(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+{
+	u64 *feature_data = (u64*)para;
+	u64 *shutters =(u64 *)(*feature_data);
+	u16 exp_cnt = (u64) (*(feature_data + 1));
+	u64 framelength = (u64) (*(feature_data + 2));
+
+	if(exp_cnt != 1) {
+		LOG_INF("exp_cnt(%d) != 1\n", exp_cnt);
+	}
+
+	return yamahauwide_set_shutter_frame_length_convert(ctx, shutters[0], framelength);
 }
 
 static int yamahauwide_set_gain_convert(struct subdrv_ctx *ctx, u32 gain)
@@ -1686,131 +1600,6 @@ static int yamahauwide_set_max_framerate_by_scenario(struct subdrv_ctx *ctx, u8 
 	return 0;
 }
 
-static void yamahauwide_set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
-		u64 *shutters, u16 exp_cnt,	u16 frame_length)
-{
-	int i = 0;
-	int fine_integ_line = 0;
-	u16 last_exp_cnt = 1;
-	u32 calc_fl[3] = {0};
-	int readout_diff = 0;
-	bool gph = !ctx->is_seamless && (ctx->s_ctx.s_gph != NULL);
-	u32 rg_shutters[3] = {0};
-	u32 cit_step = 0;
-
-	ctx->frame_length = frame_length ? frame_length : ctx->min_frame_length;
-	if (exp_cnt > ARRAY_SIZE(ctx->exposure)) {
-		DRV_LOGE(ctx, "invalid exp_cnt:%u>%lu\n", exp_cnt, ARRAY_SIZE(ctx->exposure));
-		exp_cnt = ARRAY_SIZE(ctx->exposure);
-	}
-	check_current_scenario_id_bound(ctx);
-
-	/* check boundary of shutter */
-	for (i = 1; i < ARRAY_SIZE(ctx->exposure); i++)
-		last_exp_cnt += ctx->exposure[i] ? 1 : 0;
-	fine_integ_line = ctx->s_ctx.mode[ctx->current_scenario_id].fine_integ_line;
-	cit_step = ctx->s_ctx.mode[ctx->current_scenario_id].coarse_integ_step;
-	for (i = 0; i < exp_cnt; i++) {
-		shutters[i] = FINE_INTEG_CONVERT(shutters[i], fine_integ_line);
-		shutters[i] = max_t(u64, shutters[i],
-			(u64)ctx->s_ctx.mode[ctx->current_scenario_id].multi_exposure_shutter_range[i].min);
-		shutters[i] = min_t(u64, shutters[i],
-			(u64)ctx->s_ctx.mode[ctx->current_scenario_id].multi_exposure_shutter_range[i].max);
-		if (cit_step)
-			shutters[i] = roundup(shutters[i], cit_step);
-	}
-
-	/* check boundary of framelength */
-	/* - (1) previous se + previous me + current le */
-	calc_fl[0] = (u32) shutters[0];
-	for (i = 1; i < last_exp_cnt; i++)
-		calc_fl[0] += ctx->exposure[i];
-	calc_fl[0] += ctx->s_ctx.exposure_margin*exp_cnt*exp_cnt;
-
-	/* - (2) current se + current me + current le */
-	calc_fl[1] = (u32) shutters[0];
-	for (i = 1; i < exp_cnt; i++)
-		calc_fl[1] += (u32) shutters[i];
-	calc_fl[1] += ctx->s_ctx.exposure_margin*exp_cnt*exp_cnt;
-
-	/* - (3) readout time cannot be overlapped */
-	calc_fl[2] =
-		(ctx->s_ctx.mode[ctx->current_scenario_id].readout_length +
-		ctx->s_ctx.mode[ctx->current_scenario_id].read_margin);
-	if (last_exp_cnt == exp_cnt) {
-		for (i = 1; i < exp_cnt; i++) {
-			readout_diff = ctx->exposure[i] - (u32) shutters[i];
-			calc_fl[2] += readout_diff > 0 ? readout_diff : 0;
-		}
-	}
-	for (i = 0; i < ARRAY_SIZE(calc_fl); i++)
-		ctx->frame_length = max(ctx->frame_length, calc_fl[i]);
-	ctx->frame_length =	max(ctx->frame_length, ctx->min_frame_length);
-	ctx->frame_length =	min(ctx->frame_length, ctx->s_ctx.frame_length_max);
-	/* restore shutter */
-	memset(ctx->exposure, 0, sizeof(ctx->exposure));
-	for (i = 0; i < exp_cnt; i++)
-		ctx->exposure[i] = (u32) shutters[i];
-	/* group hold start */
-	if (gph)
-		ctx->s_ctx.s_gph((void *)ctx, 1);
-	/* enable auto extend */
-	if (ctx->s_ctx.reg_addr_auto_extend)
-		set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_auto_extend, 0x01);
-	/* write framelength */
-	if (set_auto_flicker(ctx, 0) || frame_length || !ctx->s_ctx.reg_addr_auto_extend)
-		yamahauwide_write_frame_length(ctx, ctx->frame_length);
-	/* write shutter */
-	switch (exp_cnt) {
-	case 1:
-		rg_shutters[0] = (u32) shutters[0] / exp_cnt;
-		break;
-	case 2:
-		rg_shutters[0] = (u32) shutters[0] / exp_cnt;
-		rg_shutters[2] = (u32) shutters[1] / exp_cnt;
-		break;
-	case 3:
-		rg_shutters[0] = (u32) shutters[0] / exp_cnt;
-		rg_shutters[1] = (u32) shutters[1] / exp_cnt;
-		rg_shutters[2] = (u32) shutters[2] / exp_cnt;
-		break;
-	default:
-		break;
-	}
-	if (ctx->s_ctx.reg_addr_exposure_lshift != PARAM_UNDEFINED) {
-		set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift, 0);
-		ctx->l_shift = 0;
-	}
-	for (i = 0; i < 3; i++) {
-		if (rg_shutters[i]) {
-			/* write shutter */
-			subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
-			subdrv_i2c_wr_u8_u8(ctx, 0x02, (rg_shutters[i] * 2 >> 16) & 0xFF);
-			subdrv_i2c_wr_u8_u8(ctx, 0x03, (rg_shutters[i] * 2 >>  8) & 0xFF);
-			subdrv_i2c_wr_u8_u8(ctx, 0x04,  rg_shutters[i] * 2  & 0xFF);
-		/*	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
-			subdrv_i2c_wr_u8_u8(ctx, 0x01, 0x01);	*/
-		}
-	}
-	DRV_LOG(ctx, "exp[0x%x/0x%x/0x%x], fll(input/output):%u/%u, flick_en:%d\n",
-		rg_shutters[0], rg_shutters[1], rg_shutters[2],
-		frame_length, ctx->frame_length, ctx->autoflicker_en);
-	if (!ctx->ae_ctrl_gph_en) {
-		if (gph)
-			ctx->s_ctx.s_gph((void *)ctx, 0);
-		commit_i2c_buffer(ctx);
-	}
-	/* group hold end */
-}
-
-static int yamahauwide_set_multi_shutter_frame_length_ctrl(struct subdrv_ctx *ctx, u8 *para, u32 *len)
-{
-	u64* feature_data = (u64*)para;
-	yamahauwide_set_multi_shutter_frame_length(ctx, (u64 *)(*feature_data),
-		(u16) (*(feature_data + 1)), (u16) (*(feature_data + 2)));
-	return 0;
-}
-
 static int yamahauwide_extend_frame_length_convert(struct subdrv_ctx *ctx, u32 ns)
 {
 	return 0;
@@ -1833,7 +1622,7 @@ static int vsync_notify(struct subdrv_ctx *ctx,	unsigned int sof_cnt)
 
 static int yamahauwide_set_register(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
-	u8 page = (((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr >> 8) & 0xFF;
+	u8 page = ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr & 0xFF00;
 	u8 addr = ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr & 0xFF;
 
 
@@ -1843,27 +1632,26 @@ static int yamahauwide_set_register(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);	/*page1*/
 	subdrv_i2c_wr_u8_u8(ctx, 0x01, 0x01);	/*fresh*/
 
-	pr_err("%s RegAddr: 0x%08x, RegData: 0x%04x (page 0x%x  addr 0x%x)\n",
-		__func__, ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr, ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegData,
-		page, addr);
+	pr_err("%s RegAddr: 0x%08x, RegData: 0x%04x \n",
+		__func__, ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr, ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegData);
 
 	return 0;
 }
 
 static int yamahauwide_get_register(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
-	u8 page = (((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr >> 8) & 0xFF;
+	u8 page = ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr & 0xFF00;
 	u8 addr = ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr & 0xFF;
 
 	subdrv_i2c_wr_u8_u8(ctx, 0xfd, page);
 	((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegData =
 		subdrv_i2c_rd_u8_u8(ctx, addr);
-	pr_err("%s RegAddr: 0x%08x, RegData: 0x%04x (page 0x%x  addr 0x%x)\n",
-		__func__, ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr, ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegData,
-		page, addr);
+	pr_err("%s RegAddr: 0x%08x, RegData: 0x%04x \n",
+		__func__, ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegAddr, ((MSDK_SENSOR_REG_INFO_STRUCT *)para)->RegData);
 
 	return 0;
 }
+
 
 static void get_imgsensor_id_from_dts(struct subdrv_ctx *ctx, u32 *sensor_id) {
 	struct subdrv_entry *m_subdrv_entry = &yamahauwide_mipi_raw_entry;
@@ -1968,8 +1756,8 @@ static int yamahauwide_common_control(struct subdrv_ctx *ctx,
 			time_boot_begin = ktime_get_boottime_ns();
 
 		/* initail setting */
-		subdrv_i2c_wr_regs_u8_u8(ctx, yamahauwide_soft_reset, ARRAY_SIZE(yamahauwide_soft_reset));
-		mdelay(3);
+		/*subdrv_i2c_wr_regs_u8_u8(ctx, yamahauwide_soft_reset, ARRAY_SIZE(yamahauwide_soft_reset));
+		mdelay(3);*/
 
 		i2c_table_rewrite(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table,
 				ctx->s_ctx.mode[scenario_id].mode_setting_len);

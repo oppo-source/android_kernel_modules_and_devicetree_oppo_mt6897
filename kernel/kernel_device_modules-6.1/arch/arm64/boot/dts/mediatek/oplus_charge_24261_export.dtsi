@@ -706,7 +706,6 @@
 		oplus,gauge_stuck_jump_support;
 		oplus,gauge_stuck_threshold = <15>;
 		oplus,gauge_stuck_time = <50>;
-		oplus,eco_region_list = /bits/ 8 <0x44>;
 	};
 
 	oplus_monitor: oplus,monitor {

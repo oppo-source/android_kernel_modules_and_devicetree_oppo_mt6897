@@ -26,6 +26,7 @@ static unsigned int do_2a_gain_yamahauwide(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
 static unsigned int do_lens_id_yamahauwide(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
+static unsigned int layout_check_yamahauwide(struct EEPROM_DRV_FD_DATA *pdata, unsigned int sensorID);
 
 static struct STRUCT_CALIBRATION_LAYOUT_STRUCT cal_layout_table = {
 	0x00000006, 0x0065009A, CAM_CAL_SINGLE_EEPROM_DATA,
@@ -43,7 +44,7 @@ static struct STRUCT_CALIBRATION_LAYOUT_STRUCT cal_layout_table = {
 
 struct STRUCT_CAM_CAL_CONFIG_STRUCT yamahauwide_op_eeprom = {
 	.name = "yamahauwide_op_eeprom",
-	.check_layout_function = layout_check,
+	.check_layout_function = layout_check_yamahauwide,
 	.read_function = Common_read_region,
 	.layout = &cal_layout_table,
 	.sensor_id = YAMAHAUWIDE_SENSOR_ID,
@@ -54,6 +55,7 @@ struct STRUCT_CAM_CAL_CONFIG_STRUCT yamahauwide_op_eeprom = {
 	.has_stored_data = 1,
 };
 
+static struct STRUCT_CAM_CAL_CONFIG_STRUCT *cam_cal_config = &yamahauwide_op_eeprom;
 static unsigned int do_single_lsc_yamahauwide(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
 {
@@ -88,7 +90,7 @@ static unsigned int do_single_lsc_yamahauwide(struct EEPROM_DRV_FD_DATA *pdata,
 	pr_debug("lsc table_size %d\n", table_size);
 	pCamCalData->SingleLsc.LscTable.MtkLcsData.TableSize = table_size;
 	if (table_size > 0) {
-		pCamCalData->SingleLsc.TableRotation = 1;
+		pCamCalData->SingleLsc.TableRotation = 0;
 		pr_debug_if(dump_enable, "u4Offset=%d u4Length=%d", start_addr, table_size);
 		read_data_size = read_data(pdata,
 			pCamCalData->sensorID, pCamCalData->deviceID,
@@ -585,4 +587,31 @@ static unsigned int do_lens_id_yamahauwide(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
 {
 	return do_lens_id_base(pdata, start_addr, block_size, pGetSensorCalData);
+}
+
+static unsigned int layout_check_yamahauwide(struct EEPROM_DRV_FD_DATA *pdata, unsigned int sensorID)
+{
+	unsigned int header_offset = cam_cal_config->layout->header_addr;
+	unsigned int check_id = 0x00000000;
+	unsigned int result = CAM_CAL_ERR_NO_DEVICE;
+
+	if (cam_cal_config->sensor_id == sensorID)
+		debug_log("%s sensor_id matched\n", cam_cal_config->name);
+	else {
+		debug_log("%s sensor_id not matched\n", cam_cal_config->name);
+		return result;
+	}
+
+	if (read_data_region(pdata, (u8 *)&check_id, header_offset, 4) != 4) {
+		debug_log("header_id read failed\n");
+		return result;
+	}
+
+	if (check_id == 0x0065009A || check_id == 0x016D009A) {	// hearder id on OTP guide
+		debug_log("header_id matched 0x%08x\n", check_id);
+		result = CAM_CAL_ERR_NO_ERR;
+	} else{
+		debug_log("header_id not matched 0x%08x\n", check_id);
+	}
+	return result;
 }

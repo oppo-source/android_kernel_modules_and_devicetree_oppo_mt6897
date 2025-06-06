@@ -15439,25 +15439,25 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		lvsys-thd-enable = <1>;
 		vbat-thd-enable = <1>;
 		thd-volts-l = <
-			3600 3400 3260
-			3850 3640 3460
-			4300 4000 3750
-			4450 4400 4300>;
+			3400 3150 2900
+			3500 3250 3000
+			3600 3350 3100
+			3750 3500 3250>;
 		thd-volts-h = <
-			3700 3600 3400
-			3950 3850 3640
-			4400 4300 4000
-			4500 4450 4400>;
+			3500 3400 3150
+			3600 3500 3250
+			3700 3600 3350
+			3850 3750 3500>;
 		thd-volts-l-2s = <
-			3600 3400 3260
-			3850 3640 3460
-			4300 4000 3750
-			4450 4400 4300>;
+			3400 3150 2900
+			3500 3250 3000
+			3600 3350 3100
+			3750 3500 3250>;
 		thd-volts-h-2s = <
-			3700 3600 3400
-			3950 3850 3640
-			4400 4300 4000
-			4500 4450 4400>;
+			3500 3400 3150
+			3600 3500 3250
+			3700 3600 3350
+			3850 3750 3500>;
 		lvsys-thd-volt-l = <2900>;
 		lvsys-thd-volt-h = <3100>;
 		temperature-max-stage = <3>;
@@ -15478,9 +15478,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,cpu-power-throttling";
 
 		lbat-max-level = <3>;
-		lbat-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 2147483647  2600000 2900000>;
-		lbat-limit-freq-lv3 = < 2147483647  2200000 2400000>;
+		lbat-limit-freq-lv1 = < 1800000  1800000 1100000>;
+		lbat-limit-freq-lv2 = < 1500000  1500000 670000>;
+		lbat-limit-freq-lv3 = < 330000   550000 670000>;
 
 		oc-max-level = <2>;
 		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
@@ -15494,7 +15494,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,gpu-power-throttling";
 
 		lbat-max-level = <3>;
-		lbat-limit-freq = <1066000 858000 676000>;
+		lbat-limit-freq = <338000 338000 338000>;
 
 		oc-max-level = <2>;
 		oc-limit-freq = <981000 550000>;
@@ -18350,7 +18350,10 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 				      <&mt6375_adc MT6375_ADC_TEMPJC>,
 				      <&mt6375_adc MT6375_ADC_USBDP>,
 				      <&mt6375_adc MT6375_ADC_USBDM>,
-				      <&mt6375_adc MT6375_ADC_SBU2>;
+				      <&mt6375_adc MT6375_ADC_SBU2>,
+				      /* #ifdef OPLUS_FEATURE_CHG_BASIC */
+				      <&mt6375_adc MT6375_ADC_PDVBUS>;
+				      /* #endif */
 			chg-name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;

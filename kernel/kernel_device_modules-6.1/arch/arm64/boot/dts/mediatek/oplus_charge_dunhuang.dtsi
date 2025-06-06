@@ -271,6 +271,7 @@
 	oplus_chg_core {
 		oplus,chg_framework_v2;
 		oplus,smart_charging_screenoff;
+		oplus,common-charge-icl-support;
 
 		oplus-charger {
 			mtk_6895_groups: oplus,mtk_6895-groups {
@@ -651,7 +652,7 @@
 		oplus_spec,qc-iclmax-ma = <2000>;
 		oplus_spec,non-standard-ibatmax-ma = <500>;
 		oplus_spec,input-power-mw = <
-			2500		/* OPLUS_WIRED_CHG_MODE_UNKNOWN */
+			500		/* OPLUS_WIRED_CHG_MODE_UNKNOWN */
 			2500		/* OPLUS_WIRED_CHG_MODE_SDP */
 			7500		/* OPLUS_WIRED_CHG_MODE_CDP */
 			10000		/* OPLUS_WIRED_CHG_MODE_DCP */
@@ -1762,4 +1763,16 @@
 			drive-strength = <2>;
 		};
 	};
+};
+
+/* for pd common charger */
+&ssusb {
+		usb-psy-name = "mtk-master-charger";
+		typec-name = "rt-pd-manager";
+		typec-port-name = "port0";
+};
+
+&i2c5 {
+		mediatek,fifo-use-polling;
+		mediatek,request-cpu-qos;
 };

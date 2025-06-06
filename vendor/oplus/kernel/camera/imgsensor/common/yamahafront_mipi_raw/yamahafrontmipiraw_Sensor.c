@@ -294,7 +294,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.dphy_trail = 0x41,
 		},
 		.sensor_setting_info = {
-			.sensor_scenario_usage = NORMAL_MASK,
+			.sensor_scenario_usage = UNUSE_MASK,
 			.equivalent_fps = 30,
 		},
 	},
@@ -311,7 +311,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.linelength = 2560,
 		.framelength = 2786,
 		.max_framerate = 300,
-		.mipi_pixel_rate = 320000000,
+		.mipi_pixel_rate = 265920000,
 		.readout_length = 0,
 		.read_margin = 18,
 		.imgsensor_winsize_info = {
@@ -478,7 +478,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.delay_frame = 2,
 		.csi_param = {0},
 		.sensor_setting_info = {
-			.sensor_scenario_usage = NORMAL_MASK,
+			.sensor_scenario_usage = UNUSE_MASK,
 			.equivalent_fps = 24,
 		},
 	},
@@ -524,10 +524,10 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.csi_param = {
 			.dphy_trail = 0x41,
 		},
-		.sensor_setting_info = {
+		/*.sensor_setting_info = {
 			.sensor_scenario_usage = NORMAL_MASK,
 			.equivalent_fps = 30,
-		},
+		},*/
 	},
 	{
 		.frame_desc = frame_desc_cus3,
@@ -659,7 +659,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.frame_length_max = 0xffff,
 	.ae_effective_frame = 2,
 	.frame_time_delay_frame = 3,
-	.start_exposure_offset = 6590000,
+	.start_exposure_offset = 1891000,
 
 	.pdaf_type = PDAF_SUPPORT_NA,
 	.hdr_type = HDR_SUPPORT_NA,
@@ -716,7 +716,7 @@ static struct subdrv_pw_seq_entry pw_seq[] = {
     {HW_ID_DVDD, 1050000, 3},
     {HW_ID_DOVDD, 1800000, 3},
     {HW_ID_MCLK_DRIVING_CURRENT, 4, 6},
-    {HW_ID_RST, 1, 4}
+    {HW_ID_RST, 1, 9}
 };
 
 const struct subdrv_entry yamahafront_mipi_raw_entry = {
@@ -1347,7 +1347,8 @@ static int yamahafront_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *l
 	/* 1:Solid Color 2:Color Bar 5:Black */
 	if (mode) {
 		if (mode == 5) {
-			subdrv_i2c_wr_u8(ctx, 0x0600, 0x0001); /*black*/
+			subdrv_i2c_wr_u8(ctx, 0x0600, mode >> 4); /*black*/
+			subdrv_i2c_wr_u8(ctx, 0x0601, mode); /*black*/
 		} else {
 			subdrv_i2c_wr_u8(ctx, 0x0600, mode); /*100% Color bar*/
 		}

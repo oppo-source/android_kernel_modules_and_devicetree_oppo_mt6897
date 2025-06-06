@@ -255,6 +255,7 @@
 		elevator: elevator{
 			status = "okay";
 			sup_accel_rpt = <1>;
+			sign_threshold_bottom = <32>;
 		};
 	};
 /* sensor end */

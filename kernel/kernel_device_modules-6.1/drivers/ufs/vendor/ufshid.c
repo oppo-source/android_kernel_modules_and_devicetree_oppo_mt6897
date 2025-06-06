@@ -419,33 +419,33 @@ static int ufshid_hold_runtime_pm(struct ufshid_dev *hid)
 {
 	struct ufs_hba *hba = hid->ufsf->hba;
 
-	if (ufshid_get_state(hid->ufsf) == HID_SUSPEND) {
-		/* Check that device was suspended by System PM */
-		ufshcd_rpm_get_sync(hba);
-
-		/* Guaranteed that ufsf_resume() is completed */
-		down(&hba->host_sem);
-		up(&hba->host_sem);
-
-		/* If it success, device was suspended by Runtime PM */
-		if (ufshid_get_state(hid->ufsf) == HID_PRESENT &&
-		    hba->curr_dev_pwr_mode == UFS_ACTIVE_PWR_MODE &&
-		    hba->uic_link_state == UIC_LINK_ACTIVE_STATE)
-			goto resume_success;
-
-		INFO_MSG("RPM resume failed. Maybe it was SPM suspend");
-		INFO_MSG("UFS state (POWER = %d LINK = %d)",
-			 hba->curr_dev_pwr_mode, hba->uic_link_state);
-
-		ufsf_rpm_put_noidle(hba);
+	/* Case of system suspend */
+	if (ufshid_get_state(hid->ufsf) == HID_SUSPEND &&
+	    !pm_runtime_suspended(&hba->ufs_device_wlun->sdev_gendev))
 		return -ENODEV;
+
+	/*
+	 * After calling ufshcd_rpm_get_sync(),
+	 * it is guaranteed that the wlun device is RPM_ACTIVE.
+	 */
+	ufshcd_rpm_get_sync(hba);
+
+	/*
+	 * Since HID resume is performed by a separate worker,
+	 * it is sometimes judged to be in HID_SUSPEND state.
+	 * Therefore, wait until ufshid_resume() changes the state
+	 * of HID to HID_PRESENT.
+	 */
+	if (ufshid_get_state(hid->ufsf) == HID_SUSPEND &&
+	    !wait_for_completion_timeout(&hid->resume_compl,
+					 WAIT_HID_RESUME_TIMEOUT)) {
+		WARN_MSG("Waiting for HID resume times out");
+		return -ETIMEDOUT;
 	}
 
 	if (ufshid_is_not_present(hid))
 		return -ENODEV;
 
-	ufshcd_rpm_get_sync(hba);
-resume_success:
 	return 0;
 }
 
@@ -933,6 +933,8 @@ void ufshid_suspend(struct ufsf_feature *ufsf, bool is_system_pm)
 out:
 	ufshid_set_state(ufsf, HID_SUSPEND);
 
+	init_completion(&hid->resume_compl);
+
 	cancel_delayed_work_sync(&hid->hid_trigger_work);
 }
 
@@ -962,11 +964,13 @@ void ufshid_resume(struct ufsf_feature *ufsf, bool is_link_off)
 
 	ufshid_set_state(ufsf, HID_PRESENT);
 
+	complete(&hid->resume_compl);
+
 	if (is_link_off && hid->l2p_defrag_sup)
 		ufshid_restore_attr(hid);
 
 	if (hid->hid_trigger)
-		schedule_delayed_work(&hid->hid_trigger_work,
+		ufshid_schedule_delayed_work(&hid->hid_trigger_work,
 				      msecs_to_jiffies(hid->hid_trigger_delay));
 }
 

@@ -1579,7 +1579,7 @@ int gauge_get_property(enum gauge_property gp,
 		bm_err("%s disable GM30", __func__);
 		return -EOPNOTSUPP;
 	}
-	bm_err("%s enable GM30", __func__);
+	bm_debug("%s enable GM30", __func__);
 #endif
 	attr = gauge->attr;
 	prop_control = &gauge->gm->prop_control;
@@ -4847,6 +4847,7 @@ void oplus_chg_update_gauge_cali_track_info(
 	info->quse = gm->prev_batt_fcc;
 	info->zcv = gm->zcv;
 	info->batt_cc = gm->bat_cycle;
+	info->show_ag = gm->soh;
 }
 
 void gauge_cali_track_init_state(struct mtk_battery *gm,
@@ -4865,6 +4866,7 @@ void gauge_cali_track_init_state(struct mtk_battery *gm,
 	mutex_unlock(&state->lock);
 }
 
+/*check if all data has been updated after zcv calibration*/
 bool gauge_cali_track_check_state(struct gauge_cali_track_state *state, int offset)
 {
 	ktime_t now;

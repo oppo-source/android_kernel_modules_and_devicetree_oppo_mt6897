@@ -3581,10 +3581,10 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		soc_type = msg->fgd_subcmd_para1;
 
 		memcpy(&daemon_soc, &msg->fgd_data[0], sizeof(daemon_soc));
-		if (soc_type == 0)
 #ifdef OPLUS_FEATURE_CHG_BASIC
 			gm->pre_info.soc = gm->soc;
 #endif
+		if (soc_type == 0)
 			gm->soc = (daemon_soc + 50) / 100;
 #ifdef OPLUS_FEATURE_CHG_BASIC
 		if (gm->oplus_track_ops != NULL && gm->gauge_cali_track_update_state.begin_flag) {
@@ -4280,8 +4280,10 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		gm->pre_info.quse = gm->prev_batt_fcc;
 		gm->prev_batt_fcc = param.data[4];
 		gm->prev_batt_remaining_capacity = param.data[4] /10 * param.data[6] / 10000;
-		gm->soh = param.data[10];
-		bm_err("test-tag: soh=%d", gm->soh);
+		if (param.data[10] != 0) {
+			gm->pre_info.show_ag = gm->soh;
+			gm->soh = param.data[10];
+		}
 #endif /* OPLUS_FEATURE_CHG_BASIC */
 		bm_err("[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
 				param.data[0],

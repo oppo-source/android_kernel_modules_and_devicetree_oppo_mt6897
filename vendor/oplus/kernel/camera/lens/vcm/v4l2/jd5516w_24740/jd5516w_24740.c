@@ -28,7 +28,7 @@
 #define JD5516W_CONTROL_POWER_DOWN		BIT(0)
 
 #define JD5516W_CMD_DELAY			0xff
-#define JD5516W_CTRL_DELAY_US			5000
+#define JD5516W_CTRL_DELAY_US			2000
 /*
  * This acts as the minimum granularity of lens movement.
  * Keep this value power of 2, so the control steps can be
@@ -162,7 +162,7 @@ static int jd5516w_release(struct jd5516w_device *jd5516w)
                 ret = -1;
             }
         }
-        msleep(5);
+        msleep(2);
         while (val > JD5516W_MIDDLE_CODE + af_step) {
             if (val > JD5516W_RELEASE_SECOND_CODE) {
                 af_step = JD5516W_MOVE_SECOND_STEPS;
@@ -173,7 +173,7 @@ static int jd5516w_release(struct jd5516w_device *jd5516w)
                 ret = -1;
                 break;
             }
-            msleep(5);
+            msleep(2);
         }
     } else if(val < JD5516W_MIDDLE_CODE){
         if( val < JD5516W_RELEASE_THIRD_CODE) {
@@ -183,7 +183,7 @@ static int jd5516w_release(struct jd5516w_device *jd5516w)
                 ret = -1;
             }
         }
-        msleep(5);
+        msleep(2);
         while (val < JD5516W_MIDDLE_CODE - af_step) {
             if (val > JD5516W_RELEASE_FOURTH_CODE) {
                 af_step = JD5516W_MOVE_SECOND_STEPS;
@@ -194,7 +194,7 @@ static int jd5516w_release(struct jd5516w_device *jd5516w)
                 ret = -1;
                 break;
             }
-            msleep(5);
+            msleep(2);
         }
     }
     ret = i2c_smbus_write_byte_data(client, JD5516W_CONTROL_REG,

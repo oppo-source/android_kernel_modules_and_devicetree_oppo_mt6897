@@ -114,7 +114,7 @@
 			lb_bri_max = <4096>;
 			ir_ratio = <30>; // *100
 			als_coef_ratio = <70>; // *100
-			als_delay = <390>;
+			als_delay = <800>;
 			decision_table_index = <1>;
 			available_sensor = <14>;
 			gold_cct_factor = <941 946 924 966 1001 1001>;

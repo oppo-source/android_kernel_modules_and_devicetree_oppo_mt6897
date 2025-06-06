@@ -68,6 +68,7 @@ struct lcm {
 	int error;
 };
 
+extern atomic_t esd_pending;
 static unsigned int temp_seed_mode = 0;
 extern void lcdinfo_notify(unsigned long val, void *v);
 extern unsigned int last_backlight;
@@ -1106,6 +1107,7 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 	if (temp_seed_mode)
 		panel_set_seed(dsi, cb, handle, temp_seed_mode);
 	OFP_INFO("send aod off cmd\n");
+	atomic_set(&esd_pending, 0);
 
 	return 0;
 }
@@ -1135,6 +1137,7 @@ static int panel_doze_enable(struct drm_panel *panel, void *dsi, dcs_write_gce c
 	}
 
 	OFP_INFO("%s crtc_active:%d, doze_active:%llu\n", __func__, crtc->state->active, mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
+	atomic_set(&esd_pending, 1);
 	for (i = 0; i < (sizeof(aod_on_cmd)/sizeof(struct LCM_setting_table)); i++) {
 		unsigned int cmd;
 		cmd = aod_on_cmd[i].cmd;
@@ -1452,7 +1455,7 @@ static int mode_switch(struct drm_panel *panel,
 			if (time_gap >= 8300) {
 				sleep_time = 8300;
 			} else {
-				sleep_time = abs(8300 - time_gap);
+				sleep_time = abs(8300 - time_gap) + 8400;
 				DISP_ERR("%s time_gap < 8300, Dynamic computation delay, sleep_time = %d\n", __func__, sleep_time);
 			}
 			DISP_DEBUG("sleep_time =  %d\n", sleep_time);

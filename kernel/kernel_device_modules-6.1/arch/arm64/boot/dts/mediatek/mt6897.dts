@@ -174,6 +174,7 @@
 			    androidboot.hardware=mt6897 disable_dma32=on \
 			    vmalloc=400M swiotlb=noforce \
 			    log_buf_len=2m \
+			    loop.hw_queue_depth=15 \
 			    firmware_class.path=/vendor/firmware";
 		kaslr-seed = <0 0>;
 		mkp_panic="on";
@@ -7056,7 +7057,7 @@
 				//#ifdef OPLUS_ARCH_EXTENDS
 				//2024/06/26 modified for enlarging adsp image size
 				//system = <0 0x50000000 0 0x900000>;
-				system = <0 0x50000000 0 0xC00000>;
+				system = <0 0x50000000 0 0xD00000>;
 				//#endif
 			interrupts = <GIC_SPI 733 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 735 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -7601,7 +7602,7 @@
 			clk-scale-up-vcore-min = <650000>;
 
 			vcc-supply = <&mt6363_vemc>;
-			vccq-supply = <&mt6319_8_vbuck3>;
+			//vccq-supply = <&mt6319_8_vbuck3>;
 
 			resets =	<&ufscfgpdn_rst 0>,
 					<&ufscfgpdn_rst 1>,
@@ -15996,7 +15997,10 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 				      <&mt6375_adc MT6375_ADC_TEMPJC>,
 				      <&mt6375_adc MT6375_ADC_USBDP>,
 				      <&mt6375_adc MT6375_ADC_USBDM>,
-				      <&mt6375_adc MT6375_ADC_SBU2>;
+				      <&mt6375_adc MT6375_ADC_SBU2>,
+			              /* #ifdef OPLUS_FEATURE_CHG_BASIC */
+				      <&mt6375_adc MT6375_ADC_PDVBUS>;
+				      /* #endif */
 			chg-name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;

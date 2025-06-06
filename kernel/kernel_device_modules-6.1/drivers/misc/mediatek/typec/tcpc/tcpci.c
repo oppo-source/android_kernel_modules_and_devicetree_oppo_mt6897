@@ -558,6 +558,7 @@ int tcpci_notify_hvdcp_detect_dn(struct tcpc_device *tcpc, bool hvdcp_detect_dn)
 }
 EXPORT_SYMBOL(tcpci_notify_hvdcp_detect_dn);
 
+#if IS_ENABLED(CONFIG_OPLUS_PD_SOURCECAP_UPDATE_SUPPORT)
 int tcpci_notify_sourcecap_done(struct tcpc_device *tcpc, struct power_caps *info)
 {
 	struct tcp_notify tcp_noti;
@@ -565,12 +566,11 @@ int tcpci_notify_sourcecap_done(struct tcpc_device *tcpc, struct power_caps *inf
 	tcp_noti.caps_msg.caps = info;
 
 	pr_err("%s srccap_done, cap num: %d\n", __func__, info->nr);
-	TCPC_DBG("srccap_done, cap num: %d\n", info->nr);
 	return tcpc_check_notify_time(tcpc, &tcp_noti, TCP_NOTIFY_IDX_MISC,
 					TCP_NOTIFY_PD_SOURCECAP_DONE);
 }
 EXPORT_SYMBOL(tcpci_notify_sourcecap_done);
-
+#endif
 #endif
 
 #ifdef OPLUS_FEATURE_CHG_BASIC

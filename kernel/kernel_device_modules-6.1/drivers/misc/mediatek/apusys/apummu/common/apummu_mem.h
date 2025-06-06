@@ -5,6 +5,9 @@
 
 #ifndef __APUSYS_APUMMU_MEM_H__
 #define __APUSYS_APUMMU_MEM_H__
+
+#define MEM_8G_SIZE       8
+
 #include <linux/types.h>
 
 #include "apummu_mem_def.h"

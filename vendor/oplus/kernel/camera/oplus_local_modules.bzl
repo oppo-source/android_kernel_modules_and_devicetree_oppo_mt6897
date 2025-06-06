@@ -68,6 +68,15 @@ def define_oplus_local_modules():
     )
 
     define_oplus_ddk_module(
+        name = "oplus_camera_wl2866d1_regulator",
+        srcs = native.glob([
+            "**/*.h",
+            "regulator/wl2866d1-regulator.c",
+        ]),
+        includes = ["."],
+    )
+
+    define_oplus_ddk_module(
         name = "oplus_camera_aw37004dnr_regulator",
         srcs = native.glob([
             "**/*.h",
@@ -503,6 +512,7 @@ def define_oplus_local_modules():
             "oplus_camera_wl28681c2_regulator",
             "oplus_camera_dio8018wl20_regulator",
             "oplus_camera_wl2866d_regulator",
+            "oplus_camera_wl2866d1_regulator",
             "oplus_camera_aw37004dnr_regulator",
             "oplus_camera_aw37004_regulator",
             "oplus_camera_ak7377a",

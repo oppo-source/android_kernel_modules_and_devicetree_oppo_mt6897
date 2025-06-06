@@ -730,7 +730,7 @@ static struct subdrv_static_ctx static_ctx = {
 
 	.frame_length_max = 0x1FFFFE,   /* (3ffffc / 2) */
 	.ae_effective_frame = 2,
-	.frame_time_delay_frame = 3,
+	.frame_time_delay_frame = 2,
 	.start_exposure_offset = 934000,
 	.pdaf_type = PDAF_SUPPORT_NA,
 	.g_gain2reg = get_gain2reg,
@@ -1441,7 +1441,8 @@ static int caymanauwide_set_shutter_frame_length_convert(struct subdrv_ctx *ctx,
 	if (cit_step)
 		shutter = round_up(shutter, cit_step);
 
-	ctx->frame_length =	max(shutter + exposure_margin, (u64)ctx->min_frame_length);
+	ctx->frame_length =	max(shutter + exposure_margin, (u64)ctx->frame_length);
+	ctx->frame_length =	max((u64)ctx->min_frame_length, (u64)ctx->frame_length);
 	ctx->frame_length =	min(ctx->frame_length, ctx->s_ctx.frame_length_max);
 
 	/* restore shutter */

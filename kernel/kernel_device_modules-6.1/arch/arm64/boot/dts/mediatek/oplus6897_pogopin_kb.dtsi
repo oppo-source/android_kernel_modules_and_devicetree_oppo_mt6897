@@ -101,11 +101,11 @@
         keyboard-name-strings =
             "OPPO Pad 3 Smart Keyboard",
             "OnePlus Pad Keyboard",
-            "OnePlus Pad Keyboard";
+            "OnePlus Pad 3R Smart Keyboard";
 
 	keyboard-ble-name-strings =
             "OPPO Pad 3 Smart Keyboard",
             "OnePlus Pad Keyboard",
-            "OnePlus Pad Keyboard";
+            "OnePlus Pad 3R Smart Keyboard";
     };
 };

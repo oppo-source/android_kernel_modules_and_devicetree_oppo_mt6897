@@ -2162,6 +2162,9 @@ static void kcpu_queue_dump(struct kbase_kcpu_command_queue *queue)
 	char sf_name[] = "surfaceflinger";
 	char background_process_name[] = "taobao.idlefish";
 	char background_process_name2[] = "com.tencent.mm";
+	char background_process_name3[] = "com.ss.android.ugc.aweme";
+	char background_process_name4[] = "com.baidu.searchbox.lite";
+	char background_process_name5[] = "com.jingyao.easybike";
 	struct task_struct *task;
 	struct pid *pid_struct;
 #endif /* CONFIG_MALI_MTK_LOG_BUFFER */
@@ -2266,27 +2269,28 @@ static void kcpu_queue_dump(struct kbase_kcpu_command_queue *queue)
 		kbasep_csf_sync_kcpu_dump_locked(kctx, NULL);
 		mutex_unlock(&kctx->csf.kcpu_queues.lock);
 
-		if (!memcmp(kctx->fence_leader_comm, background_process_name, sizeof(background_process_name))
-			|| !memcmp(kctx->fence_leader_comm, background_process_name2, sizeof(background_process_name2))) {
-			/* Bypass dump of the process that might be freezed to prevent the dump timeout
-			 * Instead, check the task_stucture status
-			 */
-			dev_info(kctx->kbdev->dev, "Dump current process information for ctx:%d_%d",
-				kctx->tgid, kctx->id);
-			pid_struct = find_get_pid(kctx->tgid);
-			if (pid_struct) {
-				task = pid_task(pid_struct, PIDTYPE_PID);
-				if (task) {
-					if (task->group_leader)
-						dev_info(kctx->kbdev->dev, "group_leader_name = %s", task->group_leader->comm);
-					dev_info(kctx->kbdev->dev, "name = %s", task->comm);
-					dev_info(kctx->kbdev->dev, "exit_state = %lld", (unsigned long long) task->exit_state);
-					if (task->signal)
-						dev_info(kctx->kbdev->dev, "signal->flags = %lld", (unsigned long long) task->signal->flags);
-				}
-				put_pid(pid_struct);
+		/* Check the task_stucture status */
+		dev_info(kctx->kbdev->dev, "Dump current process information for ctx:%d_%d",
+			kctx->tgid, kctx->id);
+		pid_struct = find_get_pid(kctx->tgid);
+		if (pid_struct) {
+			task = pid_task(pid_struct, PIDTYPE_PID);
+			if (task) {
+				if (task->group_leader)
+					dev_info(kctx->kbdev->dev, "group_leader_name = %s", task->group_leader->comm);
+				dev_info(kctx->kbdev->dev, "name = %s", task->comm);
+				dev_info(kctx->kbdev->dev, "exit_state = %lld", (unsigned long long) task->exit_state);
+				if (task->signal)
+					dev_info(kctx->kbdev->dev, "signal->flags = %lld", (unsigned long long) task->signal->flags);
 			}
-		} else {
+			put_pid(pid_struct);
+		}
+
+		if (memcmp(kctx->fence_leader_comm, background_process_name, sizeof(background_process_name))
+			&& memcmp(kctx->fence_leader_comm, background_process_name2, sizeof(background_process_name2))
+			&& memcmp(kctx->fence_leader_comm, background_process_name3, TASK_COMM_LEN)
+			&& memcmp(kctx->fence_leader_comm, background_process_name4, TASK_COMM_LEN)
+			&& memcmp(kctx->fence_leader_comm, background_process_name5, TASK_COMM_LEN)) {
 #if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
 			mtk_common_debug(MTK_COMMON_DBG_DUMP_DB_BY_SETTING, kctx->tgid, MTK_DBG_HOOK_MALI_FENCE_SIGNAL_TIMEOUT);
 #if IS_ENABLED(CONFIG_MALI_MTK_BLOCKED_RESOURCE_DEBUG)
@@ -2296,7 +2300,6 @@ static void kcpu_queue_dump(struct kbase_kcpu_command_queue *queue)
 #endif /* CONFIG_MALI_MTK_BLOCKED_RESOURCE_DEBUG */
 #endif /* CONFIG_MALI_MTK_DEBUG */
 		}
-
 #if IS_ENABLED(CONFIG_MALI_MTK_TIMEOUT_RESET)
 #if IS_ENABLED(CONFIG_MALI_MTK_TIMEOUT_REDUCE)
 		if (queue->fence_signal_command_timeout_counter == 3) {
@@ -2358,7 +2361,10 @@ static void kcpu_queue_dump(struct kbase_kcpu_command_queue *queue)
 			kctx->tgid, kctx->id, queue->id, fence_signal_command_timeout_ms);
 #endif /* CONFIG_MALI_MTK_LOG_BUFFER */
 		if (!memcmp(kctx->fence_leader_comm, background_process_name, sizeof(background_process_name))
-			|| !memcmp(kctx->fence_leader_comm, background_process_name2, sizeof(background_process_name2))) {
+			|| !memcmp(kctx->fence_leader_comm, background_process_name2, sizeof(background_process_name2))
+			|| !memcmp(kctx->fence_leader_comm, background_process_name3, TASK_COMM_LEN)
+			|| !memcmp(kctx->fence_leader_comm, background_process_name4, TASK_COMM_LEN)
+			|| !memcmp(kctx->fence_leader_comm, background_process_name5, TASK_COMM_LEN)) {
 			dev_info(kctx->kbdev->dev, "Background process detected, skipping cross queue sync recovery");
 		} else {
 			mtk_qinspect_recovery(kctx, QINSPECT_KCPU_QUEUE, queue);

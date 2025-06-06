@@ -56,6 +56,7 @@ COMMON_OPLUS_MODULES_LIST = [
     "//vendor/oplus/kernel/camera:oplus_camera_wl28681c2_regulator",
     "//vendor/oplus/kernel/camera:oplus_camera_dio8018wl20_regulator",
     "//vendor/oplus/kernel/camera:oplus_camera_wl2866d_regulator",
+    "//vendor/oplus/kernel/camera:oplus_camera_wl2866d1_regulator",
     "//vendor/oplus/kernel/camera:oplus_camera_aw37004dnr_regulator",
     "//vendor/oplus/kernel/camera:oplus_camera_aw37004_regulator",
     "//vendor/oplus/kernel/camera:oplus_camera_ak7377a",

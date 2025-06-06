@@ -104,4 +104,7 @@ void mtk_debug_csf_dump_groups_and_queues(struct kbase_device *kbdev, int pid, b
 #else
 void mtk_debug_csf_dump_groups_and_queues(struct kbase_device *kbdev, int pid);
 #endif /* CONFIG_MALI_MTK_BLOCKED_RESOURCE_DEBUG*/
+
+void mtk_debug_dump_as_status(struct kbase_device *kbdev);
+
 #endif /* __MTK_PLATFORM_DEBUG_H__ */

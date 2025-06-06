@@ -2981,7 +2981,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				dsi_underrun_trigger = 0;
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 #ifdef OPLUS_TRACKPOINT_REPORT
-				display_exception_trackpoint_report("DisplayDriverID@@506$$ underrun mp1-1 24.10.29");
+				display_exception_trackpoint_report("DisplayDriverID@@506$$ underrun");
 #endif
 			}
 
@@ -5183,9 +5183,6 @@ int mtk_dsi_esd_read(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 
 int mtk_dsi_esd_cmp(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 {
-#ifdef OPLUS_FEATURE_DISPLAY
-	char *panel_name;
-#endif /* OPLUS_FEATURE_DISPLAY */
 	int i, j, ret = 0;
 	u32 tmp0, tmp1, chk_val[4] = {0};
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
@@ -5197,10 +5194,6 @@ int mtk_dsi_esd_cmp(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 		params = dsi->ext->params;
 	else /* can't find panel ext information, stop esd read */
 		return 0;
-
-#ifdef OPLUS_FEATURE_DISPLAY
-	mtk_ddp_comp_io_cmd(comp, NULL, GET_PANEL_NAME, &panel_name);
-#endif /* OPLUS_FEATURE_DISPLAY */
 
 	for (i = 0; i < ESD_CHECK_NUM; i++) {
 		if (dsi->ext->params->lcm_esd_check_table[i].cmd == 0)
@@ -5237,17 +5230,6 @@ int mtk_dsi_esd_cmp(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 			if (lcm_esd_tb->mask_list[j])
 				chk_val[j] = chk_val[j] & lcm_esd_tb->mask_list[j];
 
-#ifdef OPLUS_FEATURE_DISPLAY
-			if (!strcmp(panel_name, "ac222_p_7_a0014_dsi_cmd_panel")) {
-				if ((lcm_esd_tb->cmd == 0x0A) && (chk_val[j] == 0xdc)) {
-					pr_info("[ESD]: ac222 read lcm_esd_tb->cmd 0x%x, chk_val 0x%x \n",
-						lcm_esd_tb->cmd, chk_val[j]);
-					ret = 0;
-					return ret;
-				}
-			}
-#endif /* OPLUS_FEATURE_DISPLAY */
-
 			if (chk_val[j] == lcm_esd_tb->para_list[j]) {
 				ret = 0;
 			} else {
@@ -5261,7 +5243,7 @@ int mtk_dsi_esd_cmp(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 					cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "DisplayDriverID@@507$$");
 					cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "ESD:");
 					cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "%02x = %02x",
-						lcm_esd_tb->cmd, chk_val[j]);
+						lcm_esd_tb->cmd,lcm_esd_tb->para_list[0]);
 					DDPPR_ERR("ESD check failed: %s\n", payload);
 					cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "ESD check failed");
 					display_exception_trackpoint_report(payload);

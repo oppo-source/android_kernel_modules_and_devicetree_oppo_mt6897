@@ -72,9 +72,6 @@ static struct LCM_setting_table init_setting_60hz[] = {
 	{REGFLAG_CMD, 2, {0x53,0x20}},
 	/* IR IP ON */
 	{REGFLAG_CMD, 2, {0x95,0x10}},
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
-	/* Sleep out */
-	{REGFLAG_CMD, 2, {0x11,0x00}},
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x05}},
 	{REGFLAG_CMD, 2, {0x5B,0x42}},
 	{REGFLAG_CMD, 2, {0x09,0x58}},
@@ -82,6 +79,8 @@ static struct LCM_setting_table init_setting_60hz[] = {
 	{REGFLAG_CMD, 2, {0x5C,0x46}},
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
 	{REGFLAG_CMD, 3, {0x51,0x00,0x00}},
+	/* Sleep out */
+	{REGFLAG_CMD, 2, {0x11,0x00}},
 	{REGFLAG_DELAY, 120, {}},
 	/* OSC 3.10% */
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x0F}},
@@ -139,9 +138,6 @@ static struct LCM_setting_table init_setting_90hz[] = {
 	{REGFLAG_CMD, 2, {0x53,0x20}},
 	/* IR IP ON */
 	{REGFLAG_CMD, 2, {0x95,0x10}},
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
-	/* Sleep out */
-	{REGFLAG_CMD, 2, {0x11,0x00}},
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x05}},
 	{REGFLAG_CMD, 2, {0x5B,0x42}},
 	{REGFLAG_CMD, 2, {0x09,0x58}},
@@ -149,6 +145,8 @@ static struct LCM_setting_table init_setting_90hz[] = {
 	{REGFLAG_CMD, 2, {0x5C,0x46}},
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
 	{REGFLAG_CMD, 3, {0x51,0x00,0x00}},
+	/* Sleep out */
+	{REGFLAG_CMD, 2, {0x11,0x00}},
 	{REGFLAG_DELAY, 120, {}},
 	/* OSC 3.10% */
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x0F}},
@@ -206,9 +204,6 @@ static struct LCM_setting_table init_setting_120hz[] = {
 	{REGFLAG_CMD, 2, {0x53,0x20}},
 	/* IR IP ON */
 	{REGFLAG_CMD, 2, {0x95,0x10}},
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
-	/* Sleep out */
-	{REGFLAG_CMD, 2, {0x11,0x00}},
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x05}},
 	{REGFLAG_CMD, 2, {0x5B,0x42}},
 	{REGFLAG_CMD, 2, {0x09,0x58}},
@@ -216,6 +211,8 @@ static struct LCM_setting_table init_setting_120hz[] = {
 	{REGFLAG_CMD, 2, {0x5C,0x46}},
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
 	{REGFLAG_CMD, 3, {0x51,0x00,0x00}},
+	/* Sleep out */
+	{REGFLAG_CMD, 2, {0x11,0x00}},
 	{REGFLAG_DELAY, 120, {}},
 	/* OSC 3.10% */
 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x0F}},

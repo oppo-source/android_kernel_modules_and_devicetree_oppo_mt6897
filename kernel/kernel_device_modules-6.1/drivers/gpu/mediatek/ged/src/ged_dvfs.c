@@ -1091,6 +1091,8 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		trace_oplus_tracing_mark_write(5566, "gpu_freq_floor",
 			(long long) ged_get_freq_by_idx(ui32FloorID) / 1000);
 		trace_oplus_tracing_mark_write(5566, "commit_type", eCommitType);
+		trace_oplus_tracing_mark_write(5566, "limitter_ceil",
+			ged_get_cur_limiter_ceil());
 		#endif /*OPLUS_ARCH_EXTENDS*/
 		trace_perfetto_tracing_mark_write("gpu_freq_ceil",
 							(long long) ged_get_freq_by_idx(ui32CeilingID) / 1000);
@@ -1267,6 +1269,8 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	trace_oplus_tracing_mark_write(5566, "gpu_freq_floor",
 		(long long) ged_get_freq_by_idx(ui32FloorID) / 1000);
 	trace_oplus_tracing_mark_write(5566, "commit_type", eCommitType);
+	trace_oplus_tracing_mark_write(5566, "limitter_ceil",
+		ged_get_cur_limiter_ceil());
 	#endif /*OPLUS_ARCH_EXTENDS*/
 
 	trace_perfetto_tracing_mark_write("gpu_freq_ceil", (long long) ged_get_freq_by_idx(ui32CeilingID) / 1000);

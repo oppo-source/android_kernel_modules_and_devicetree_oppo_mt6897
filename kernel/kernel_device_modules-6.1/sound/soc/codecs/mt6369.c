@@ -3103,10 +3103,15 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 	}
 
 	/* if vow is enabled, always set volume as 3(18dB) */
-	mic_gain_l = priv->vow_enable ? 3 :
-		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
-	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d\n",
-		__func__, event, mic_type, mic_gain_l, mux_pga);
+	if (priv->vow_mic_pga_gain != -1) {
+		mic_gain_l = priv->vow_enable ? priv->vow_mic_pga_gain :
+				priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
+	} else {
+		mic_gain_l = priv->vow_enable ? 3 :
+				priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
+	}
+	dev_info(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d, vow_enable %d\n",
+		__func__, event, mic_type, mic_gain_l, mux_pga, priv->vow_enable);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -7462,6 +7467,15 @@ static int mt6369_parse_dt(struct mt6369_priv *priv)
 	}
 
 	dev_info(dev, "%s() bypass-vant18 = %d\n", __func__, bypass_vant18);
+
+	/* get breeno vow mic pga gain */
+	ret = of_property_read_u32(np, "oplus,vow-mic-pga-gain",
+				   &priv->vow_mic_pga_gain);
+	if (ret) {
+		dev_info(dev, "%s() failed to read vow-mic-pga-gain, default disable\n",
+			__func__);
+		priv->vow_mic_pga_gain = -1;
+	}
 
 	/* get mic type */
 	ret = of_property_read_u32(np, "mediatek,dmic-mode",

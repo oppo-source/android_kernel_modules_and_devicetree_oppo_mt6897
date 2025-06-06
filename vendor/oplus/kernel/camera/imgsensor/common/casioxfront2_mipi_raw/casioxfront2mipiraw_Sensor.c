@@ -61,6 +61,7 @@ static bool read_cmos_eeprom_p8(struct subdrv_ctx *ctx, kal_uint16 addr,
 static int casioxfront2_get_unique_sensorid(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int casioxfront2_set_cali_data(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 static int casioxfront2_get_cloud_otp_info(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int casioxfront2_get_eeprom_4cell_info(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 /* STRUCT */
 
 static struct eeprom_map_info casioxfront2_eeprom_info[] = {
@@ -87,6 +88,7 @@ static struct subdrv_feature_control feature_control_list[] = {
 	{SENSOR_FEATURE_GET_UNIQUE_SENSORID, casioxfront2_get_unique_sensorid},
 	{SENSOR_FEATURE_SET_CALI_DATA, casioxfront2_set_cali_data},
 	{SENSOR_FEATURE_GET_CLOUD_OTP_INFO, casioxfront2_get_cloud_otp_info},
+	{SENSOR_FEATURE_GET_4CELL_DATA, casioxfront2_get_eeprom_4cell_info},
 };
 
 static struct eeprom_info_struct eeprom_info[] = {
@@ -653,7 +655,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.frame_length_max = 0xffff,
 	.ae_effective_frame = 2,
 	.frame_time_delay_frame = 3,
-	.start_exposure_offset = 6590000,
+	.start_exposure_offset = 1690000,
 
 	.pdaf_type = PDAF_SUPPORT_NA,
 	.hdr_type = HDR_SUPPORT_NA,
@@ -705,8 +707,8 @@ static struct subdrv_ops ops = {
 static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
 	{HW_ID_RST, 0, 11},
-	{HW_ID_AVDD, 2825000, 1},
-	{HW_ID_DVDD, 1050000, 1},
+	{HW_ID_AVDD, 2800000, 1},
+	{HW_ID_DVDD, 1056000, 1},
 	{HW_ID_DOVDD, 1800000, 1},
 	{HW_ID_MCLK_DRIVING_CURRENT, 6, 1},
 	{HW_ID_RST, 1, 8},
@@ -715,8 +717,8 @@ static struct subdrv_pw_seq_entry pw_seq[] = {
 static struct subdrv_pw_seq_entry oplus_pw_seq[] = {
 	{HW_ID_MCLK, 24, 0},
 	{HW_ID_RST, 0, 1},
-	{HW_ID_AVDD, 2825000, 1},
-	{HW_ID_DVDD, 1050000, 1},
+	{HW_ID_AVDD, 2800000, 1},
+	{HW_ID_DVDD, 1056000, 1},
 	{HW_ID_DOVDD, 1800000, 1},
 	{HW_ID_MCLK_DRIVING_CURRENT, 6, 1},
 	{HW_ID_RST, 1, 8},
@@ -1651,5 +1653,22 @@ int casioxfront2_set_gain(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 	if (gph)
 		ctx->s_ctx.s_gph((void *)ctx, 0);
 	/* group hold end */
+	return 0;
+}
+
+static int casioxfront2_get_eeprom_4cell_info(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+{
+	u64 * feature_data = (u64 *) para;
+	u8 * data = (char *)(uintptr_t)(*(feature_data + 1));
+	u16 type = (u16)(*feature_data);
+
+
+	if (type  == FOUR_CELL_CAL_TYPE_XTALK_CAL){
+		*len = ctx->s_ctx.eeprom_info->qsc_size;
+		data[0] = *len & 0xFF;
+		data[1] = (*len >> 8) & 0xFF;
+		memcpy(data + 2, (u8*)(ctx->s_ctx.eeprom_info->preload_qsc_table), ctx->s_ctx.eeprom_info->qsc_size);
+	}
+
 	return 0;
 }

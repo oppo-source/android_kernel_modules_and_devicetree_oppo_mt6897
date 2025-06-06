@@ -139,6 +139,7 @@ unsigned int gamma95_90[5];
 unsigned int gamma96_90[5];
 unsigned int gamma97_90[5];
 static unsigned int pul_swtich = 0;
+static unsigned int aod_off_to_skip_first_backlight_pulse_switch = 0;
 
 
 extern unsigned int last_backlight;
@@ -173,6 +174,7 @@ extern u16 mtk_get_gpr(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
 extern struct oplus_pwm_turbo_params *oplus_pwm_turbo_get_params(void);
 extern inline bool oplus_panel_pwm_onepulse_is_enabled(void);
 extern int oplus_display_panel_dbv_probe(struct device *dev);
+extern struct mtk_ddp_comp *mtk_ddp_comp_request_output(struct mtk_drm_crtc *mtk_crtc);
 
 static int panel_send_pack_hs_cmd(void *dsi, struct LCM_setting_table *table, unsigned int lcm_cmd_count, dcs_write_gce_pack cb, void *handle);
 void oplus_display_panel_pwm_switch_prepare(unsigned int level);
@@ -1625,12 +1627,39 @@ ktime_t aod_off_te_timestamp(void)
 	return aod_off_time;
 }
 
-int oplus_panel_pwm_compatible_mode_aodoff_handle(void)
+int oplus_panel_pwm_compatible_mode_aodoff_handle(void *dsi, void *handle)
 {
 	ktime_t cur_time;
 	u32 interval;
 	u32 delay;
 	int rc = 0;
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_dsi *mtk_dsi = dsi;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	if (!mtk_dsi) {
+		pr_err("Invalid mtk_dsi params\n");
+		return -EINVAL;
+	}
+
+	crtc = mtk_dsi->encoder.crtc;
+	if (!crtc) {
+		pr_err("Invalid crtc param\n");
+		return -EINVAL;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		pr_err("Invalid mtk_crtc param\n");
+		return -EINVAL;
+	}
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (!comp) {
+		pr_err("Invalid comp param\n");
+		return -EINVAL;
+	}
 
 	if (!aod_off_swtich_pulse)
 		return rc;
@@ -1641,8 +1670,12 @@ int oplus_panel_pwm_compatible_mode_aodoff_handle(void)
 	if (interval < 35000) {
 		/* delay cmd to the next frame of aod_off for preventing screen flash*/
 		delay = 35000 - interval;
-		pr_info("need to delay for the interval between last aod off and cur time was %d\n", delay);
-		usleep_range(delay, delay + 200);
+		pr_info("need to delay for the interval between last aod off and cur time, fix pulse switch issue %d\n", delay);
+		if (handle == NULL) {
+			usleep_range(delay, delay + 200);
+		} else {
+			cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(delay), mtk_get_gpr(comp, handle));
+		}
 		aod_off_swtich_pulse = false;
 	}
 	return rc;
@@ -1700,27 +1733,25 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsi
 	}
 
 	if(oplus_panel_pwm_onepulse_is_enabled() && (level > 1)) {
-		if (panel_last_brightness == 0 || panel_last_brightness == 1 || ofp_aod_off_swtich_pulse == true
-			|| (atomic_read(&esd_pending) == 1)) {
+		if (panel_last_brightness == 0 || panel_last_brightness == 1) {
 			set_pwm_turbo_power_on(true);
 		}
 
 		oplus_display_panel_pwm_switch_prepare(level);
-		pr_info("%s pwm switch, pulse_flg: %d", __func__, pulse_flg);
+		if ((aod_off_to_skip_first_backlight_pulse_switch == 1) && (panel_mode_id == FHD_SDC60)) {
+			pulse_flg = 0;
+			aod_off_to_skip_first_backlight_pulse_switch = 0;
+			pr_info("aod off in 60HZ, just set backlight without pulse switch\n");
+		}
+		pr_info("%s dsi_pwm_switch, pulse_flg: %d", __func__, pulse_flg);
 		if((m_db >= ES_DV5) && pulse_flg) {
 			if (atomic_read(&esd_pending) == 1) {
 				pul_swtich = 1;
 				aod_off_swtich_pulse = true;
-				oplus_panel_pwm_compatible_mode_aodoff_handle();
+				oplus_panel_pwm_compatible_mode_aodoff_handle(dsi, handle);
 			}
 			pr_info("%s pwm switch, aod_off_swtich_pulse:%d, ofp_aod_off_swtich_pulse:%d, pwm_params->pwm_pul_cmd_id:%d",
 					__func__, aod_off_swtich_pulse, ofp_aod_off_swtich_pulse, pwm_params->pwm_pul_cmd_id);
-			if ((aod_off_swtich_pulse == true) && (ofp_aod_off_swtich_pulse == true)) {
-				pr_info("%s backlight recovery pwm switch, delay 17ms", __func__);
-				ofp_aod_off_swtich_pulse = false;
-				usleep_range(17000, 17200);
-			}
-
 			oplus_display_panel_set_pwm_pul_lp(dsi, cb, handle, pwm_params->pwm_pul_cmd_id);
 			set_pwm_turbo_power_on(false);
 			pulse_flg = false;
@@ -1937,12 +1968,6 @@ static int oplus_display_panel_set_pwm_pul_lp(void *dsi, dcs_write_gce cb, void 
 		level = 0;
 	}
 	pr_info("%s pwm_turbo, pul_swtich:%d, pwm_swtich_last_mode:%d", __func__, pul_swtich, pwm_swtich_last_mode);
-	if ((pwm_swtich_last_mode == mode && pul_swtich == 1
-		&& (mode == PWM_SWITCH_18TO1 || mode == PWM_SWITCH_1TO18)) && level > 1) {
-		pr_info("%s pwm_turbo, set same mode return", __func__);
-		pul_swtich = 0;
-		return 0;
-	}
 
 	switch (mode) {
 		case PWM_SWITCH_18TO3: {
@@ -2472,13 +2497,16 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 		atomic_inc(&oplus_pcp_handle_lock);
 	}
 
-	if(!oplus_ofp_backlight_filter(crtc, handle, oplus_display_brightness) && !oplus_panel_pwm_onepulse_is_enabled())
+	if(!oplus_ofp_backlight_filter(crtc, handle, oplus_display_brightness)) {
+			if (oplus_panel_pwm_onepulse_is_enabled() && (panel_mode_id == FHD_SDC60))
+				aod_off_to_skip_first_backlight_pulse_switch = 1;
 			lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
+	}
 
 	if (temp_seed_mode)
 		panel_set_seed(dsi, cb, handle, temp_seed_mode);
 
-	OFP_INFO("send aod off cmd\n");
+	OFP_INFO("send aod off cmd \n");
 	atomic_set(&esd_pending, 0);
 	aod_off_swtich_pulse = true;
 

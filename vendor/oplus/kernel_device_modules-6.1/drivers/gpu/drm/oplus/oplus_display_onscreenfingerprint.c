@@ -2600,14 +2600,15 @@ int oplus_ofp_drm_set_ultra_low_power_aod(struct drm_crtc *crtc, unsigned int ul
 
 	oplus_disp_trace_begin("oplus_ofp_drm_set_ultra_low_power_aod");
 
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
 	crtc_state = to_mtk_crtc_state(crtc->state);
-	if (!crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+	if ((!crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) || (!oplus_ofp_get_aod_state())) {
 		OFP_INFO("not in doze mode\n");
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		oplus_disp_trace_end("oplus_ofp_drm_set_ultra_low_power_aod");
 		return 0;
 	}
-
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (unlikely(!output_comp)) {
@@ -2741,12 +2742,16 @@ int oplus_ofp_drm_set_hbm(struct drm_crtc *crtc, unsigned int hbm_mode)
 		return -EINVAL;
 	}
 
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	if (!(mtk_crtc->enabled)) {
 		OFP_ERR("should not set hbm if mtk crtc is not enabled\n");
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EFAULT;
+	} else if (mtk_crtc->ddp_mode == DDP_NO_USE) {
+		OFP_ERR("skip ddp_mode: NO_USE\n");
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EFAULT;
 	}
-
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	oplus_disp_trace_begin("mtk_drm_send_lcm_cmd_prepare");
 	OFP_INFO("prepare to send hbm cmd\n");
@@ -3503,7 +3508,8 @@ int oplus_panel_ext_init(struct drm_crtc *crtc)
 	mtk_ddp_comp_io_cmd(comp, NULL, GET_PANEL_NAME, &panel_name);
 
 	if((!strcmp("ac222_p_7_a0014_dsi_cmd_panel", panel_name)
-		|| !strcmp("ac230_p_7_a0014_dsi_cmd_t1", panel_name))
+		|| !strcmp("ac230_p_7_a0014_dsi_cmd_t1", panel_name)
+		|| !strcmp("panel_ae016_p_7_a0014_dsi_cmd", panel_name))
 		&& !g_gamma_regs_read_done) {
 		rc |= oplus_panel_ac178_gamma_compensation(dsi);
 	}

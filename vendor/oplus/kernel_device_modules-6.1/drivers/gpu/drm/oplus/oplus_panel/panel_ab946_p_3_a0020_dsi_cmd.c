@@ -1621,15 +1621,28 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 	} else {
 		vrefresh_rate = drm_mode_vrefresh(ctx->m);
 	}
-	if (vrefresh_rate == 60) {
-		aod_off_cmd = aod_off_cmd_60hz;
-		reg_count = sizeof(aod_off_cmd_60hz) / sizeof(struct LCM_setting_table);
-	} else if (vrefresh_rate == 120) {
-		aod_off_cmd = aod_off_cmd_120hz;
-		reg_count = sizeof(aod_off_cmd_120hz) / sizeof(struct LCM_setting_table);
+	if (oplus_panel_pwm_onepulse_is_enabled() && (last_backlight > 1) && (oplus_display_brightness > 1)) {
+		if (vrefresh_rate == 60) {
+			aod_off_cmd = aod_off_onepulse_cmd_60hz;
+			reg_count = sizeof(aod_off_onepulse_cmd_60hz) / sizeof(struct LCM_setting_table);
+		} else if (vrefresh_rate == 120) {
+			aod_off_cmd = aod_off_onepulse_cmd_120hz;
+			reg_count = sizeof(aod_off_onepulse_cmd_120hz) / sizeof(struct LCM_setting_table);
+		} else {
+			aod_off_cmd = aod_off_onepulse_cmd_90hz;
+			reg_count = sizeof(aod_off_onepulse_cmd_90hz) / sizeof(struct LCM_setting_table);
+		}
 	} else {
-		aod_off_cmd = aod_off_cmd_90hz;
-		reg_count = sizeof(aod_off_cmd_90hz) / sizeof(struct LCM_setting_table);
+		if (vrefresh_rate == 60) {
+			aod_off_cmd = aod_off_cmd_60hz;
+			reg_count = sizeof(aod_off_cmd_60hz) / sizeof(struct LCM_setting_table);
+		} else if (vrefresh_rate == 120) {
+			aod_off_cmd = aod_off_cmd_120hz;
+			reg_count = sizeof(aod_off_cmd_120hz) / sizeof(struct LCM_setting_table);
+		} else {
+			aod_off_cmd = aod_off_cmd_90hz;
+			reg_count = sizeof(aod_off_cmd_90hz) / sizeof(struct LCM_setting_table);
+		}
 	}
 	is_pcp = oplus_display_is_pcp(aod_off_cmd, reg_count);
 	oplus_pcp_handle(is_pcp, handle);
@@ -1659,6 +1672,9 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 		}
 	}
 
+	OFP_INFO("send aod off cmd, onepulse_is_enabled: %d, last_backlight: %d, oplus_display_brightness: %d.\n",
+		oplus_panel_pwm_onepulse_is_enabled(), last_backlight, oplus_display_brightness);
+
 	if (is_pcp) {
 		atomic_inc(&oplus_pcp_handle_lock);
 	}
@@ -1668,8 +1684,6 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 
 	if (temp_seed_mode)
 		panel_set_seed(dsi, cb, handle, temp_seed_mode);
-
-	OFP_INFO("send aod off cmd\n");
 
 	return 0;
 }

@@ -22,6 +22,7 @@ endif ## CONFIG_MALI_MTK_ADAPTIVE_POWER_POLICY ##
 
 ifeq ($(CONFIG_MALI_MTK_DEBUG),y)
     mali_kbase-y += $(curr)/mtk_platform_debug.o
+    mali_kbase-y += $(curr)/mtk_platform_debug_dump_as_status.o
 endif ## CONFIG_MALI_MTK_DEBUG ##
 
 ifeq ($(CONFIG_MTK_GPU_SWPM_SUPPORT),y)

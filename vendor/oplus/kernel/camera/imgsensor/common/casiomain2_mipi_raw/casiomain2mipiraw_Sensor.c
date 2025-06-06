@@ -222,7 +222,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_v2h2 = {
 		.i4PDOrder = {1}, //R=1, L=0
 	},
 };
-#endif
+
 
 static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_full = {
 	.i4OffsetX = 0,
@@ -259,6 +259,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_full = {
 		.i4PDOrder = {1}, //R=1, L=0
 	},
 };
+#endif
 
 static struct mtk_mbus_frame_desc_entry frame_desc_prev[] = {
 	{
@@ -397,8 +398,8 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus2[] = {
 		.bus.csi2 = {
 			.channel = 0,
 			.data_type = 0x2b,
-			.hsize = 4096,
-			.vsize = 3072,
+			.hsize = 3648,
+			.vsize = 2736,
 			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
@@ -406,8 +407,8 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus2[] = {
 		.bus.csi2 = {
 			.channel = 1,
 			.data_type = 0x2b,
-			.hsize = 992,
-			.vsize = 760,
+			.hsize = 912,
+			.vsize = 684,
 			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
 			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
 		},
@@ -419,11 +420,23 @@ static struct mtk_mbus_frame_desc_entry frame_desc_cus3[] = {
 		.bus.csi2 = {
 			.channel = 0,
 			.data_type = 0x2b,
-			.hsize = 8192,
-			.vsize = 6144,
+			.hsize = 4096,
+			.vsize = 3072,
 			.user_data_desc = VC_STAGGER_NE,
 		},
 	},
+	{
+		.bus.csi2 = {
+			.channel = 1,
+			.data_type = 0x2b,
+			.hsize = 992,//4096
+			.vsize = 760,//768
+			.user_data_desc = VC_PDAF_STATS_NE_PIX_1,
+			.dt_remap_to_type = MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10,
+		},
+
+	},
+
 };
 
 static struct subdrv_mode_struct mode_struct[] = {
@@ -436,15 +449,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 100000000,
 		.linelength = 425,
 		.framelength = 7840,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 760800000,
 		.readout_length = 0,
-		.read_margin = 10,
-		.framelength_step = 4,
-		.coarse_integ_step = 4,
+		.read_margin = 0,
+		.framelength_step = 2,
+		.coarse_integ_step = 2,
 		.min_exposure_line = 6,
 		.imgsensor_winsize_info = {
 			.full_w = 8192,
@@ -485,15 +500,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 100000000,
 		.linelength = 425,
 		.framelength = 7840,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 760800000,
 		.readout_length = 0,
-		.read_margin = 10,
-		.framelength_step = 4,
-		.coarse_integ_step = 4,
+		.read_margin = 0,
+		.framelength_step = 2,
+		.coarse_integ_step = 2,
 		.min_exposure_line = 6,
 		.imgsensor_winsize_info = {
 			.full_w = 8192,
@@ -534,15 +551,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 100000000,
 		.linelength = 425,
 		.framelength = 7842,
 		.max_framerate = 300,
 		.mipi_pixel_rate = 672000000,
 		.readout_length = 0,
-		.read_margin = 10,
-		.framelength_step = 4,
-		.coarse_integ_step = 4,
+		.read_margin = 0,
+		.framelength_step = 2,
+		.coarse_integ_step = 2,
 		.min_exposure_line = 6,
 		.imgsensor_winsize_info = {
 			.full_w = 8192,
@@ -583,15 +602,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 100000000,
 		.linelength = 325,
 		.framelength = 5128,
 		.max_framerate = 600,
 		.mipi_pixel_rate = 760800000,
 		.readout_length = 0,
-		.read_margin = 10,
-		.framelength_step = 4,
-		.coarse_integ_step = 4,
+		.read_margin = 0,
+		.framelength_step = 2,
+		.coarse_integ_step = 2,
 		.min_exposure_line = 6,
 		.imgsensor_winsize_info = {
 			.full_w = 8192,
@@ -632,15 +653,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 100000000,
 		.linelength = 325,
 		.framelength = 2564,
 		.max_framerate = 1200,
 		.mipi_pixel_rate = 540000000,
 		.readout_length = 0,
-		.read_margin = 10,
-		.framelength_step = 8,
-		.coarse_integ_step = 8,
+		.read_margin = 0,
+		.framelength_step = 2,
+		.coarse_integ_step = 2,
 		.min_exposure_line = 12,
 		.imgsensor_winsize_info = {
 			.full_w = 8192,
@@ -681,15 +704,17 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 100000000,
 		.linelength = 325,
 		.framelength = 1280,
 		.max_framerate = 2400,
 		.mipi_pixel_rate = 760800000,
 		.readout_length = 0,
-		.read_margin = 10,
-		.framelength_step = 8,
-		.coarse_integ_step = 8,
+		.read_margin = 0,
+		.framelength_step = 2,
+		.coarse_integ_step = 2,
 		.min_exposure_line = 12,
 		.imgsensor_winsize_info = {
 			.full_w = 8192,
@@ -730,15 +755,68 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
 		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
 		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
 		.pclk = 100000000,
 		.linelength = 425,
 		.framelength = 9804,
 		.max_framerate = 240,
 		.mipi_pixel_rate = 760800000,
 		.readout_length = 0,
-		.read_margin = 10,
-		.framelength_step = 4,
-		.coarse_integ_step = 4,
+		.read_margin = 0,
+		.framelength_step = 2,
+		.coarse_integ_step = 2,
+		.min_exposure_line = 6,
+		.imgsensor_winsize_info = {
+			.full_w = 8192,
+			.full_h = 6144,
+			.x0_offset = 0,
+			.y0_offset = 0,
+			.w0_size = 8192,
+			.h0_size = 6144,
+			.scale_w = 4096,
+			.scale_h = 3072,
+			.x1_offset = 224,
+			.y1_offset = 168,
+			.w1_size = 3648,
+			.h1_size = 2736,
+			.x2_tg_offset = 0,
+			.y2_tg_offset = 0,
+			.w2_tg_size = 3648,
+			.h2_tg_size = 2736,
+		},
+		.pdaf_cap = TRUE,
+		.imgsensor_pd_info = &imgsensor_pd_info,
+		.ae_binning_ratio = 1,
+		.fine_integ_line = 0,
+		.delay_frame = 2,
+		.csi_param = {0},
+		.ana_gain_max = BASEGAIN * 62,
+		.sensor_setting_info = {
+			.sensor_scenario_usage = NORMAL_MASK,
+			.equivalent_fps = 24,
+		},
+	},
+    {/*Reg_B_4096x2304_30FPS**/
+		.frame_desc = frame_desc_cus3,
+		.num_entries = ARRAY_SIZE(frame_desc_cus3),
+		.mode_setting_table = casiomain2_custom3_setting,
+		.mode_setting_len = ARRAY_SIZE(casiomain2_custom3_setting),
+		.seamless_switch_group = PARAM_UNDEFINED,
+		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
+		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
+		.hdr_mode = HDR_NONE,
+		.raw_cnt = 1,
+		.exp_cnt = 1,
+		.pclk = 100000000,
+		.linelength = 425,
+		.framelength = 7840,
+		.max_framerate = 300,
+		.mipi_pixel_rate = 760800000,
+		.readout_length = 0,
+		.read_margin = 0,
+		.framelength_step = 2,
+		.coarse_integ_step = 2,
 		.min_exposure_line = 6,
 		.imgsensor_winsize_info = {
 			.full_w = 8192,
@@ -767,57 +845,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.ana_gain_max = BASEGAIN * 62,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = NORMAL_MASK,
-			.equivalent_fps = 24,
+			.equivalent_fps = 30,
 		},
-	},
-    {/*Reg_B_4096x2304_30FPS**/
-		.frame_desc = frame_desc_cus3,
-		.num_entries = ARRAY_SIZE(frame_desc_cus3),
-		.mode_setting_table = casiomain2_custom3_setting,
-		.mode_setting_len = ARRAY_SIZE(casiomain2_custom3_setting),
-		.seamless_switch_group = PARAM_UNDEFINED,
-		.seamless_switch_mode_setting_table = PARAM_UNDEFINED,
-		.seamless_switch_mode_setting_len = PARAM_UNDEFINED,
-		.hdr_mode = HDR_NONE,
-		.pclk = 100000000,
-		.linelength = 700,
-		.framelength = 2380,
-		.max_framerate = 600,
-		.mipi_pixel_rate = 760800000,
-		.readout_length = 0,
-		.read_margin = 10,
-		.framelength_step = 2,
-		.coarse_integ_step = 2,
-		.min_exposure_line = 10,
-		.imgsensor_winsize_info = {
-			.full_w = 8192,
-			.full_h = 6144,
-			.x0_offset = 256,
-			.y0_offset = 912,
-			.w0_size = 7680,
-			.h0_size = 4320,
-			.scale_w = 3840,
-			.scale_h = 2160,
-			.x1_offset = 0,
-			.y1_offset = 0,
-			.w1_size = 3840,
-			.h1_size = 2160,
-			.x2_tg_offset = 0,
-			.y2_tg_offset = 0,
-			.w2_tg_size = 3840,
-			.h2_tg_size = 2160,
-		},
-		.pdaf_cap = FALSE,
-		.imgsensor_pd_info = &imgsensor_pd_info_full,
-		.ae_binning_ratio = 1,
-		.fine_integ_line = 359,
-		.delay_frame = 2,
-		.csi_param = {0},
-		.ana_gain_max = BASEGAIN * 62,
-		.sensor_setting_info = {
-			.sensor_scenario_usage = RMSC_MASK,
-			.equivalent_fps = 15,
-		},
+
 	},
 };
 
@@ -843,14 +873,14 @@ static struct subdrv_static_ctx static_ctx = {
 	.ana_gain_def = BASEGAIN * 4,
 	.ana_gain_min = BASEGAIN * 1,
 	.ana_gain_max = BASEGAIN * 62,
-	.ana_gain_type = 0,
+	.ana_gain_type = 1,
 	.ana_gain_step = 1,
 	.ana_gain_table = casiomain2_ana_gain_table,
 	.ana_gain_table_size = sizeof(casiomain2_ana_gain_table),
 	.min_gain_iso = 100,
 	.exposure_def = 0x3D0,
 	.exposure_min = 6,
-	.exposure_max = 128*(0x7fffff - 20), /* exposure reg is limited to 4x. max = max - margin */
+	.exposure_max = (0x7ffffc - 20), /* exposure reg is limited to 4x. max = max - margin */
 	.exposure_step = 2,
 	.exposure_margin = 20,
 	.dig_gain_min = BASE_DGAIN * 1,
@@ -859,12 +889,12 @@ static struct subdrv_static_ctx static_ctx = {
 
 	.frame_length_max = 0x7fffff,
 	.ae_effective_frame = 2,
-	.frame_time_delay_frame = 3,
-	.start_exposure_offset = 0,
+	.frame_time_delay_frame = 2,
+	.start_exposure_offset = 7000000,
 
 	.pdaf_type = PDAF_SUPPORT_CAMSV,//PDAF_SUPPORT_CAMSV_QPD,
-	.hdr_type = HDR_SUPPORT_STAGGER_FDOL,
-	.seamless_switch_support = TRUE,
+	.hdr_type = HDR_SUPPORT_NA,
+	.seamless_switch_support =  FALSE,
 	.temperature_support = TRUE,
 
 	.g_temp = get_sensor_temperature,
@@ -874,21 +904,21 @@ static struct subdrv_static_ctx static_ctx = {
 	.s_cali = set_sensor_cali,
 
 	.reg_addr_stream = 0x0100,
-	.reg_addr_mirror_flip = 0x0101,
+	.reg_addr_mirror_flip = PARAM_UNDEFINED,
 	.reg_addr_exposure = {
 			{0x3500, 0x3501, 0x3502},//Long exposure
 	},
 	.long_exposure_support = TRUE,
-	.reg_addr_exposure_lshift = 0x3160,
+	.reg_addr_exposure_lshift = PARAM_UNDEFINED,
 	.reg_addr_ana_gain = {
 			{0x3508, 0x3509},//Long Gian
 	},
 	.reg_addr_frame_length = {0x3840, 0x380e, 0x380f},
-/* 	.reg_addr_temp_en = 0x0138,
-	.reg_addr_temp_read = 0x013A,
-	.reg_addr_auto_extend = 0x0350,
-	.reg_addr_frame_count = 0x0005,
-	.reg_addr_fast_mode = 0x3010, */
+ 	.reg_addr_temp_en = 0x4D12,
+	.reg_addr_temp_read = 0x4D13,
+	.reg_addr_auto_extend = PARAM_UNDEFINED,
+	.reg_addr_frame_count = 0x387e,
+	.reg_addr_fast_mode = PARAM_UNDEFINED,
 
 	.init_setting_table = casiomain2_init_setting,
 	.init_setting_len = ARRAY_SIZE(casiomain2_init_setting),
@@ -897,7 +927,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.list = feature_control_list,
 	.list_len = ARRAY_SIZE(feature_control_list),
 
-	.chk_s_off_sta = 1,
+	.chk_s_off_sta = 0,
 	.chk_s_off_end = 0,
 	.checksum_value = 0xcd9966da,
 };
@@ -928,7 +958,7 @@ static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_DVDD, 1200000, 4},
 	//{HW_ID_DOVDD, 1800000, 3},
 	{HW_ID_MCLK_DRIVING_CURRENT, 4, 6},
-	{HW_ID_RST, 1, 2},
+	{HW_ID_RST, 1, 8},
 };
 
 static struct subdrv_pw_seq_entry pw_off_seq[] = {
@@ -1367,7 +1397,7 @@ static int casiomain2_set_awb_gain(struct subdrv_ctx *ctx, u8 *para, u32 *len) {
 static void casiomain2_set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 		u32 *shutters, u16 exp_cnt,	u16 frame_length)
 {
-	int i = 0;
+	int i = 0, ret = 0;
 	u32 fine_integ_line = 0;
 	u16 last_exp_cnt = 1;
 	u32 calc_fl[3] = {0};
@@ -1432,11 +1462,29 @@ static void casiomain2_set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 		ctx->s_ctx.s_gph((void *)ctx, 1);
 	/* enable auto extend */
 	if (ctx->s_ctx.reg_addr_auto_extend)
-		set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_auto_extend, 0x01);
+		subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_auto_extend, 0x01);
 	/* write framelength */
-	if (set_auto_flicker(ctx, 0) || frame_length || !ctx->s_ctx.reg_addr_auto_extend)
-		write_frame_length(ctx, ctx->frame_length);
+	//if (set_auto_flicker(ctx, 0) || frame_length || !ctx->s_ctx.reg_addr_auto_extend)
+	//	write_frame_length(ctx, ctx->frame_length);
 	/* write shutter */
+    ret = subdrv_i2c_wr_u8(ctx, 0x3840, ctx->frame_length >> 16);
+    if(ret < 0) {
+        DRV_LOG(ctx, " multi subdrv_i2c_wr_u8 0x3840: Failed !");
+    } else {
+        DRV_LOG(ctx, " multi subdrv_i2c_wr_u8 0x3840: Succeed !");
+    }
+    ret = subdrv_i2c_wr_u8(ctx, 0x380e, ctx->frame_length >>  8);
+    if(ret < 0) {
+        DRV_LOG(ctx, " multi subdrv_i2c_wr_u8 0x380e: Failed !");
+    } else {
+        DRV_LOG(ctx, " multi subdrv_i2c_wr_u8 0x380e: Succeed !");
+    }
+    ret = subdrv_i2c_wr_u8(ctx, 0x380f, ctx->frame_length & 0xFF);
+    if(ret < 0) {
+        DRV_LOG(ctx, " multi subdrv_i2c_wr_u8 0x380f: Failed !");
+    } else {
+        DRV_LOG(ctx, " multi subdrv_i2c_wr_u8 0x380f: Succeed !");
+    }
 	switch (exp_cnt) {
 	case 1:
 		rg_shutters[0] = shutters[0] / exp_cnt;
@@ -1456,16 +1504,16 @@ static void casiomain2_set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	for (i = 0; i < 3; i++) {
 		if (rg_shutters[i]) {
 			if (ctx->s_ctx.reg_addr_exposure[i].addr[2]) {
-				set_i2c_buffer(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[0],
+				subdrv_i2c_wr_u8(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[0],
 					(rg_shutters[i] >> 16) & 0xFF);
-				set_i2c_buffer(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[1],
+				subdrv_i2c_wr_u8(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[1],
 					(rg_shutters[i] >> 8) & 0xFF);
-				set_i2c_buffer(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[2],
+				subdrv_i2c_wr_u8(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[2],
 					(rg_shutters[i]) & 0xFF);
 			} else {
-				set_i2c_buffer(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[0],
+				subdrv_i2c_wr_u8(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[0],
 					(rg_shutters[i] >> 8) & 0xFF);
-				set_i2c_buffer(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[1],
+				subdrv_i2c_wr_u8(ctx,	ctx->s_ctx.reg_addr_exposure[i].addr[1],
 					rg_shutters[i] & 0xFF);
 			}
 		}
@@ -1473,11 +1521,11 @@ static void casiomain2_set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	DRV_LOG(ctx, "exp[0x%x/0x%x/0x%x], fll(input/output):%u/%u, flick_en:%u\n",
 		rg_shutters[0], rg_shutters[1], rg_shutters[2],
 		frame_length, ctx->frame_length, ctx->autoflicker_en);
-	if (!ctx->ae_ctrl_gph_en) {
+	//if (!ctx->ae_ctrl_gph_en) {
 		if (gph)
 			ctx->s_ctx.s_gph((void *)ctx, 0);
-		commit_i2c_buffer(ctx);
-	}
+		//commit_i2c_buffer(ctx);
+	//}
 	/* group hold end */
 }
 
@@ -1931,12 +1979,15 @@ static int get_sensor_temperature(void *arg)
 
 static void set_group_hold(void *arg, u8 en)
 {
+
 	struct subdrv_ctx *ctx = (struct subdrv_ctx *)arg;
 	//LOG_INF("yuan %s ov50d", __FUNCTION__);
-	if (en)
-		set_i2c_buffer(ctx, 0x0104, 0x01);
-	else
-		set_i2c_buffer(ctx, 0x0104, 0x00);
+	if (en) {
+		subdrv_i2c_wr_u8(ctx, 0x3208, 0x01);
+	} else {
+		subdrv_i2c_wr_u8(ctx, 0x3208, 0x11);
+		subdrv_i2c_wr_u8(ctx, 0x3208, 0xa1);
+	}
 }
 
 static u16 get_gain2reg(u32 gain)
@@ -2107,9 +2158,10 @@ static int casiomain2_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *le
 	/* 1:Solid Color 2:Color Bar 5:Black */
 		switch (mode) {
 		case 5:
-			subdrv_i2c_wr_u8(ctx, 0x020E, 0x00); /* dig_gain = 0 */
-			subdrv_i2c_wr_u8(ctx, 0x0218, 0x00);
-			subdrv_i2c_wr_u8(ctx, 0x3015, 0x00);
+			subdrv_i2c_wr_u8(ctx, 0x430b, 0x00); /* dig_gain = 0 */
+			subdrv_i2c_wr_u8(ctx, 0x430c, 0x00);
+			subdrv_i2c_wr_u8(ctx, 0x4310, 0x00);
+			subdrv_i2c_wr_u8(ctx, 0x4311, 0x00);
 			break;
 		default:
 			subdrv_i2c_wr_u8(ctx, 0x0601, mode);

@@ -520,10 +520,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
             .cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
         },
         .lcm_esd_check_table[1] = {
-            .cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
+            .cmd = 0xAB, .count = 1, .para_list[0] = 0x00,
         },
         .lcm_esd_check_table[2] = {
-            .cmd = 0xAB, .count = 1, .para_list[0] = 0x00,
+            .cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
         },
         .vdo_mix_mode_en = true,
     //  .round_corner_en = 0,
@@ -627,10 +627,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
 	},
 	.lcm_esd_check_table[1] = {
-		.cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
+		.cmd = 0xAB, .count = 1, .para_list[0] = 0x00,
 	},
 	.lcm_esd_check_table[2] = {
-		.cmd = 0xAB, .count = 1, .para_list[0] = 0x00,
+		.cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
 	},
 	.vdo_mix_mode_en = true,
 //	.round_corner_en = 0,
@@ -734,10 +734,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
 	},
 	.lcm_esd_check_table[1] = {
-		.cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
+		.cmd = 0xAB, .count = 1, .para_list[0] = 0x00,
 	},
 	.lcm_esd_check_table[2] = {
-		.cmd = 0xAB, .count = 1, .para_list[0] = 0x00,
+		.cmd = 0x91, .count = 1, .para_list[0] = 0xAB,
 	},
 	.vdo_mix_mode_en = true,
 //	.round_corner_en = 0,

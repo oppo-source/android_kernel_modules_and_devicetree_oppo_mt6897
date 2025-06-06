@@ -51,7 +51,7 @@
 #include "../../../block/blk.h"
 
 #define UFSHID_VER					0x0303
-#define UFSHID_DD_VER					0x030900
+#define UFSHID_DD_VER					0x030902
 #define UFSHID_DD_VER_POST				""
 
 #define UFS_FEATURE_SUPPORT_HID_BIT			0x400
@@ -82,6 +82,8 @@
 #define HID_L2P_DEFRAG_LVL_UNKNOWN		0xB
 
 #define RESULT_NOT_DEFRAG_REQUIRED		1
+
+#define WAIT_HID_RESUME_TIMEOUT			(2 * HZ)
 
 #define HID_DEBUG(hid, msg, args...)					\
 	do { if (hid->hid_debug)					\
@@ -175,6 +177,7 @@ struct ufshid_dev {
 #if defined(CONFIG_UFSHID_POC)
 	bool block_suspend;
 #endif
+	struct completion resume_compl;
 };
 
 struct ufshid_sysfs_entry {

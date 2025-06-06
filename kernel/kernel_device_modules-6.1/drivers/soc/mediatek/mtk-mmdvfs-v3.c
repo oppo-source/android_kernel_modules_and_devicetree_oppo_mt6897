@@ -1829,8 +1829,8 @@ static int mtk_mmdvfs_clk_enable(const u8 clk_idx)
 
 	mux_ena_done = readl(MEM_CLKMUX_ENABLE_DONE);
 	mux_ena = readl(MEM_CLKMUX_ENABLE);
-	MMDVFS_DBG("clk_idx:%d mux_ena:%#x mux_ena_done:%#x",
-		clk_idx, mux_ena, mux_ena_done);
+/*	MMDVFS_DBG("clk_idx:%d mux_ena:%#x mux_ena_done:%#x",
+		clk_idx, mux_ena, mux_ena_done);*/
 	return 0;
 }
 
@@ -1854,8 +1854,8 @@ static int mtk_mmdvfs_clk_disable(const u8 clk_idx)
 
 	mux_ena_done = readl(MEM_CLKMUX_ENABLE_DONE);
 	mux_ena = readl(MEM_CLKMUX_ENABLE);
-	MMDVFS_DBG("clk_idx:%d mux_ena:%#x mux_ena_done:%#x",
-		clk_idx, mux_ena, mux_ena_done);
+/*	MMDVFS_DBG("clk_idx:%d mux_ena:%#x mux_ena_done:%#x",
+		clk_idx, mux_ena, mux_ena_done);*/
 	return 0;
 }
 

@@ -1089,7 +1089,10 @@ int mtk_memif_set_channel(struct mtk_base_afe *afe,
 	}
 
 	/* save channel value for cm get*/
-	g_channel = channel;
+	if (memif->substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		dev_info(afe->dev,"set ul channel = %d\n", channel);
+		g_channel = channel;
+	}
 
 	return 0;
 }

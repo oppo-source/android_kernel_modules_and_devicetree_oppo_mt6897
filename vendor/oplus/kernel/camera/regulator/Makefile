@@ -13,6 +13,9 @@ obj-m += oplus_camera_wl28681c2_regulator.o
 oplus_camera_wl2866d_regulator-objs += wl2866d-regulator.o
 obj-m += oplus_camera_wl2866d_regulator.o
 
+oplus_camera_wl2866d_regulator-objs += wl2866d1-regulator.o
+obj-m += oplus_camera_wl2866d1_regulator.o
+
 oplus_camera_aw37004dnr_regulator-objs += aw37004dnr-regulator.o
 obj-m += oplus_camera_aw37004dnr_regulator.o
 

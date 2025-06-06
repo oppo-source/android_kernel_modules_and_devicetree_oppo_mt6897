@@ -16595,7 +16595,10 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 				      <&mt6375_adc MT6375_ADC_TEMPJC>,
 				      <&mt6375_adc MT6375_ADC_USBDP>,
 				      <&mt6375_adc MT6375_ADC_USBDM>,
-				      <&mt6375_adc MT6375_ADC_SBU2>;
+				      <&mt6375_adc MT6375_ADC_SBU2>,
+				      /* #ifdef OPLUS_FEATURE_CHG_BASIC */
+				      <&mt6375_adc MT6375_ADC_PDVBUS>;
+				      /* #endif */
 			chg_name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;

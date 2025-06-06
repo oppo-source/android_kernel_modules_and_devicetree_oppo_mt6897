@@ -1513,8 +1513,10 @@ static int alphahfront_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *l
 			subdrv_i2c_wr_u8(ctx, 0x0600, mode); /*100% Color bar*/
 		}
 	}
-	else if (ctx->test_pattern)
+	else if (ctx->test_pattern) {
 		subdrv_i2c_wr_u8(ctx, 0x0600, 0x0000); /*No pattern*/
+		subdrv_i2c_wr_u8(ctx, 0x0601, 0x0000);
+	}
 
 	ctx->test_pattern = mode;
 	return 0;

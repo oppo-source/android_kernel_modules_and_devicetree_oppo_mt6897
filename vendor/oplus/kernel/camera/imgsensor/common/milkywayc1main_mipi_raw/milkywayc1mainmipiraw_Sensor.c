@@ -755,7 +755,6 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.ae_binning_ratio = 1465,//cc
 		.fine_integ_line = 827,
 		.delay_frame = 2,
-		.csi_param = {},
 		.ana_gain_max = BASEGAIN * 64,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = NORMAL_MASK,
@@ -810,15 +809,13 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.delay_frame = 2,
 		.csi_param = {
 			.cphy_settle = 0x36,
+			.cphy_ctle = MAIN_CTLE_LEVEL,
+			.cdr_delay = MAIN_CTLE_DELAY,
 		},
 		.ana_gain_max = BASEGAIN * 64,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = UNUSE_MASK,
 			.equivalent_fps = 0,
-		},
-		.csi_param = {
-			.cphy_ctle = MAIN_CTLE_LEVEL,
-			.cdr_delay = MAIN_CTLE_DELAY,
 		},
 	},
 	{/* Reg_B10_1-S11 4096x2304 @30fps QBIN(VBIN) w/ PD VB Max. DataRate Min. Seamless F4_1-S11 */
@@ -865,15 +862,13 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.delay_frame = 2,
 		.csi_param = {
 			.cphy_settle = 0x3C,
+			.cphy_ctle = MAIN_CTLE_LEVEL,
+			.cdr_delay = MAIN_CTLE_DELAY,
 		},
 		.ana_gain_max = BASEGAIN * 64,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = NORMAL_MASK,
 			.equivalent_fps = 30,
-		},
-		.csi_param = {
-			.cphy_ctle = MAIN_CTLE_LEVEL,
-			.cdr_delay = MAIN_CTLE_DELAY,
 		},
 	},
 	{/* 3 Reg_S_1_4096x2304_60FPS */
@@ -971,6 +966,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.delay_frame = 2,
 		.csi_param = {
 			.cphy_settle = 0x3D,
+			.cphy_ctle = MAIN_CTLE_LEVEL,
+			.cdr_delay = 0x15,
 		},
 		.ana_gain_max = BASEGAIN * 64,
 		.coarse_integ_step = 4,
@@ -978,10 +975,6 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.sensor_setting_info = {
 			.sensor_scenario_usage = NORMAL_MASK,
 			.equivalent_fps = 120,
-		},
-		.csi_param = {
-			.cphy_ctle = MAIN_CTLE_LEVEL,
-			.cdr_delay = 0x15,
 		},
 	},
 	{/* 5 Reg_M_2048x1152_240FPS */
@@ -1079,9 +1072,6 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.ae_binning_ratio = 1465,
 		.fine_integ_line = 413,
 		.delay_frame = 2,
-		// .csi_param = {
-		// 	.cphy_settle = 0x38,
-		// },
 		.ana_gain_max = BASEGAIN * 64,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = NORMAL_MASK,
@@ -1240,6 +1230,8 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.delay_frame = 2,
 		.csi_param = {
 			.cphy_settle = 0x43,
+			.cphy_ctle = MAIN_CTLE_LEVEL,
+			.cdr_delay = MAIN_CTLE_DELAY,
 		},
 		.ana_gain_max = BASEGAIN * 16,
 		.coarse_integ_step = 1,
@@ -1247,10 +1239,6 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.sensor_setting_info = {
 			.sensor_scenario_usage = INSENSORZOOM_MASK,
 			.equivalent_fps = 30,
-		},
-		.csi_param = {
-			.cphy_ctle = MAIN_CTLE_LEVEL,
-			.cdr_delay = MAIN_CTLE_DELAY,
 		},
 	},
 	{/* 10 Reg_L_1296x736_480FPS */
@@ -1457,9 +1445,6 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.min_exposure_line = 16,
 		.fine_integ_line = 503,
 		.delay_frame = 2,
-		// .csi_param = {
-		// 	.cphy_settle = 0x78,
-		// },
 		.ana_gain_max = BASEGAIN * 16,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = INSENSORZOOM_MASK,
@@ -1516,9 +1501,6 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.ae_binning_ratio = 1000,
 		.fine_integ_line = 503,
 		.delay_frame = 2,
-		// .csi_param = {
-		// 	.cphy_settle = 0x3A,
-		// },
 		.ana_gain_max = BASEGAIN * 16,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = INSENSORZOOM_MASK,
@@ -1573,15 +1555,13 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.delay_frame = 2,
 		.csi_param = {
 			.cphy_settle = 0x41,
+			.cphy_ctle = MAIN_CTLE_LEVEL,
+			.cdr_delay = MAIN_CTLE_DELAY,
 		},
 		.ana_gain_max = BASEGAIN * 16,
 		.sensor_setting_info = {
 			.sensor_scenario_usage = INSENSORZOOM_MASK,
 			.equivalent_fps = 30,
-		},
-		.csi_param = {
-			.cphy_ctle = MAIN_CTLE_LEVEL,
-			.cdr_delay = MAIN_CTLE_DELAY,
 		},
 	},
 	{ /*  reg_B11  4096x2048 @30fps QBIN(VBIN) w/ PD VB Max. */
@@ -1822,7 +1802,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.frame_length_max = 0xffff,
 	.ae_effective_frame = 2,
 	.frame_time_delay_frame = 3,
-	.start_exposure_offset = 3000000,//cc
+	.start_exposure_offset = 1602000,//cc
 
 	.pdaf_type = PDAF_SUPPORT_CAMSV_QPD,
 	.hdr_type = HDR_SUPPORT_STAGGER_FDOL,

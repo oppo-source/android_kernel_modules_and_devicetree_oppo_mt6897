@@ -96,6 +96,7 @@
 		fw_edge_limit_support;
 		temperature_detect_support;
 		temperature_detect_shellback_support;
+		disable_touch_event_support;
 
 
 

@@ -451,6 +451,8 @@ void android_vh_alter_futex_plist_add_handler(void *unused, struct plist_node *n
 		return;
 
 	ots = get_oplus_task_struct(current);
+	if (unlikely(IS_ERR_OR_NULL(ots)))
+		return;
 	if (ots->lkinfo.holder)
 		boost_holder(ots->lkinfo.holder, current);
 

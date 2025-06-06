@@ -1601,8 +1601,8 @@ static void gpufreq_dump_infra_status_no_lock(char *log_buf, int *log_len, int l
 	else
 		GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
 
-        gpufreq_dump_dvfs_status(log_buf, log_len, log_size);
-        gpufreq_dump_power_tracker_status();
+	gpufreq_dump_dvfs_status(log_buf, log_len, log_size);
+	gpufreq_dump_power_tracker_status();
 }
 
 /***********************************************************************************

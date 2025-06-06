@@ -657,7 +657,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.frame_length_max = 0xffff,
 	.ae_effective_frame = 2,
 	.frame_time_delay_frame = 3,
-	.start_exposure_offset = 6590000,
+	.start_exposure_offset = 1891000,
 
 	.pdaf_type = PDAF_SUPPORT_NA,
 	.hdr_type = HDR_SUPPORT_NA,
@@ -808,7 +808,7 @@ static void caymanafront_set_shutter_frame_length_convert(struct subdrv_ctx *ctx
 			subdrv_i2c_wr_u8(ctx, 0x0104, 0x01);
 			subdrv_i2c_wr_u8(ctx, 0x0340, ctx->frame_length >> 8);
 			subdrv_i2c_wr_u8(ctx, 0x0341, ctx->frame_length & 0xFF);
-			subdrv_i2c_wr_u8(ctx, 0x0104, 0x00);	
+			subdrv_i2c_wr_u8(ctx, 0x0104, 0x00);
 		}
 	} else {
 		// Extend frame length

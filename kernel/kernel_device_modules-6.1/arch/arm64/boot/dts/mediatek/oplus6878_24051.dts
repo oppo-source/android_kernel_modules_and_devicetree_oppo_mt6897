@@ -437,6 +437,7 @@ bootargs_ext = "";
 #include "mediatek/cust_mt6878_alphah_camera_v4l2.dtsi"
 #include "mediatek/cust_k6878_connfem.dtsi"
 #include "mediatek/cust_mt6878_24051_audio.dtsi"
+#include "mediatek/cust_mt6878_vow_breeno.dtsi"
 #include "mediatek/oplus_tp_24051.dtsi"
 #include "cust_mt6878_24051_thermal.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/

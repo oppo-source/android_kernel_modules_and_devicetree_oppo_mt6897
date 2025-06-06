@@ -298,8 +298,8 @@ static int lcm_enable(struct drm_panel *panel)
 
 #define FRAME_WIDTH             (1080)
 #define FRAME_HEIGHT            (2400)
-#define HFP                     (60)
-#define HBP                     (60)
+#define HFP                     (52)
+#define HBP                     (73)
 #define HSA                     (12)
 #define VFP_60HZ                (2448)
 #define VFP_120HZ               (16)
@@ -307,7 +307,7 @@ static int lcm_enable(struct drm_panel *panel)
 #define VSA                     (2)
 
 static const struct drm_display_mode disp_mode_60Hz = {
-	.clock = 353710, // ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP + VBP + VSA) * 60) / 1000
+	.clock = ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP_60HZ + VBP + VSA) * 60) / 1000,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + HFP,
 	.hsync_end = FRAME_WIDTH + HFP + HSA,
@@ -319,7 +319,7 @@ static const struct drm_display_mode disp_mode_60Hz = {
 };
 
 static const struct drm_display_mode disp_mode_120Hz = {
-	.clock = 353710, // ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP + VBP + VSA) * 120) / 1000
+	.clock = ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP_120HZ + VBP + VSA) * 120) / 1000,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + HFP,
 	.hsync_end = FRAME_WIDTH + HFP + HSA,

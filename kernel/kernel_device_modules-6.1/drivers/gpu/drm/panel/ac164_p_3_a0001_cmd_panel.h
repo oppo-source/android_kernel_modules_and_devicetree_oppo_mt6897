@@ -116,6 +116,10 @@ static struct LCM_setting_table init_setting_60Hz[] = {
     /* 60Hz */
     {REGFLAG_CMD, 2, {0x1F,0x40}},
     {REGFLAG_CMD, 2, {0x2F,0x00}},
+    /*AOD no black*/
+    {REGFLAG_CMD, 6, {0xF0,0x55,0xAA,0x52,0x08,0x01}},
+    {REGFLAG_CMD, 2, {0x6F,0x01}},
+    {REGFLAG_CMD, 2, {0xD2,0x00}},
     /* TE On */
     {REGFLAG_CMD, 2, {0x35,0x00}},
     /* Manual TE */
@@ -227,6 +231,10 @@ static struct LCM_setting_table init_setting_90Hz[] = {
     /* 90Hz */
     {REGFLAG_CMD, 2, {0x1F,0x40}},
     {REGFLAG_CMD, 2, {0x2F,0x01}},
+    /*AOD no black*/
+    {REGFLAG_CMD, 6, {0xF0,0x55,0xAA,0x52,0x08,0x01}},
+    {REGFLAG_CMD, 2, {0x6F,0x01}},
+    {REGFLAG_CMD, 2, {0xD2,0x00}},
     /* TE On */
     {REGFLAG_CMD, 2, {0x35,0x00}},
     /* Manual TE */
@@ -338,6 +346,10 @@ static struct LCM_setting_table init_setting_120Hz[] = {
     /* 120Hz */
     {REGFLAG_CMD, 2, {0x1F,0xC0}},
     {REGFLAG_CMD, 2, {0x2F,0x02}},
+    /*AOD no black*/
+    {REGFLAG_CMD, 6, {0xF0,0x55,0xAA,0x52,0x08,0x01}},
+    {REGFLAG_CMD, 2, {0x6F,0x01}},
+    {REGFLAG_CMD, 2, {0xD2,0x00}},
     /* TE On */
     {REGFLAG_CMD, 2, {0x35,0x00}},
     /* Manual TE */
@@ -386,7 +398,9 @@ static struct LCM_setting_table dsi_demura2_bl[] = {
 /* -------------------------doze mode setting start------------------------- */
 static struct LCM_setting_table AOD_off_setting[] = {
     /* AOD off */
-    {REGFLAG_CMD, 2, {0x65,0x00}},
+    {REGFLAG_CMD, 6, {0xF0, 0x55, 0xAA, 0x52, 0x08,0x00}},
+    //{REGFLAG_CMD, 2, {0x65,0x00}},
+    {REGFLAG_CMD, 2, {0xC0,0x44}},
     {REGFLAG_CMD, 1, {0x38}},
     {REGFLAG_CMD, 3, {0x51, 0x00, 0x00}},
 };
@@ -396,11 +410,11 @@ static struct LCM_setting_table AOD_on_setting[] = {
     {REGFLAG_CMD, 2, {0x6F,0x04}},
     {REGFLAG_CMD, 3, {0x51,0x02,0xFF}},
     /* AOD on*/
-    {REGFLAG_CMD, 6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x01}},
-    {REGFLAG_CMD, 2, {0x6F, 0x01}},
-    {REGFLAG_CMD, 2, {0xD2, 0x22}},
+    //{REGFLAG_CMD, 6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x01}},
+    //{REGFLAG_CMD, 2, {0x6F, 0x01}},
+    //{REGFLAG_CMD, 2, {0xD2, 0x22}},
     {REGFLAG_CMD, 1, {0x39}},
-    {REGFLAG_CMD, 2, {0x65,0x01}},
+    //{REGFLAG_CMD, 2, {0x65,0x01}},
 };
 
 static struct LCM_setting_table aod_high_bl_level[] = {

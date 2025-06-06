@@ -5451,6 +5451,8 @@ struct mt6369_priv {
 	int vow_dmic_lp;
 	int vow_single_mic_select;
 	int hwcid0;
+	/* breeno vow mic pga gain */
+	int vow_mic_pga_gain;
 
 	/* regulator */
 	struct regulator *reg_vant18;

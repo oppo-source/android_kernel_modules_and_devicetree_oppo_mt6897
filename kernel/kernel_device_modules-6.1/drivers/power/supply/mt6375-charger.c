@@ -3495,7 +3495,6 @@ static int mt6375_chg_init_setting(struct mt6375_chg_data *ddata)
 #ifdef CONFIG_OPLUS_ENABLE_6375_RESET
 	//#ifdef OPLUS_BUG_STABILITY
 	ret = mt6375_chg_field_set(ddata, F_QON_RST_EN, 0);
-        dev_err(ddata->dev, "success to disable qon_rst\n");
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to disable qon_rst\n");
 		return ret;

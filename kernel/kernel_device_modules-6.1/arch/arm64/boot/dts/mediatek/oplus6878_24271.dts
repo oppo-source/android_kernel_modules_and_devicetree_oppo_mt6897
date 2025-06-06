@@ -8,7 +8,6 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/mt6878-pinfunc.h>
-#include "mediatek/nfc/mt6878_Omega_S2_23265.dtsi"
 #include "mediatek/alphah_regulator_aw37004.dtsi"
 #include "mediatek/omegas2_regulator_wl2868c.dtsi"
 #if 0
@@ -26,6 +25,11 @@
 /* #ifdef OPLUS_FEATURE_FINGERPRINT */
 #include "mediatek/oplus_uff_24051_24271.dtsi"
 /* #endif */
+
+/* #ifdef OPLUS_FEATURE_PERFORMANCE_MM */
+#include "mediatek/oplus_mm_24271.dtsi"
+/* #endif */
+
 &chosen {
 bootargs_ext = "";
 };

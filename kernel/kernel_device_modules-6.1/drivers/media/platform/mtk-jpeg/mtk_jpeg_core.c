@@ -26,6 +26,7 @@
 #include <media/videobuf2-dma-contig.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
+#include <linux/delay.h>
 
 #include "mtk-interconnect.h"
 #include "mtk_jpeg_enc_hw.h"
@@ -1315,7 +1316,13 @@ static int mtk_jpeg_queue_init(void *priv, struct vb2_queue *src_vq,
 static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
 {
 	int ret, i;
+	struct slbc_data test_d;
 
+	test_d.uid = UID_MM_VENC;
+	test_d.type = TP_BUFFER;
+	slbc_request(&test_d);
+	pr_info("%s %d slbc request\n", __func__, __LINE__);
+	udelay(1000);
 	for (i = 0; i < jpeg->variant->num_clks; i++) {
 		ret = pm_runtime_resume_and_get(jpeg->larb[i]);
 		if (ret)
@@ -1333,12 +1340,22 @@ static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
 static void mtk_jpeg_clk_off(struct mtk_jpeg_dev *jpeg)
 {
 	int i;
+	struct slbc_data test_d;
+
 	v4l2_info(&jpeg->v4l2_dev, "mtk_jpeg_clk_off");
 	clk_bulk_disable_unprepare(jpeg->variant->num_clks,
 				   jpeg->variant->clks);
 
 	for (i = 0; i < jpeg->variant->num_clks; i++)
 		pm_runtime_put_sync(jpeg->larb[i]);
+
+	udelay(1000);
+	pr_info("%s %d slbc release before\n", __func__, __LINE__);
+	test_d.uid = UID_MM_VENC;
+	test_d.type = TP_BUFFER;
+	slbc_release(&test_d);
+	pr_info("%s %d slbc release\n", __func__, __LINE__);
+
 }
 
 static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
@@ -1348,6 +1365,9 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 	enum vb2_buffer_state buf_state = VB2_BUF_STATE_ERROR;
 	u32 result_size;
 
+// #ifdef OPLUS_FEATURE_CAMERA_COMMON
+	v4l2_info(&jpeg->v4l2_dev, "mtk_jpeg_enc_done\n");
+// #endif
 	ctx = v4l2_m2m_get_curr_priv(jpeg->m2m_dev);
 	if (!ctx) {
 		v4l2_err(&jpeg->v4l2_dev, "Context is NULL\n");
@@ -1374,6 +1394,7 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 	v4l2_m2m_buf_done(src_buf, buf_state);
 	v4l2_m2m_buf_done(dst_buf, buf_state);
 	v4l2_m2m_job_finish(jpeg->m2m_dev, ctx->fh.m2m_ctx);
+
 	return IRQ_HANDLED;
 }
 
@@ -1383,6 +1404,9 @@ static irqreturn_t mtk_jpeg_enc_irq(int irq, void *priv)
 	u32 irq_status;
 	irqreturn_t ret = IRQ_NONE;
 
+// #ifdef OPLUS_FEATURE_CAMERA_COMMON
+	pr_info("mtk_jpeg_enc_irq, cancel_delayed_work\n");
+// #endif
 	cancel_delayed_work(&jpeg->job_timeout_work);
 
 	irq_status = readl(jpeg->reg_base + JPEG_ENC_INT_STS) &
@@ -1551,12 +1575,20 @@ static int mtk_jpeg_release(struct file *file)
 {
 	struct mtk_jpeg_dev *jpeg = video_drvdata(file);
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_fh_to_ctx(file->private_data);
-
+// #ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int ret;
+	v4l2_info(&jpeg->v4l2_dev, "mtk_jpeg_release");
+// #endif
 	if (ctx->state == MTK_JPEG_RUNNING) {
 		mtk_jpeg_dvfs_end(ctx);
 		mtk_jpeg_end_bw_request(ctx);
+// #ifdef OPLUS_FEATURE_CAMERA_COMMON
+		ctx->state = MTK_JPEG_RELEASED;
 		v4l2_info(&jpeg->v4l2_dev, "jpeg_release call to pm_runtime_put");
-		pm_runtime_put(ctx->jpeg->dev);
+		ret = pm_runtime_put(ctx->jpeg->dev);
+		if (ret < 0)
+			v4l2_err(&jpeg->v4l2_dev, "pm_runtime_put fail %d", ret);
+// #endif
 	}
 	mutex_lock(&jpeg->lock);
 	v4l2_m2m_ctx_release(ctx->fh.m2m_ctx);
@@ -1641,7 +1673,9 @@ static void mtk_jpeg_job_timeout_work(struct work_struct *work)
 						 job_timeout_work.work);
 	struct mtk_jpeg_ctx *ctx;
 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
-
+// #ifdef OPLUS_FEATURE_CAMERA_COMMON
+	u32 irq_status, result_size;
+// #endif
 	ctx = v4l2_m2m_get_curr_priv(jpeg->m2m_dev);
 	if (ctx == NULL) {
 		v4l2_err(&jpeg->v4l2_dev, "Error!! ctx is NULL\n");
@@ -1657,11 +1691,20 @@ static void mtk_jpeg_job_timeout_work(struct work_struct *work)
 		v4l2_err(&jpeg->v4l2_dev, "Error!! dst_buf is NULL\n");
 		return;
 	}
+// #ifdef OPLUS_FEATURE_CAMERA_COMMON
+	v4l2_info(&jpeg->v4l2_dev, "%s state = %d\n", __func__, ctx->state);
+	if (ctx->state == MTK_JPEG_RUNNING) {
+		irq_status = readl(jpeg->reg_base + JPEG_ENC_INT_STS) &
+					JPEG_ENC_INT_STATUS_MASK_ALLIRQ;
+		if (irq_status)
+			writel(0, jpeg->reg_base + JPEG_ENC_INT_STS);
+		result_size = mtk_jpeg_enc_get_file_size(jpeg->reg_base);
+		v4l2_info(&jpeg->v4l2_dev, "%s irq_status: %u, result_size: %u\n",
+			__func__, irq_status, result_size);
 
-	jpeg->variant->hw_reset(jpeg->reg_base);
-	v4l2_info(&jpeg->v4l2_dev, "jpeg_job_timeout_work call to pm_runtime_put");
-	pm_runtime_put(jpeg->dev);
-
+		jpeg->variant->hw_reset(jpeg->reg_base);
+	}
+// #endif
 	v4l2_m2m_buf_done(src_buf, VB2_BUF_STATE_ERROR);
 	v4l2_m2m_buf_done(dst_buf, VB2_BUF_STATE_ERROR);
 	v4l2_m2m_job_finish(jpeg->m2m_dev, ctx->fh.m2m_ctx);

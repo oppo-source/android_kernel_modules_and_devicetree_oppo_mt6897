@@ -115,13 +115,11 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --defconfig_fragment=//kernel_
 endif
 
 $(KERNEL_ZIMAGE_OUT): $(KERNEL_MAKE_DEPENDENCIES)
-	$(hide) touch kernel/kernel_device_modules-6.1/BUILD.bazel
 	$(hide) cd kernel && export $(PRIVATE_BAZEL_EXPORT_ENV) && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base build $(PRIVATE_BAZEL_BUILD_FLAG) $(PGO_KBUILD_ARG) $(GCOV_KBUILD_ARG) $(PRIVATE_BAZEL_BUILD_GOAL)
 	$(hide) cd kernel && export $(PRIVATE_BAZEL_EXPORT_ENV) && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run $(PRIVATE_BAZEL_BUILD_FLAG) $(PGO_KBUILD_ARG) $(GCOV_KBUILD_ARG) --nokmi_symbol_list_violations_check $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
 ifeq (true,$(strip $(KERNEL_CHECK_ABI)))
 	$(hide) cd kernel && export $(PRIVATE_BAZEL_EXPORT_ENV) && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run //$(REL_ACK_DIR):kernel_aarch64_abi_dist -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))/abi
 endif
-	$(hide) touch kernel/kernel_device_modules-6.1/BUILD.bazel
 endif
 
 ifneq ($(BUILT_KERNEL_TARGET),$(KERNEL_ZIMAGE_OUT))

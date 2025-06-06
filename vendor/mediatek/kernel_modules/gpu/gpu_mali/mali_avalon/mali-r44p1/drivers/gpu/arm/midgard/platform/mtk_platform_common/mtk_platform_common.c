@@ -176,6 +176,9 @@ void mtk_common_debug(enum mtk_common_debug_types type, int pid, u64 hook_point)
 	}
 
 	switch (type) {
+	case MTK_COMMON_DBG_DUMP_AS_STATUS:
+		mtk_debug_dump_as_status(kbdev);
+		break;
 	case MTK_COMMON_DBG_DUMP_INFRA_STATUS:
 		mtk_common_gpufreq_dump_infra_status(kbdev);
 		break;

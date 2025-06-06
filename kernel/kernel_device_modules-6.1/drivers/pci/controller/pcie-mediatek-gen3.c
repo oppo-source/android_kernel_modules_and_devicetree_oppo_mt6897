@@ -192,6 +192,8 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_AXI_IF_CTRL		0x1a8
 #define PCIE_AXI0_SLV_RESP_MASK		BIT(12)
 
+#define ISTATUS_PENDING_ADT		0x1d4
+
 #define PCIE_WCPL_TIMEOUT		0x340
 #define WCPL_TIMEOUT_4MS		0x4
 
@@ -1526,7 +1528,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, PHY_err(d40)=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, PHY_err(d40)=%#x, adt pending=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -1542,7 +1544,8 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_AXI0_ERR_ADDR_L),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
 		readl_relaxed(port->base + PCIE_RES_STATUS),
-		readl_relaxed(port->base + PCIE_ERR_DEBUG_LANE0));
+		readl_relaxed(port->base + PCIE_ERR_DEBUG_LANE0),
+		readl_relaxed(port->base + ISTATUS_PENDING_ADT));
 
 	/* Dump RC configuration space */
 	writel_relaxed(PCIE_RC_CFG, port->base + PCIE_CFGNUM_REG);
@@ -1560,6 +1563,13 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA),
 		readl_relaxed(port->vlpcfg_base + SRCLKEN_SPM_REQ_STA),
 		readl_relaxed(port->vlpcfg_base + SRCLKEN_RC_REQ_STA));
+}
+
+static void mtk_pcie_axi_slv_monitor(struct mtk_pcie_port *port)
+{
+	pr_info("PCIe AXI slave debug monitor\n");
+	mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
+	mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4e, 0x4f, 0x50, 0x51));
 }
 
 static int mtk_pcie_sleep_protect_status(struct mtk_pcie_port *port)
@@ -1677,6 +1687,7 @@ u32 mtk_pcie_dump_link_info(int port)
 		return 0;
 
 	mtk_pcie_monitor_mac(pcie_port);
+	mtk_pcie_axi_slv_monitor(pcie_port);
 
 	val = readl_relaxed(pcie_port->base + PCIE_LTSSM_STATUS_REG);
 	ret_val |= PCIE_LTSSM_STATE(val);

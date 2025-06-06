@@ -100,3 +100,11 @@ config MTK_TYPEC_WATER_DETECT_BY_PCB
 	  need to be enabled.
 	  Say Yes to let PCB decides enabling water detection or not.
 	  If unsure, say N.
+
+config OPLUS_PD_SOURCECAP_UPDATE_SUPPORT
+	tristate "support pps sourcecap update"
+	depends on USB_POWER_DELIVERY
+	default y
+	help
+	  Say Y to support PD pps sourcecap update function
+	  Say N to disable

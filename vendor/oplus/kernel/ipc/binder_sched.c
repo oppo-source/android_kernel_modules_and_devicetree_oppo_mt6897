@@ -508,7 +508,11 @@ static inline void sync_binder_set_inherit_ux(struct task_struct *thread_task, s
 	}  else if (from_task && test_task_is_rt(from_task)) { /* rt trans can be set as ux if binder thread is cfs class */
 		inherit_ux = oplus_get_inherit_ux(thread_task);
 		if (!test_inherit_ux(thread_task, INHERIT_UX_BINDER)) {
-			set_inherit_ux(thread_task, INHERIT_UX_BINDER, from_depth, SA_TYPE_LIGHT);
+			if (sched_assist_scene(SA_CAMERA_HEAVY)) {
+				set_inherit_ux(thread_task, INHERIT_UX_BINDER, from_depth, SA_TYPE_HEAVY);
+			} else {
+				set_inherit_ux(thread_task, INHERIT_UX_BINDER, from_depth, SA_TYPE_LIGHT);
+			}
 			set_sync_t_ux_state(t, true, true, is_servicemg);
 			trace_binder_inherit_ux(from_task, thread_task, from_depth,
 				from_state, type, INVALID_VALUE, sync, "sync_set ux rt");
@@ -662,9 +666,6 @@ static inline void binder_unset_inherit_ux(struct task_struct *thread_task,
 void android_vh_binder_restore_priority_handler(void *unused,
 	struct binder_transaction *t, struct task_struct *task)
 {
-	if (unlikely(!g_sched_enable))
-		return;
-
 	/* Google commit "d1367b5" caused this priority pass issue on our kernel-5.15 project */
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 15, 0))
 	if (t != NULL) {
@@ -675,6 +676,9 @@ void android_vh_binder_restore_priority_handler(void *unused,
 		}
 	}
 #endif
+
+	if (unlikely(!g_sched_enable))
+		return;
 
 	if (!is_task_servicemg(task)) {
 		return;

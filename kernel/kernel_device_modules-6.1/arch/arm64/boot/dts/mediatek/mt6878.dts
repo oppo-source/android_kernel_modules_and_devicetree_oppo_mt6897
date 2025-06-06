@@ -94,6 +94,7 @@
 			    transparent_hugepage=never \
 			    cgroup.memory=nosocket,nokmem \
 			    log_buf_len=2m \
+			    loop.hw_queue_depth=15 \
 			    disable_dma32=on \
 			    firmware_class.path=/odm/etc/wifi, /vendor/firmware ";
 		kaslr-seed = <0 0>;
@@ -11970,7 +11971,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				      <&mt6375_adc MT6375_ADC_TEMPJC>,
 				      <&mt6375_adc MT6375_ADC_USBDP>,
 				      <&mt6375_adc MT6375_ADC_USBDM>,
-				      <&mt6375_adc MT6375_ADC_SBU2>;
+				      <&mt6375_adc MT6375_ADC_SBU2>,
+				      /* #ifdef OPLUS_FEATURE_CHG_BASIC */
+				      <&mt6375_adc MT6375_ADC_PDVBUS>;
+				      /* #endif */
 			chg-name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;

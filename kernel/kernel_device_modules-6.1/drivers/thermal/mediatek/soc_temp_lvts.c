@@ -1424,6 +1424,9 @@ static int lvts_register_irq_handler(struct lvts_data *lvts_data)
 	lvts_data->irq_bitmap = irq_bitmap;
 
 	for (i = 0; i < lvts_data->num_domain; i++) {
+		if (i == 0 && IS_ENABLE(FEATURE_MT6897_SOC_LVTS_THERMAL_REBOOT_WA))
+			continue;
+
 		ret = devm_request_irq(dev, lvts_data->domain[i].irq_num,
 			irq_handler, IRQF_TRIGGER_HIGH, "mtk_lvts", lvts_data);
 
@@ -4329,7 +4332,8 @@ static struct lvts_data mt6897_lvts_data = {
 		.check_cal_data = mt6897_check_cal_data,
 		.update_coef_data = update_coef_data_v1,
 	},
-	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK,
+	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK |
+		FEATURE_MT6897_SOC_LVTS_THERMAL_REBOOT_WA,
 	.num_efuse_addr = 29,
 	.num_efuse_block = 4,
 	.cal_data = {

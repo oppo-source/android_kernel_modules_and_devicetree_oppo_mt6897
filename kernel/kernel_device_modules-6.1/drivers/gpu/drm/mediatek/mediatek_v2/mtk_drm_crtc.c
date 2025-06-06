@@ -1262,6 +1262,7 @@ struct mtk_ddp_comp *mtk_ddp_comp_request_output(struct mtk_drm_crtc *mtk_crtc)
 	/* This CRTC does not contain output comp */
 	return NULL;
 }
+EXPORT_SYMBOL(mtk_ddp_comp_request_output);
 
 void mtk_crtc_change_output_mode(struct drm_crtc *crtc, int aod_en)
 {

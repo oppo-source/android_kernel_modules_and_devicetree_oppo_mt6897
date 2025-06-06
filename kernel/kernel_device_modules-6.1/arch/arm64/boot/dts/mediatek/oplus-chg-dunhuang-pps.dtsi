@@ -473,4 +473,38 @@
 		};
 	};
 };
+
+/* for pd common charger */
+&mt6375_typec {
+	pd-data {
+			pd,source-cap-ext = /bits/ 8 <0xcf 0x29 0x75 0x63
+							      0x00 0x00 0x00 0x00
+							      0x00 0x00 0x00 0x00
+							      0x00 0x00 0x00 0x00
+							      0x00 0x00 0x00 0x00
+							      0x00 0x00 0x01 0x05
+							      0x00>;
+
+			pd,charging-policy = <0>;
+
+			pd,source-pdo-data = <0x00019064>;/* Fixed, 5000mV, 1000mA*/
+
+			/*0x000190c8: Fixed, 5000mV, 2000mA*/
+			/*0x0002d096: Fixed, 9000mV, 1500mA*/
+			/*0xc0dc1e64: apdo, min 3000mV, max 11000mV, 5000mA*/
+			pd,sink-pdo-size = <3>;
+			pd,sink-pdo-data = <0x000190c8 0x0002d096 0xc0dc1e64>;
+
+			/*  with DP*/
+			pd,id-vdo-data = <0xd54029cf 0x0 0x63750000
+                                                  0x61000000 0x0 0x41000000>;
+	};
+
+	dpm-caps {
+			attempt-enter-dp-mode;
+			attempt-discover-id;
+			attempt-discover-svids;
+	};
+};
+
 //#endif OPLUS_FEATURE_CHG_BASIC

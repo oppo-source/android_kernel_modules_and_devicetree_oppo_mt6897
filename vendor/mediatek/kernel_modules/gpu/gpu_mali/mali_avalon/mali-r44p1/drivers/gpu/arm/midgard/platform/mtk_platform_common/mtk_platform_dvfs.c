@@ -14,10 +14,13 @@
 #include <mtk_gpufreq.h>
 #include <mtk_gpu_utility.h>
 #include <platform/mtk_platform_common/mtk_platform_dvfs.h>
+#include <linux/delay.h>
 
 #if IS_ENABLED(CONFIG_PROC_FS)
 /* name of the proc entry */
+#define	PROC_GPU_LOADING "gpu_loading"
 #define	PROC_GPU_UTILIZATION "gpu_utilization"
+static DEFINE_MUTEX(gpu_loading_lock);
 static DEFINE_MUTEX(gpu_utilization_lock);
 #endif
 
@@ -263,6 +266,47 @@ void mtk_common_cal_gpu_utilization(unsigned int *pui32Loading,
 #endif /* MALI_USE_CSF */
 }
 
+static int findMax(int *arr, int n)
+{
+	int max = arr[0];
+
+	for (int i = 1; i < n; ++i) {
+		if (arr[i] > max)
+			max = arr[i];
+	}
+	return max;
+}
+
+int mtk_common_cal_gpu_loading(void)
+{
+	struct kbase_device *kbdev = (struct kbase_device *)mtk_common_get_kbdev();
+#if IS_ENABLED(CONFIG_MALI_MTK_DVFS_LOADING_MODE)
+	int utilisation[NUM_PERF_COUNTERS*2];
+#else
+	int utilisation[NUM_PERF_COUNTERS];
+#endif
+	unsigned long long delta_time;
+	struct kbasep_pm_metrics diff;
+	struct kbasep_pm_metrics first;
+	int index = 0;
+
+	kbase_pm_get_dvfs_metrics(kbdev, &first, &diff);
+	usleep_range(180000, 180001);
+	kbase_pm_get_dvfs_metrics(kbdev, &first, &diff);
+
+	delta_time = max(diff.time_busy[0] + diff.time_idle[0], 1u);
+	for (index = 0; index < NUM_PERF_COUNTERS; index++) {
+		// delta time should be the same for all PMU, so simply reuse it
+		utilisation[index] = (100 * diff.time_busy[index]) / delta_time;
+#if IS_ENABLED(CONFIG_MALI_MTK_DVFS_LOADING_MODE)
+		utilisation[index + NUM_PERF_COUNTERS] = diff.counterRaw[index];
+#endif /* CONFIG_MALI_MTK_DVFS_LOADING_MODE */
+	}
+
+	/*find the max utilisation*/
+	return findMax(&utilisation[UTIL_TA_ID], UTIL_MCU_ID);
+}
+
 #if IS_ENABLED(CONFIG_MALI_MIDGARD_DVFS) && \
 	IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY)
 int (*mtk_common_rate_change_notify_fp)(struct kbase_device *kbdev,
@@ -343,12 +387,34 @@ static int mtk_dvfs_gpu_utilization_show(struct seq_file *m, void *v)
 }
 DEFINE_PROC_SHOW_ATTRIBUTE(mtk_dvfs_gpu_utilization);
 
+static int mtk_dvfs_gpu_loading_show(struct seq_file *m, void *v)
+{
+#if IS_ENABLED(CONFIG_MALI_MIDGARD_DVFS) && IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY)
+#if IS_ENABLED(CONFIG_MALI_MTK_DVFS_LOADING_MODE)
+	int utilisation = 0;
+
+	mutex_lock(&gpu_loading_lock);
+
+	utilisation = mtk_common_cal_gpu_loading();
+	seq_printf(m, "gpu_loading=%u\n", utilisation);
+
+	mutex_unlock(&gpu_loading_lock);
+
+#endif
+#else
+	seq_puts(m, "GPU DVFS doesn't be enabled\n");
+#endif
+	return 0;
+}
+DEFINE_PROC_SHOW_ATTRIBUTE(mtk_dvfs_gpu_loading);
+
 int mtk_dvfs_procfs_init(struct kbase_device *kbdev, struct proc_dir_entry *parent)
 {
 	if (IS_ERR_OR_NULL(kbdev))
 		return -1;
 
 	proc_create(PROC_GPU_UTILIZATION, 0440, parent, &mtk_dvfs_gpu_utilization_proc_ops);
+	proc_create(PROC_GPU_LOADING, 0440, parent, &mtk_dvfs_gpu_loading_proc_ops);
 
 	return 0;
 }
@@ -359,6 +425,7 @@ int mtk_dvfs_procfs_term(struct kbase_device *kbdev, struct proc_dir_entry *pare
 		return -1;
 
 	remove_proc_entry(PROC_GPU_UTILIZATION, parent);
+	remove_proc_entry(PROC_GPU_LOADING, parent);
 
 	return 0;
 }

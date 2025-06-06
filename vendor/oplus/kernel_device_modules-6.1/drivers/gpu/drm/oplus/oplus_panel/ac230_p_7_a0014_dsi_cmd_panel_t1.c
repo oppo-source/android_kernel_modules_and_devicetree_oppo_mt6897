@@ -78,6 +78,7 @@ extern unsigned int last_backlight;
 extern unsigned int oplus_display_brightness;
 extern unsigned int oplus_max_normal_brightness;
 extern unsigned int oplus_enhance_mipi_strength;
+extern atomic_t esd_pending;
 extern char regs1[AC178_GAMMA_COMPENSATION_READ_LENGTH];
 extern char regs2[AC178_GAMMA_COMPENSATION_READ_LENGTH];
 extern char regs3[AC178_GAMMA_COMPENSATION_READ_LENGTH];
@@ -1345,6 +1346,7 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 	if (temp_seed_mode)
 		panel_set_seed(dsi, cb, handle, temp_seed_mode);
 	OFP_INFO("send aod off cmd\n");
+	atomic_set(&esd_pending, 0);
 
 	return 0;
 }
@@ -1374,6 +1376,7 @@ static int panel_doze_enable(struct drm_panel *panel, void *dsi, dcs_write_gce c
 	}
 
 	OFP_INFO("%s crtc_active:%d, doze_active:%llu\n", __func__, crtc->state->active, mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
+	atomic_set(&esd_pending, 1);
 	for (i = 0; i < (sizeof(aod_on_cmd)/sizeof(struct LCM_setting_table)); i++) {
 		unsigned int cmd;
 		cmd = aod_on_cmd[i].cmd;

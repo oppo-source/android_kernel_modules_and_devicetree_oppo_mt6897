@@ -1566,6 +1566,13 @@ static int milkywayc2wide_set_shutter_frame_length_convert(struct subdrv_ctx *ct
 	if (gph)
 		ctx->s_ctx.s_gph((void *)ctx, 1);
 
+	/* sw power up */
+	if (!ctx->is_streaming) {
+		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
+		subdrv_i2c_wr_u8_u8(ctx, 0x21, 0x0e);
+		subdrv_i2c_wr_u8_u8(ctx, 0x21, 0x00);
+	}
+
 	/* write framelength */
 	if (set_auto_flicker(ctx, 0) || frame_length || !ctx->s_ctx.reg_addr_auto_extend)
 		milkywayc2wide_write_frame_length(ctx, ctx->frame_length);
@@ -1574,7 +1581,7 @@ static int milkywayc2wide_set_shutter_frame_length_convert(struct subdrv_ctx *ct
 	subdrv_i2c_wr_u8_u8(ctx, 0x02, (shutter * 2 >> 16) & 0xFF);
 	subdrv_i2c_wr_u8_u8(ctx, 0x03, (shutter * 2 >>  8) & 0xFF);
 	subdrv_i2c_wr_u8_u8(ctx, 0x04,  shutter * 2  & 0xFF);
-/*	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);	
+/*	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);
 	subdrv_i2c_wr_u8_u8(ctx, 0x01, 0x01);	*/
 
 	DRV_LOG(ctx, "exp[0x%x], fll(input/output):%u/%u, flick_en:%u\n",
@@ -1628,6 +1635,13 @@ static int milkywayc2wide_set_gain_convert(struct subdrv_ctx *ctx, u32 gain)
 	/* group hold start */
 	if (gph && !ctx->ae_ctrl_gph_en)
 		ctx->s_ctx.s_gph((void *)ctx, 1);
+
+	/* sw power up */
+	if (!ctx->is_streaming) {
+		subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x00);
+		subdrv_i2c_wr_u8_u8(ctx, 0x21, 0x0e);
+		subdrv_i2c_wr_u8_u8(ctx, 0x21, 0x00);
+	}
 
 	/* write gain */
 	subdrv_i2c_wr_u8_u8(ctx, 0xfd, 0x01);

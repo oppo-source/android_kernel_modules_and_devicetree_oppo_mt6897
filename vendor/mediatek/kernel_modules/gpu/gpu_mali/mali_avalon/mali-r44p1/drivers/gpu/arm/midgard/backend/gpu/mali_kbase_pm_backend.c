@@ -1211,7 +1211,14 @@ int kbase_pm_handle_runtime_suspend(struct kbase_device *kbdev)
 	}
 
 	mcu_state = kbdev->pm.backend.mcu_state;
-	WARN_ON(!kbase_pm_is_mcu_inactive(kbdev, mcu_state));
+	if (unlikely(!kbase_pm_is_mcu_inactive(kbdev, mcu_state))) {
+		dev_WARN_ONCE(kbdev->dev, 1, "MCU SM in unexpected state %d on runtime suspend",
+			      mcu_state);
+		ret = -EBUSY;
+		spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
+		goto unlock;
+	}
+
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
 
 	if (mcu_state == KBASE_MCU_IN_SLEEP) {

@@ -185,6 +185,13 @@ static void ufs_vh_update_sdev(void *data, struct scsi_device *sdev)
 
 	ufsf_slave_configure(ufsf, sdev);
 }
+
+static void ufs_samsung_register_hooks(void)
+{
+	register_trace_android_vh_ufs_prepare_command(ufs_vh_prep_fn, NULL);
+	register_trace_android_vh_ufs_compl_command(ufs_vh_compl_command, NULL);
+	register_trace_android_vh_ufs_update_sdev(ufs_vh_update_sdev, NULL);
+}
 #endif
 
 #ifdef CONFIG_MTK_UFS_TRANSMISSION_STATUS
@@ -3387,10 +3394,19 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 
 	ufs_mtk_install_tracepoints(hba);
 
+	/* give more time for H8 */
+	if (STR_PRFX_EQUAL("KLUFG4LHGC-B0E1", dev_info->model)) {
+		hba->rpm_lvl = UFS_PM_LVL_1;
+		hba->spm_lvl = UFS_PM_LVL_1;
+	}
+
 #if defined(CONFIG_UFSFEATURE)
 	if (hba->dev_quirks & UFS_DEVICE_QUIRK_SAMSUNG_QLC) {
 		host->ufsf.hba = hba;
+		if (hba->caps & UFSHCD_CAP_WB_EN)
+			hba->caps &= ~UFSHCD_CAP_WB_EN;
 		ufsf_set_init_state(hba);
+		ufs_samsung_register_hooks();
 	}
 #endif
 }
@@ -3858,15 +3874,6 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 #endif
 };
 
-#if defined(CONFIG_UFSFEATURE)
-static void ufs_samsung_register_hooks(void)
-{
-	register_trace_android_vh_ufs_prepare_command(ufs_vh_prep_fn, NULL);
-	register_trace_android_vh_ufs_compl_command(ufs_vh_compl_command, NULL);
-	register_trace_android_vh_ufs_update_sdev(ufs_vh_update_sdev, NULL);
-}
-#endif
-
 /**
  * ufs_mtk_probe - probe routine of the driver
  * @pdev: pointer to Platform device handle
@@ -3962,12 +3969,6 @@ skip_phy:
 		regulator_set_mode((hba->vreg_info.vccq2)->reg,
 				REGULATOR_MODE_NORMAL);
 
-#if defined(CONFIG_UFSFEATURE)
-	/* Register hook for Samsung feature */
-	if (hba->dev_quirks & UFS_DEVICE_QUIRK_SAMSUNG_QLC) {
-		ufs_samsung_register_hooks();
-	}
-#endif
 out:
 	of_node_put(phy_node);
 	of_node_put(reset_node);

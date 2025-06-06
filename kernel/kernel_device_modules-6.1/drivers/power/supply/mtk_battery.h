@@ -971,6 +971,7 @@ struct gauge_track_cali_info_s {
 	int quse;
 	int zcv;
 	int batt_cc;
+	int show_ag;
 };
 enum oplus_gauge_track_type {
 	GAUGE_TRACK_CALI_FLAG_ZCV = 1,

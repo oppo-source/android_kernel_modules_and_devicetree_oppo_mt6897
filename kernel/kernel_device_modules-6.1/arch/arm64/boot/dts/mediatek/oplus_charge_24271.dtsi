@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
-* Copyright (C) 2021-2020 Oplus. All rights reserved.
+* Copyright (C) 2024-2025 Oplus. All rights reserved.
 */
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/pinctrl/mt6373-pinfunc.h>
@@ -141,6 +141,7 @@
 		oplus,chg_framework_v2;
 		oplus,smart_charging_screenoff;
 		oplus,chg_spec_version = <OPLUS_CHG_SPEC_VER_V3P7>;
+		oplus,common-charge-icl-support;
 
 		oplus-charger {
 			mtk_6895_groups: oplus,mtk_6895-groups {
@@ -180,6 +181,7 @@
 					OPLUS_IC_FUNC_IS_OPLUS_SVID
 					OPLUS_IC_FUNC_BUCK_GET_USB_BTB_TEMP
 					OPLUS_IC_FUNC_BUCK_GET_BATT_BTB_TEMP
+					OPLUS_IC_FUNC_BUCK_SHIPMODE_ENABLE
 					OPLUS_IC_FUNC_BUCK_SET_AICL_POINT
 					OPLUS_IC_FUNC_SET_OTG_BOOST_CURR_LIMIT
 					OPLUS_IC_FUNC_BUCK_GET_FV
@@ -553,7 +555,7 @@
 		oplus_spec,qc-iclmax-ma = <1500>;
 		oplus_spec,non-standard-ibatmax-ma = <500>;
 		oplus_spec,input-power-mw = <
-			2500		/* OPLUS_WIRED_CHG_MODE_UNKNOWN */
+			500	    	/* OPLUS_WIRED_CHG_MODE_UNKNOWN */
 			2500		/* OPLUS_WIRED_CHG_MODE_SDP */
 			7500		/* OPLUS_WIRED_CHG_MODE_CDP */
 			10000		/* OPLUS_WIRED_CHG_MODE_DCP */
@@ -791,6 +793,7 @@
 		oplus_spec,vooc_cool_down_current_limit = <73 20 20 24 30 34 40 44 50 54 60 64 70 74>;
 
 		oplus_spec,vooc_multistep_initial_batt_temp = <1000>;
+		oplus_spec,fastchg_timeout_time_init = <150170>;
 		oplus_spec,vooc_little_cool_temp = <160>;
 		oplus_spec,vooc_little_cool_high_temp = <210>;
 		oplus_spec,vooc_cool_temp = <120>;
@@ -1342,3 +1345,15 @@
 	};
 };
 
+/* for pd common charger */
+&ssusb {
+		usb-psy-name = "mtk-master-charger";
+		typec-name = "rt-pd-manager";
+		typec-port-name = "port0";
+};
+
+&i2c5 {
+		mediatek,fifo-use-polling;
+		mediatek,request-cpu-qos;
+};
+#include "oplus_charge_24271_pps.dtsi"

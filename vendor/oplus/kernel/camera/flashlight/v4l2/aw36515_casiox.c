@@ -241,16 +241,20 @@ static int aw36515_casiox_mode_ctrl(struct aw36515_casiox_flash *flash)
 static int aw36515_casiox_enable_ctrl(struct aw36515_casiox_flash *flash,
 			      enum aw36515_casiox_led_id led_no, bool on)
 {
-	int rval;
+	int rval = -1;
+	unsigned int reg_flag = -1;
 
 	pr_info("%s %d enable:%d", __func__, led_no, on);
 	if (led_no == AW36515_CASIOX_LED0) {
-		if (on)
+		if (on) {
+			rval = regmap_read(flash->regmap, REG_FLAG2, &reg_flag);
+			msleep(1);
 			rval = regmap_update_bits(flash->regmap,
 						  REG_ENABLE, 0x01, 0x01);
-		else
+		} else {
 			rval = regmap_update_bits(flash->regmap,
 						  REG_ENABLE, 0x01, 0x00);
+		}
 	} else {
 		if (on)
 			rval = regmap_update_bits(flash->regmap,

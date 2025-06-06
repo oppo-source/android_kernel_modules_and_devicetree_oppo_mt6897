@@ -30,7 +30,7 @@
 #define PFX "yamahamain_camera_sensor"
 #define LOG_INF(format, args...) pr_err(PFX "[%s] " format, __func__, ##args)
 #define OTP_SIZE    0x8000
-#define OTP_QSC_VALID_ADDR 0x2A30
+#define OTP_QSC_VALID_ADDR 0x2ED0
 #define OTP_PDC_VALID_ADDR 0x7DA0
 #define OTP_QCOM_PDAF_DATA_LENGTH 0x1832
 #define OTP_QCOM_PDAF_OFFSET_DATA_LENGTH 0x650
@@ -71,6 +71,8 @@ static bool read_cmos_eeprom_p8(struct subdrv_ctx *ctx, kal_uint16 addr,
 static int yamahamain_get_otp_qcom_pdaf_data(struct subdrv_ctx *ctx, u8 *para, u32 *len);
 
 static int yamahamain_get_otp_qcom_pdaf_offset_data(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+static int yamahamain_get_eeprom_4cell_info(struct subdrv_ctx *ctx, u8 *para, u32 *len);
+
 /* STRUCT */
 
 static struct eeprom_map_info yamahamain_eeprom_info[] = {
@@ -100,6 +102,7 @@ static struct subdrv_feature_control feature_control_list[] = {
 	{SENSOR_FEATURE_SET_AWB_GAIN, yamahamain_set_awb_gain},
 	{SENSOR_FEATURE_GET_OTP_QCOM_PDAF_DATA, yamahamain_get_otp_qcom_pdaf_data},
 	{SENSOR_FEATURE_GET_OTP_QCOM_PDAF_OFFSET_DATA, yamahamain_get_otp_qcom_pdaf_offset_data},
+	{SENSOR_FEATURE_GET_4CELL_DATA, yamahamain_get_eeprom_4cell_info},
 };
 
 static u32 yamahamain_dcg_ratio_table_ratio4[] = {4000};
@@ -117,12 +120,12 @@ static struct eeprom_info_struct eeprom_info[] = {
 
 		.qsc_support = TRUE,
 		.qsc_size = 0x0C00,
-		.addr_qsc = 0x1E30,/*QSC_EEPROM_ADDR*/
+		.addr_qsc = 0x22D0,/*QSC_EEPROM_ADDR*/
 		.sensor_reg_addr_qsc = 0xC000, /*QSC_OTP_ADDR*/
 
 		.pdc_support = TRUE,
 		.pdc_size = 0x180,
-		.addr_pdc = 0x7C20,
+		.addr_pdc = 0x2EE0,
 		.sensor_reg_addr_pdc = 0xD200,
 	},
 };
@@ -150,7 +153,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info = {
 		/* <cust11> <cust12> <cust13> <cust14> */
 		{2048, 1536}, {2048, 1536}, {0, 0}, {0, 0},
 	},
-	.iMirrorFlip = 3,
+	.iMirrorFlip = 0,
 	.i4FullRawW = 4096,
 	.i4FullRawH = 3072,
 	.i4VCPackNum = 1,
@@ -188,7 +191,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_v2h2 = {
 		/* <cust11> <cust12> <cust13> <cust14> */
 		{2048, 1536}, {2048, 1536}, {0, 0}, {0, 0},
 	},
-	.iMirrorFlip = 3,
+	.iMirrorFlip = 0,
 	.i4FullRawW = 2048,
 	.i4FullRawH = 1536,
 	.i4VCPackNum = 1,
@@ -226,12 +229,12 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_full = {
 		/* <cust11> <cust12> <cust13> <cust14> */
 		{2048, 1536}, {2048, 1536}, {0, 0}, {0, 0},
 	},
-	.iMirrorFlip = 3,
+	.iMirrorFlip = 0,
 	.i4FullRawW = 8192,
 	.i4FullRawH = 6144,
 	.i4VCPackNum = 1,
 	.PDAF_Support = PDAF_SUPPORT_CAMSV_QPD,
-	.i4ModeIndex = 0x4,
+	.i4ModeIndex = 0x2,
 	.sPDMapInfo[0] = {
 		.i4PDPattern = 1,
 		.i4BinFacX = 4,
@@ -245,14 +248,14 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_partial_pd_info = {
 	.i4OffsetX = 16,
 	.i4OffsetY = 32,
 	.i4PitchX = 8,
-	.i4PitchY = 16,
+	.i4PitchY = 32,
 	.i4PairNum = 4,
 	.i4SubBlkW = 8,
-	.i4SubBlkH = 4,
-	.i4PosL = {{16, 35}, {20, 37}, {19, 42}, {23, 44}},
-	.i4PosR = {{18, 33}, {22, 39}, {17, 40}, {21, 46}},
+	.i4SubBlkH = 8,
+	.i4PosL = {{20, 33},  {20, 43}, {19, 48},  {19, 58}},
+	.i4PosR = {{16, 33},  {16, 43}, {23, 48},  {23, 58}},
 	.i4BlockNumX = 504,
-	.i4BlockNumY = 144,
+	.i4BlockNumY = 72,
 	.i4Crop = {
 		/* <pre> <cap> <normal_video> <hs_video> <slim_video> */
 		{0, 0}, {0, 0}, {0, 384}, {0, 384}, {0, 192},
@@ -260,21 +263,22 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_partial_pd_info = {
 		{0, 192}, {0, 0}, {0, 384}, {0, 0}, {2048, 1536},
 		/* <cust6> <cust7> <cust8> <cust9> <cust10> */
 		{2048, 1536}, {0, 0}, {0, 0}, {0, 0}, {2048, 1536},
-		/* <cust11> <cust12> <cust13> <cust14> */
-		{2048, 1536}, {2048, 1536}, {0, 0}, {0, 0},
+		/* <cust11> <cust12>  <cust13> <cust14>*/
+		{0, 0}, {2048, 1536}, {0, 0}, {0, 0},
 	},
-	.iMirrorFlip = 3,
+	.i4VolumeX = 1,
+	.i4VolumeY = 1,
+	.iMirrorFlip = 0,
 	.i4FullRawW = 4096,
 	.i4FullRawH = 3072,
-	.i4ModeIndex = 0,
+	.i4ModeIndex = 4,
 	.i4VCPackNum = 1,
 	.PDAF_Support = PDAF_SUPPORT_CAMSV,
 	/* VC's PD pattern description */
 	.sPDMapInfo[0] = {
-		/*.i4VCFeature = VC_PDAF_STATS_NE_PIX_1,*/
 		.i4PDPattern = 3,
-		.i4PDRepetition = 4,
-		.i4PDOrder = {0, 1, 1, 0}, /*R = 1, L = 0*/
+		.i4PDRepetition = 8,
+		.i4PDOrder = {0, 0, 1, 1, 1, 1, 0, 0}, /*R = 1, L = 0*/
 	},
 };
 
@@ -1110,10 +1114,10 @@ static struct subdrv_mode_struct mode_struct[] = {
 		.fine_integ_line = -590,
 		.delay_frame = 3,
 		.csi_param = {},
-		.sensor_setting_info = {
+		/*.sensor_setting_info = {
 			.sensor_scenario_usage = NORMAL_MASK,
 			.equivalent_fps = 30,
-		},
+		},*/
 		.dpc_enabled = true,
 		.ana_gain_max = BASEGAIN * 64,
 	},
@@ -1271,7 +1275,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.pdaf_cap = TRUE,
 		.imgsensor_pd_info = &imgsensor_pd_info_full,
-		.ae_binning_ratio = 1000,
+		.ae_binning_ratio = 1428,
 		.fine_integ_line = -428,
 		.delay_frame = 2,
 		.csi_param = {
@@ -1395,7 +1399,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.pdaf_cap = TRUE,
 		.imgsensor_pd_info = &imgsensor_pd_info_full,
-		.ae_binning_ratio = 1000,
+		.ae_binning_ratio = 1428,
 		.fine_integ_line = -428,
 		.delay_frame = 3,
 		.csi_param = {
@@ -1449,7 +1453,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.pdaf_cap = TRUE,
 		.imgsensor_pd_info = &imgsensor_pd_info_full,
-		.ae_binning_ratio = 1000,
+		.ae_binning_ratio = 1428,
 		.fine_integ_line = -428,
 		.delay_frame = 3,
 		.csi_param = {
@@ -1558,7 +1562,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 		},
 		.pdaf_cap = TRUE,
 		.imgsensor_pd_info = &imgsensor_pd_info_full,
-		.ae_binning_ratio = 1428,
+		.ae_binning_ratio = 1000,
 		.fine_integ_line = -590,
 		.delay_frame = 3,
 		.csi_param = {
@@ -1568,8 +1572,9 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.sensor_scenario_usage = INSENSORZOOM_MASK,
 			.equivalent_fps = 24,
 		},
+		.multi_exposure_ana_gain_range[IMGSENSOR_EXPOSURE_LE].max = BASEGAIN * 16,
 		.dpc_enabled = true,
-		.ana_gain_max = BASEGAIN * 64,
+		.ana_gain_max = BASEGAIN * 16,
 	},
 	{/*reg_L2-RAW-S1 4096x3072 @15FPS Full-RAW 2LB-MF w/ All-PD VB Max*/
 		.frame_desc = frame_desc_cus12,
@@ -1731,7 +1736,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.cphy_settle = 58,
 		},
 		.sensor_setting_info = {
-			.sensor_scenario_usage = UNUSE_MASK,
+			.sensor_scenario_usage = NORMAL_MASK,
 			.equivalent_fps = 60,
 		},
 		.dpc_enabled = true,
@@ -1875,7 +1880,7 @@ static struct subdrv_pw_seq_entry pw_seq[] = {
 	{HW_ID_DVDD, 1160000, 4},
 	{HW_ID_DOVDD, 1804000, 3},
 	{HW_ID_MCLK_DRIVING_CURRENT, 4, 6},
-	{HW_ID_RST, 1, 4}
+	{HW_ID_RST, 1, 12}
 };
 
 const struct subdrv_entry yamahamain_mipi_raw_entry = {
@@ -1934,20 +1939,10 @@ static struct oplus_eeprom_info_struct  oplus_eeprom_info = {0};
 
 static int get_eeprom_common_data(struct subdrv_ctx *ctx, u8 *para, u32 *len)
 {
-	u32 addr_sensorver = 0x0018;
 	struct oplus_eeprom_info_struct* infoPtr;
 	memcpy(para, (u8*)(&oplus_eeprom_info), sizeof(oplus_eeprom_info));
 	infoPtr = (struct oplus_eeprom_info_struct*)(para);
 	*len = sizeof(oplus_eeprom_info);
-	if (subdrv_i2c_rd_u8(ctx, addr_sensorver) != 0x00) {
-		printk("need to convert to 10bit");
-		infoPtr->afInfo[0] = (kal_uint8)((infoPtr->afInfo[1] << 4) | (infoPtr->afInfo[0] >> 4));
-		infoPtr->afInfo[1] = (kal_uint8)(infoPtr->afInfo[1] >> 4);
-		infoPtr->afInfo[2] = (kal_uint8)((infoPtr->afInfo[3] << 4) | (infoPtr->afInfo[2] >> 4));
-		infoPtr->afInfo[3] = (kal_uint8)(infoPtr->afInfo[3] >> 4);
-		infoPtr->afInfo[4] = (kal_uint8)((infoPtr->afInfo[5] << 4) | (infoPtr->afInfo[4] >> 4));
-		infoPtr->afInfo[5] = (kal_uint8)(infoPtr->afInfo[5] >> 4);
-	}
 	return 0;
 }
 
@@ -2323,11 +2318,9 @@ static void feedback_awbgain(struct subdrv_ctx *ctx, kal_uint32 r_gain, kal_uint
 	UINT32 r_gain_int = 0;
 	UINT32 b_gain_int = 0;
 
-	if (ctx->current_scenario_id == SENSOR_SCENARIO_ID_CUSTOM3 ||
-		ctx->current_scenario_id == SENSOR_SCENARIO_ID_CUSTOM5 ||
-		ctx->current_scenario_id == SENSOR_SCENARIO_ID_CUSTOM7 ||
-		ctx->current_scenario_id == SENSOR_SCENARIO_ID_CUSTOM12 ||
-		ctx->current_scenario_id == SENSOR_SCENARIO_ID_CUSTOM13) {
+	if (ctx->current_scenario_id == SENSOR_SCENARIO_ID_CUSTOM5 ||
+		ctx->current_scenario_id == SENSOR_SCENARIO_ID_CUSTOM8 ||
+		ctx->current_scenario_id == SENSOR_SCENARIO_ID_CUSTOM11) {
 		DRV_LOG(ctx, "feedback_awbgain r_gain: %d, b_gain: %d\n", r_gain, b_gain);
 		r_gain_int = r_gain / 512;
 		b_gain_int = b_gain / 512;
@@ -2646,7 +2639,9 @@ static int yamahamain_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *le
 	/* 1:Solid Color 2:Color Bar 5:Black */
 		switch (mode) {
 		case 5:
-			subdrv_i2c_wr_u8(ctx, 0x0601, 0x01);
+			subdrv_i2c_wr_u8(ctx, 0x020E, 0x00);
+			subdrv_i2c_wr_u8(ctx, 0x0218, 0x00);
+			subdrv_i2c_wr_u8(ctx, 0x3015, 0x00);
 			break;
 		default:
 			subdrv_i2c_wr_u8(ctx, 0x0601, mode);
@@ -2654,6 +2649,9 @@ static int yamahamain_set_test_pattern(struct subdrv_ctx *ctx, u8 *para, u32 *le
 		}
 	} else if (ctx->test_pattern) {
 		subdrv_i2c_wr_u8(ctx, 0x0601, 0x00); /*No pattern*/
+		subdrv_i2c_wr_u8(ctx, 0x020E, 0x01);
+		subdrv_i2c_wr_u8(ctx, 0x0218, 0x01);
+		subdrv_i2c_wr_u8(ctx, 0x3015, 0x40);
 	}
 	ctx->test_pattern = mode;
 	return 0;
@@ -2824,4 +2822,20 @@ static void calculate_prsh_length_lines(struct subdrv_ctx *ctx,
 	}
 
 	ctx->s_ctx.seamless_switch_prsh_length_lc = prsh_length_lc;
+}
+
+static int yamahamain_get_eeprom_4cell_info(struct subdrv_ctx *ctx, u8 *para, u32 *len)
+{
+	u64 * feature_data = (u64 *) para;
+	u8 * data = (char *)(uintptr_t)(*(feature_data + 1));
+	u16 type = (u16)(*feature_data);
+
+	if (type == FOUR_CELL_CAL_TYPE_XTALK_CAL) {
+		*len = ctx->s_ctx.eeprom_info->qsc_size;
+		data[0] = *len & 0xFF;
+		data[1] = (*len >> 8) & 0xFF;
+		memcpy(data + 2, (u8*)(ctx->s_ctx.eeprom_info->preload_qsc_table), ctx->s_ctx.eeprom_info->qsc_size);
+	}
+
+	return 0;
 }

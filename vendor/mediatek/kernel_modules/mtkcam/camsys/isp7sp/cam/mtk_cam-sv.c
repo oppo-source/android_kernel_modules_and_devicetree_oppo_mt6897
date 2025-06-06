@@ -1956,10 +1956,7 @@ static irqreturn_t mtk_thread_irq_camsv(int irq, void *data)
 			writel_relaxed(0, sv_dev->base_inner + REG_CAMSVCENTRAL_SPARE);
 
 			/* smi dump */
-			mtk_smi_dbg_hang_detect("camsys-camsv");
-
-			mtk_cam_ctrl_dump_request(sv_dev->cam, CAMSYS_ENGINE_CAMSV, sv_dev->id,
-				irq_info.frame_idx_inner, MSG_CAMSV_IRQ_PANIC);
+			WRAP_AEE_EXCEPTION(MSG_CAMSV_IRQ_PANIC, "camsv error: irq panic");
 			continue;
 		}
 		// #endif /*OPLUS_FEATURE_CAMERA_COMMON*/

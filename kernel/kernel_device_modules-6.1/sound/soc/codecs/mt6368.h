@@ -5716,6 +5716,7 @@ enum {
 	HP_MUX_HP,
 	HP_MUX_TEST_MODE,
 	HP_MUX_HP_IMPEDANCE,
+	HP_MUX_HP_DUALSPK,
 	HP_MUX_MASK = 0x7,
 };
 
@@ -5912,6 +5913,7 @@ struct mt6368_priv {
 	/* regulator */
 	struct regulator *reg_vaud18;
 
+	unsigned int oplus_analog_dual_pa_support;
 };
 
 #define MT_SOC_ENUM_EXT_ID(xname, xenum, xhandler_get, xhandler_put, id) \

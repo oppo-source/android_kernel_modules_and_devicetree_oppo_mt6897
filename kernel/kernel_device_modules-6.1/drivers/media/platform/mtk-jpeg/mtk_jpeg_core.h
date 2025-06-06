@@ -14,6 +14,7 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-fh.h>
+#include "slbc_ops.h"
 
 #define MTK_JPEG_NAME		"mtk-jpeg"
 
@@ -56,6 +57,7 @@ enum mtk_jpeg_ctx_state {
 	MTK_JPEG_INIT = 0,
 	MTK_JPEG_RUNNING,
 	MTK_JPEG_SOURCE_CHANGE,
+	MTK_JPEG_RELEASED,
 };
 
 /**

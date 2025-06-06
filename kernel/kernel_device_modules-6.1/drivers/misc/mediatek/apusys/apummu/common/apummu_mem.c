@@ -13,6 +13,10 @@
 #include <linux/of_device.h>
 #include <linux/highmem.h>
 
+#include <linux/kernel.h>
+#include <linux/uaccess.h>
+#include <linux/seq_file.h>
+
 #include "apummu_cmn.h"
 #include "apummu_mem.h"
 #include "apummu_import.h"
@@ -21,6 +25,15 @@
 static struct apummu_mem *g_mem_sys;
 static uint32_t general_SLB_attempt_cnt;
 static uint32_t DMA_CNT;
+
+static long long memsize = 0;
+static int read_meminfo(void) {
+	struct sysinfo m;
+	si_meminfo(&m);
+	memsize = m.totalram*m.mem_unit/(1024*1024*1024);
+	AMMU_LOG_INFO("m.totalram = %lu,  m.mem_unit = %u",m.totalram,m.mem_unit);
+	return 0;
+}
 
 struct ammu_mem_dma {
 	dma_addr_t dma_addr;
@@ -443,13 +456,32 @@ int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 		goto out;
 	}
 #else
+#ifdef CONFIG_OPLUS_FEATURE_CAMERA_APU_CACHED_ENABLE
+	if(memsize>MEM_8G_SIZE){
+		mem->heap = dma_heap_find("mtk_mm");
+		if (!mem->heap) {
+			AMMU_LOG_ERR("Cannot get mtk_mm heap\n");
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+	else
+	{
+		mem->heap = dma_heap_find("mtk_mm-uncached");
+		if (!mem->heap) {
+			AMMU_LOG_ERR("Cannot get mtk_mm-uncached heap\n");
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+#else
 	mem->heap = dma_heap_find("mtk_mm-uncached");
 	if (!mem->heap) {
 		AMMU_LOG_ERR("Cannot get mtk_mm-uncached heap\n");
 		ret = -ENOMEM;
 		goto out;
 	}
-
+#endif  //CONFIG_OPLUS_FEATURE_CAMERA_APU_CACHED_ENABLE
 	mem->priv = dma_heap_buffer_alloc(mem->heap, mem->size, O_RDWR | O_CLOEXEC, 0);
 	if (IS_ERR_OR_NULL(mem->priv)) {
 		if (!mem->priv || mem->priv != ERR_PTR(-EINTR)) {
@@ -476,6 +508,15 @@ int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 	}
 
 	mem->iova = sg_dma_address(mem->sgt->sgl);
+#ifdef CONFIG_OPLUS_FEATURE_CAMERA_APU_CACHED_ENABLE
+	if(memsize>MEM_8G_SIZE){
+		ret = dma_buf_end_cpu_access(mem->priv,DMA_TO_DEVICE);
+		if(ret){
+			AMMU_LOG_ERR("Flush Fail\n");
+			goto dbuf_map_attachment_err;
+		}
+	}
+#endif //CONFIG_OPLUS_FEATURE_CAMERA_APU_CACHED_ENABLE
 #endif
 
 	AMMU_LOG_INFO("DRAM alloc mem(0x%llx/0x%x)\n",
@@ -693,4 +734,5 @@ void apummu_mem_init(void)
 {
 	general_SLB_attempt_cnt = 0;
 	DMA_CNT = 0;
+	read_meminfo();
 }

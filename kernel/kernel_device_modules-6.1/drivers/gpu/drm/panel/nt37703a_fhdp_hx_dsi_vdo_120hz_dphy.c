@@ -28,6 +28,7 @@
 #if defined(CONFIG_MTK_PANEL_EXT)
 #include "../mediatek/mediatek_v2/mtk_panel_ext.h"
 #include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
+#include "../mediatek/mediatek_v2/mtk_dsi.h"
 #endif
 
 #include "../mediatek/mediatek_v2/mtk_corner_pattern/oplus24705_data_hw_roundedpattern.h"
@@ -276,7 +277,22 @@ static void lcm_panel_init(struct lcm *ctx)
 
 	//--关闭硬件圆角
 	lcm_dcs_write_seq_static(ctx,0xF0,0x55,0xAA,0x52,0x08,0x07);
-	lcm_dcs_write_seq_static(ctx,0xC0,0x86);
+	lcm_dcs_write_seq_static(ctx,0xC1,0x00);
+	lcm_dcs_write_seq_static(ctx,0xC2,0x00);
+	lcm_dcs_write_seq_static(ctx,0xC3,0x00);
+	lcm_dcs_write_seq_static(ctx,0xC4,0x00);
+	lcm_dcs_write_seq_static(ctx,0xC5,0x00);
+	lcm_dcs_write_seq_static(ctx,0xC6,0x00);
+	lcm_dcs_write_seq_static(ctx,0xC7,0x00);
+	lcm_dcs_write_seq_static(ctx,0xC8,0x00);
+	lcm_dcs_write_seq_static(ctx,0xC9,0x00);
+	lcm_dcs_write_seq_static(ctx,0xCA,0x00);
+	lcm_dcs_write_seq_static(ctx,0xCB,0x00);
+	lcm_dcs_write_seq_static(ctx,0xCC,0x00);
+	lcm_dcs_write_seq_static(ctx,0xCD,0x00);
+	lcm_dcs_write_seq_static(ctx,0xCE,0x00);
+	lcm_dcs_write_seq_static(ctx,0xCF,0x00);
+	lcm_dcs_write_seq_static(ctx,0xD0,0x00);
 	//--------update增加11 29
 	lcm_dcs_write_seq_static(ctx, 0x11, 0x00);
 	usleep_range(120*1000, 121*1000);
@@ -429,14 +445,14 @@ static struct mtk_panel_params ext_params_60Hz = {
 	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 
-	.cust_esd_check = 1,
+	.cust_esd_check = 0,
 	.esd_check_enable = 1,
-	.lcm_esd_check_table[0] = {
-		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
-	},
-	.lcm_esd_check_table[1] = {
-		.cmd = 0xAB, .count = 2, .para_list[0] = 0x00, .para_list[1] = 0x00,
-	},
+	//.lcm_esd_check_table[0] = {
+	//	.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
+	//},
+	//.lcm_esd_check_table[1] = {
+	//	.cmd = 0xAB, .count = 2, .para_list[0] = 0x00, .para_list[1] = 0x00,
+	//},
 	.vdo_mix_mode_en = false,
 	// .lcm_esd_check_table[1] = {
 	// 	.cmd = 0x05, .count = 1, .para_list[0] = 0x00,
@@ -534,14 +550,14 @@ static struct mtk_panel_params ext_params_90Hz = {
 	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 
-	.cust_esd_check = 1,
+	.cust_esd_check = 0,
 	.esd_check_enable = 1,
-	.lcm_esd_check_table[0] = {
-		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
-	},
-	.lcm_esd_check_table[1] = {
-		.cmd = 0xAB, .count = 2, .para_list[0] = 0x00, .para_list[1] = 0x00,
-	},
+	//.lcm_esd_check_table[0] = {
+	//	.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
+	//},
+	//.lcm_esd_check_table[1] = {
+	//	.cmd = 0xAB, .count = 2, .para_list[0] = 0x00, .para_list[1] = 0x00,
+	//},
 	.vdo_mix_mode_en = false,
 	// .lcm_esd_check_table[1] = {
 	// 	.cmd = 0x05, .count = 1, .para_list[0] = 0x00,
@@ -642,14 +658,14 @@ static struct mtk_panel_params ext_params_120Hz = {
 	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 
-	.cust_esd_check = 1,
+	.cust_esd_check = 0,
 	.esd_check_enable = 1,
-	.lcm_esd_check_table[0] = {
-		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
-	},
-	.lcm_esd_check_table[1] = {
-		.cmd = 0xAB, .count = 2, .para_list[0] = 0x00, .para_list[1] = 0x00,
-	},
+	//.lcm_esd_check_table[0] = {
+	//	.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
+	//},
+	//.lcm_esd_check_table[1] = {
+	//	.cmd = 0xAB, .count = 2, .para_list[0] = 0x00, .para_list[1] = 0x00,
+	//},
 	.vdo_mix_mode_en = false,
 	// .lcm_esd_check_table[1] = {
 	// 	.cmd = 0x05, .count = 1, .para_list[0] = 0x00,
@@ -807,52 +823,55 @@ static int oplus_ofp_set_lhbm_pressed_icon_single(struct drm_panel *panel, void 
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 	int i = 0;
+	static unsigned int tmp_brightness= 0;
 
 	if (!dsi || !cb) {
 		pr_err("Invalid params\n");
 		return -EINVAL;
 	}
-
-	pr_info("%s,oplus_display_brightness=%d, hbm_mode=%u\n", __func__, oplus_display_brightness, en);
+	if (oplus_display_brightness > 8) {
+		tmp_brightness = oplus_display_brightness;
+	}
+	pr_info("%s,oplus_display_brightness=%d, tmp_brightness=%d, hbm_mode=%u\n", __func__, oplus_display_brightness, tmp_brightness, en);
 	if (en == 1) {
-		if (oplus_display_brightness >= 0x47C && oplus_display_brightness <= 0xDBB) {
+		if (tmp_brightness >= 0x47C && tmp_brightness <= 0xDBB) {
 			for (i = 0; i < sizeof(lcm_finger_lhbm_on1_setting)/sizeof(struct LCM_setting_table); i++){
 				cb(dsi, handle, lcm_finger_lhbm_on1_setting[i].para_list, lcm_finger_lhbm_on1_setting[i].count);
 			}
 
-			if(oplus_display_brightness >= 0x47C && oplus_display_brightness < 0x5EA){
+			if(tmp_brightness >= 0x47C && tmp_brightness < 0x5EA){
 				for (i = 0; i < sizeof(lcm_finger_lhbm_on11_setting)/sizeof(struct LCM_setting_table); i++){
 					cb(dsi, handle, lcm_finger_lhbm_on11_setting[i].para_list, lcm_finger_lhbm_on11_setting[i].count);
 				}
-			} else if (oplus_display_brightness >= 0x5EA && oplus_display_brightness < 0x86C) {
+			} else if (tmp_brightness >= 0x5EA && tmp_brightness < 0x86C) {
 				for (i = 0; i < sizeof(lcm_finger_lhbm_on12_setting)/sizeof(struct LCM_setting_table); i++){
 					cb(dsi, handle, lcm_finger_lhbm_on12_setting[i].para_list, lcm_finger_lhbm_on12_setting[i].count);
 				}
-			} else if (oplus_display_brightness >= 0x86C && oplus_display_brightness < 0xAE9) {
+			} else if (tmp_brightness >= 0x86C && tmp_brightness < 0xAE9) {
 				for (i = 0; i < sizeof(lcm_finger_lhbm_on13_setting)/sizeof(struct LCM_setting_table); i++){
 					cb(dsi, handle, lcm_finger_lhbm_on13_setting[i].para_list, lcm_finger_lhbm_on13_setting[i].count);
 				}
-			} else if (oplus_display_brightness >= 0xAE9 && oplus_display_brightness < 0xDBB) {
+			} else if (tmp_brightness >= 0xAE9 && tmp_brightness < 0xDBB) {
 				for (i = 0; i < sizeof(lcm_finger_lhbm_on14_setting)/sizeof(struct LCM_setting_table); i++){
 					cb(dsi, handle, lcm_finger_lhbm_on14_setting[i].para_list, lcm_finger_lhbm_on14_setting[i].count);
 				}
 			}
 		} else {
-			if(oplus_display_brightness < 0x47C) {
-				lcm_finger_lhbm_on2_setting[2].para_list[7] = alpha_H[oplus_display_brightness];
-				lcm_finger_lhbm_on2_setting[2].para_list[8] = alpha_L[oplus_display_brightness];
+			if(tmp_brightness < 0x47C) {
+				lcm_finger_lhbm_on2_setting[2].para_list[7] = alpha_H[tmp_brightness];
+				lcm_finger_lhbm_on2_setting[2].para_list[8] = alpha_L[tmp_brightness];
 				for (i = 0; i < sizeof(lcm_finger_lhbm_on2_setting)/sizeof(struct LCM_setting_table); i++){
 					cb(dsi, handle, lcm_finger_lhbm_on2_setting[i].para_list, lcm_finger_lhbm_on2_setting[i].count);
 				}
 			}
 		}
 	} else if (en == 0) {
-		lcm_lhbm_off_setbrightness_normal[1].para_list[1] = oplus_display_brightness >> 8;
-		lcm_lhbm_off_setbrightness_normal[1].para_list[2] = oplus_display_brightness & 0xFF;
+		lcm_lhbm_off_setbrightness_normal[1].para_list[1] = tmp_brightness >> 8;
+		lcm_lhbm_off_setbrightness_normal[1].para_list[2] = tmp_brightness & 0xFF;
 		for (i = 0; i < sizeof(lcm_lhbm_off_setbrightness_normal)/sizeof(struct LCM_setting_table); i++){
 			cb(dsi, handle, lcm_lhbm_off_setbrightness_normal[i].para_list, lcm_lhbm_off_setbrightness_normal[i].count);
 		}
-		lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
+		lcm_setbacklight_cmdq(dsi, cb, handle, tmp_brightness);
 	}
 	ctx->hbm_en = en;
 	ctx->hbm_wait = true;
@@ -893,6 +912,19 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 {
 	unsigned int i = 0;
 	unsigned int cmd;
+	struct mtk_dsi *mtk_dsi = dsi;
+	struct drm_crtc *crtc = NULL;
+
+	if (!dsi || !cb || !mtk_dsi) {
+		return -EINVAL;
+	}
+
+	crtc = mtk_dsi->encoder.crtc;
+
+	if (!crtc) {
+		OFP_ERR("Invalid crtc param\n");
+		return -EINVAL;
+	}
 
 	if (!panel || !dsi) {
 		pr_err("Invalid dsi params\n");
@@ -923,7 +955,8 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 		}
 	}
 	aod_state = false;
-
+	if(!oplus_ofp_backlight_filter(crtc, handle, oplus_display_brightness))
+		lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
 	pr_info("%s:success\n", __func__);
 	return 0;
 }

@@ -428,6 +428,7 @@
 		oplus,batt_num = <1>;
 		oplus,ic_type = <OPLUS_CHG_IC_GAUGE>;
 		oplus,ic_index = <0>;
+		oplus,fcc_too_small_check_support;
 	};
 };
 &lk_charger {
