@@ -967,6 +967,7 @@ bootargs_ext = "";
 
 &mt6681_sound {
 	audio-r-miso1-enable = <1>;
+	hs-rload = <32>;
 };
 
 &mt6681_accdet {

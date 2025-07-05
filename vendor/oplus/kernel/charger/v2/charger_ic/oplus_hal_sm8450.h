@@ -781,6 +781,7 @@ struct battery_chg_dev {
 	struct oplus_chg_ic_dev		*ufcs_ic;
 	struct oplus_impedance_node	*input_imp_node;
 	struct oplus_mms		*common_topic;
+	struct oplus_mms		*err_topic;
 	struct votable			*chg_disable_votable;
 #endif
 	struct class			battery_class;
@@ -804,6 +805,7 @@ struct battery_chg_dev {
 	struct work_struct		usb_type_work;
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	int ccdetect_irq;
+	struct delayed_work	publish_close_cp_item_work;
 	struct delayed_work	suspend_check_work;
 	struct delayed_work	adsp_voocphy_status_work;
 	struct delayed_work	otg_init_work;

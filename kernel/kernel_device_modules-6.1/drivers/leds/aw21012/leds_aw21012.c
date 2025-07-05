@@ -1507,13 +1507,13 @@ static void aw210xx_brightness(struct aw210xx *led)
 		}
 	} else {
 		if (led->id == 0) {
-			led_brightness = (led->cdev.brightness) / 3;
+			led_brightness = led->cdev.brightness;
 			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
 		} else if (led->id == 1) {
-			led_brightness = (led->cdev.brightness) / 3;
+			led_brightness = led->cdev.brightness;
 			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
 		} else if (led->id == 2) {
-			led_brightness = (led->cdev.brightness) / 3;
+			led_brightness = led->cdev.brightness;
 			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
 		}
 

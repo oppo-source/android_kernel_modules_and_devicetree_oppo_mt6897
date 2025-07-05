@@ -73,7 +73,7 @@ static struct regval_list dw9800s_init_regs[] = {
     {0x02, 0x00, 1},
     {0x02, 0x02, 0},
     {0x06, 0x40, 0},
-    {0x07, 0x60, 1},
+    {0x07, 0x03, 1},
 };
 
 static int dw9800s_write_smbus(struct dw9800s_device *dw9800s, unsigned char reg,

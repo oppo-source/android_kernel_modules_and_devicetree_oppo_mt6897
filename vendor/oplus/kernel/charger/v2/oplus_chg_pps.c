@@ -372,7 +372,6 @@ struct oplus_pps {
 	enum oplus_chg_protocol_type cpa_current_type;
 	int rmos_mohm;
 	int cool_down;
-	u32 adapter_id;
 	int error_count;
 	int cp_ratio;
 
@@ -1184,32 +1183,6 @@ static int oplus_pps_set_charging(struct oplus_pps *chip, bool charging)
 	return rc;
 }
 
-static int oplus_pps_set_adapter_id(struct oplus_pps *chip, u16 id)
-{
-	struct mms_msg *msg;
-	int rc;
-
-	if (chip->adapter_id == id)
-		return 0;
-
-	chip->adapter_id = id;
-	chg_info("set adapter_id=%u\n", id);
-
-	msg = oplus_mms_alloc_msg(MSG_TYPE_ITEM, MSG_PRIO_MEDIUM,
-				  PPS_ITEM_ADAPTER_ID);
-	if (msg == NULL) {
-		chg_err("alloc msg error\n");
-		return -ENOMEM;
-	}
-	rc = oplus_mms_publish_msg(chip->pps_topic, msg);
-	if (rc < 0) {
-		chg_err("publish pps adapter id msg error, rc=%d\n", rc);
-		kfree(msg);
-	}
-
-	return rc;
-}
-
 static int oplus_pps_set_oplus_adapter(struct oplus_pps *chip, bool oplus_adapter)
 {
 	struct mms_msg *msg;
@@ -1475,7 +1448,6 @@ static void oplus_pps_force_exit(struct oplus_pps *chip)
 	oplus_pps_cp_watchdog_enable(chip, CP_WATCHDOG_DISABLE);
 	oplus_pps_cp_adc_enable(chip, false);
 	oplus_pps_switch_to_normal(chip);
-	oplus_pps_set_adapter_id(chip, 0);
 	oplus_pps_set_online(chip, false);
 	oplus_pps_cpa_switch_end(chip);
 	vote(chip->pps_curr_votable, STEP_VOTER, false, 0, false);
@@ -2448,7 +2420,7 @@ static int oplus_pps_get_batt_temp_curr(struct oplus_pps *chip)
 		vote(chip->pps_disable_votable, NO_DATA_VOTER, true, 1, false);
 		return -ENODEV;
 	}
-	ret = oplus_mms_get_item_data(chip->comm_topic, COMM_ITEM_SHELL_TEMP, &data, false);
+	ret = oplus_mms_get_item_data(chip->comm_topic, COMM_ITEM_SHELL_TEMP, &data, true);
 	if (ret < 0) {
 		chg_err("can't get shell temp data, rc=%d", ret);
 	} else {
@@ -3311,6 +3283,10 @@ static void oplus_pps_monitor_work(struct work_struct *work)
 	int delay = PPS_MONITOR_TIME_MS;
 	bool switch_to_ffc = false;
 
+	rc = oplus_pps_get_batt_temp_curr(chip);
+	if (rc < 0)
+		goto exit;
+
 	if (!chip->pps_charging) {
 		if (is_wired_suspend_votable_available(chip))
 			vote(chip->wired_suspend_votable, PPS_VOTER, true, 1, false);
@@ -3321,10 +3297,6 @@ static void oplus_pps_monitor_work(struct work_struct *work)
 		}
 		delay = rc;
 	} else {
-		rc = oplus_pps_get_batt_temp_curr(chip);
-		if (rc < 0)
-			goto exit;
-
 		rc = oplus_chg_strategy_get_data(chip->strategy, &data);
 		if (rc < 0) {
 			chg_err("can't get strategy data, rc=%d", rc);
@@ -4505,26 +4477,6 @@ static int oplus_pps_update_charging(struct oplus_mms *mms,
 	return 0;
 }
 
-static int oplus_pps_update_adapter_id(struct oplus_mms *mms,
-					union mms_msg_data *data)
-{
-	struct oplus_pps *chip;
-
-	if (mms == NULL) {
-		chg_err("mms is NULL");
-		return -EINVAL;
-	}
-	if (data == NULL) {
-		chg_err("data is NULL");
-		return -EINVAL;
-	}
-	chip = oplus_mms_get_drvdata(mms);
-
-	data->intval = (int)chip->adapter_id;
-
-	return 0;
-}
-
 static int oplus_pps_update_oplus_adapter(struct oplus_mms *mms,
 					   union mms_msg_data *data)
 {
@@ -4559,12 +4511,6 @@ static struct mms_item oplus_pps_item[] = {
 		.desc = {
 			.item_id = PPS_ITEM_CHARGING,
 			.update = oplus_pps_update_charging,
-		}
-	},
-	{
-		.desc = {
-			.item_id = PPS_ITEM_ADAPTER_ID,
-			.update = oplus_pps_update_adapter_id,
 		}
 	},
 	{
@@ -5563,6 +5509,68 @@ static int oplus_pps_parse_lcf_strategy_dt(struct oplus_pps *chip)
 	return rc;
 }
 
+int oplus_pps_current_to_level(struct oplus_mms *mms, int ibus_curr)
+{
+	int level = 0;
+	struct oplus_pps *chip;
+	int ibat_curr = 0;
+
+	if (ibus_curr <= 0)
+		return level;
+	if (mms == NULL) {
+		chg_err("mms is NULL");
+		return level;
+	}
+	chip = oplus_mms_get_drvdata(mms);
+	if (chip == NULL)
+		return -EINVAL;
+
+	ibat_curr = ibus_curr * chip->cp_ratio;
+
+	chip = oplus_mms_get_drvdata(mms);
+	if (chip->support_cp_ibus)
+		level = pps_find_level_to_current(ibat_curr, g_pps_cp_current_table, ARRAY_SIZE(g_pps_cp_current_table));
+	else
+		level = pps_find_level_to_current(ibus_curr, g_pps_current_table, ARRAY_SIZE(g_pps_current_table));
+
+	return level;
+}
+
+int oplus_pps_get_charging_power_watt(struct oplus_mms *mms)
+{
+	int power_mw = 0;
+	struct oplus_pps *chip;
+
+	if (mms == NULL) {
+		chg_err("mms is NULL");
+		return power_mw;
+	}
+	chip = oplus_mms_get_drvdata(mms);
+	if (chip == NULL)
+		return power_mw;
+
+	power_mw = oplus_cpa_protocol_get_power(chip->cpa_topic, CHG_PROTOCOL_PPS) / 1000; /*mW to Watt*/
+	return power_mw;
+}
+
+int oplus_pps_get_adapter_power_mw(struct oplus_mms *mms)
+{
+	int adapter_power = 0;
+	struct oplus_pps *chip;
+
+	if (mms == NULL) {
+		chg_err("mms is NULL");
+		return adapter_power;
+	}
+	chip = oplus_mms_get_drvdata(mms);
+	if (chip == NULL)
+		return adapter_power;
+
+	adapter_power = chip->adapter_max_curr * chip->config.target_vbus_mv / OPLUS_PPS_UW_MV_TRANSFORM;
+
+	return adapter_power;
+}
+
 static int oplus_pps_probe(struct platform_device *pdev)
 {
 	struct oplus_pps *chip;
@@ -5768,59 +5776,4 @@ static __exit void oplus_pps_exit(void)
 }
 
 oplus_chg_module_register(oplus_pps);
-int oplus_pps_current_to_level(struct oplus_mms *mms, int ibus_curr)
-{
-	int level = 0;
-	struct oplus_pps *chip;
-	int ibat_curr = 0;
 
-	if (ibus_curr <= 0)
-		return level;
-	if (mms == NULL) {
-		chg_err("mms is NULL");
-		return level;
-	}
-	chip = oplus_mms_get_drvdata(mms);
-	if (chip == NULL)
-		return -EINVAL;
-
-	ibat_curr = ibus_curr * chip->cp_ratio;
-
-	chip = oplus_mms_get_drvdata(mms);
-	if (chip->support_cp_ibus)
-		level = pps_find_level_to_current(ibat_curr, g_pps_cp_current_table, ARRAY_SIZE(g_pps_cp_current_table));
-	else
-		level = pps_find_level_to_current(ibus_curr, g_pps_current_table, ARRAY_SIZE(g_pps_current_table));
-
-	return level;
-}
-
-enum fastchg_protocol_type oplus_pps_adapter_id_to_protocol_type(u32 id)
-{
-	switch (id) {
-	case PPS_FASTCHG_TYPE_V1:
-	case PPS_FASTCHG_TYPE_V2:
-	case PPS_FASTCHG_TYPE_V3:
-		return PROTOCOL_CHARGING_PPS_OPLUS;
-	case PPS_FASTCHG_TYPE_THIRD:
-		return PROTOCOL_CHARGING_PPS_THIRD;
-	default:
-		return PROTOCOL_CHARGING_UNKNOWN;
-	}
-}
-
-int oplus_pps_adapter_id_to_power(u32 id)
-{
-	switch (id) {
-	case PPS_FASTCHG_TYPE_V1:
-		return PPS_POWER_TYPE_V1;
-	case PPS_FASTCHG_TYPE_V2:
-		return PPS_POWER_TYPE_V2;
-	case PPS_FASTCHG_TYPE_V3:
-		return PPS_POWER_TYPE_V3;
-	case PPS_FASTCHG_TYPE_THIRD:
-		return PPS_POWER_TYPE_THIRD;
-	default:
-		return PPS_POWER_TYPE_UNKOWN;
-	}
-}

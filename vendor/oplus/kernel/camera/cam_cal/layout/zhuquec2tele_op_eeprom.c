@@ -28,6 +28,8 @@ static unsigned int do_lens_id_zhuquec2tele(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
 static unsigned int do_pdaf_zhuquec2tele(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
+static unsigned int do_ois_zhuquec2tele(unsigned char *eeprom_preload,
+		struct ois_cal_data *data);
 
 static struct STRUCT_CALIBRATION_LAYOUT_STRUCT cal_layout_table = {
 	0x00000006, 0x00c6010D, CAM_CAL_SINGLE_EEPROM_DATA,
@@ -54,6 +56,7 @@ struct STRUCT_CAM_CAL_CONFIG_STRUCT zhuquec2tele_op_eeprom = {
 	.enable_preload = 1,
 	.preload_size = 0x8000,
 	.has_stored_data = 1,
+	.parsing_ois_cal_data_from_preload = do_ois_zhuquec2tele,
 };
 
 
@@ -674,4 +677,15 @@ static unsigned int do_lens_id_zhuquec2tele(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
 {
 	return do_lens_id_base(pdata, start_addr, block_size, pGetSensorCalData);
+}
+
+static unsigned int do_ois_zhuquec2tele(unsigned char *eeprom_preload,
+		struct ois_cal_data *data)
+{
+	unsigned int offset;
+	unsigned int length;
+	offset = 0x1960;
+	length = 2341;
+	memcpy(data, eeprom_preload + offset, length);
+	return 0;
 }

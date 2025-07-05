@@ -4202,6 +4202,37 @@ static int oplus_chg_vb_get_usb_aicl_enhance(struct oplus_chg_ic_dev *ic_dev, bo
 	return rc;
 }
 
+static int oplus_chg_vb_get_lpd_info(struct oplus_chg_ic_dev *ic_dev, u32 *buffer, u32 flag)
+{
+	struct oplus_virtual_buck_ic *vb;
+	int i;
+	int rc = 0;
+
+	if (ic_dev == NULL || buffer == NULL) {
+		chg_err("oplus_chg_ic_dev is NULL");
+		return -ENODEV;
+	}
+
+	vb = oplus_chg_ic_get_drvdata(ic_dev);
+
+	for (i = 0; i < vb->child_num; i++) {
+		if (!func_is_support(&vb->child_list[i], OPLUS_IC_FUNC_BUCK_GET_LPD_INFO)) {
+			rc = -ENOTSUPP;
+			continue;
+		}
+		rc = oplus_chg_ic_func(
+			vb->child_list[i].ic_dev,
+			OPLUS_IC_FUNC_BUCK_GET_LPD_INFO,
+			buffer, flag);
+		if (rc < 0)
+			chg_err("child ic[%d] get lpd info error, rc=%d\n", i, rc);
+		else
+			return 0;
+	}
+
+	return rc;
+}
+
 static void *oplus_chg_vb_get_func(struct oplus_chg_ic_dev *ic_dev, enum oplus_chg_ic_func func_id)
 {
 	void *func = NULL;
@@ -4466,6 +4497,9 @@ static void *oplus_chg_vb_get_func(struct oplus_chg_ic_dev *ic_dev, enum oplus_c
 		break;
 	case OPLUS_IC_FUNC_BUCK_GET_USB_AICL_ENHANCE:
 		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_BUCK_GET_USB_AICL_ENHANCE, oplus_chg_vb_get_usb_aicl_enhance);
+		break;
+	case OPLUS_IC_FUNC_BUCK_GET_LPD_INFO:
+		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_BUCK_GET_LPD_INFO, oplus_chg_vb_get_lpd_info);
 		break;
 	default:
 		chg_err("this func(=%d) is not supported\n", func_id);

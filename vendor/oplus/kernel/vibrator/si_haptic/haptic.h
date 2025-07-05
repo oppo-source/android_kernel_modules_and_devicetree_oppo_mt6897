@@ -121,6 +121,8 @@ typedef struct led_classdev cdev_t;
 #define F0_VAL_MAX_1419                     2150
 #define OS14_NEW_RING_START                 (371)
 #define OS14_NEW_RING_END                   (410)
+#define OS15_NEW_RING_START                 (322)
+#define OS15_NEW_RING_END                   (341)
 #define ALCLOUDSCAPE_START                  (94)
 #define ALCLOUDSCAPE_END                    (99)
 #define RINGTONE_NOTIF_ALARM_START          (201)

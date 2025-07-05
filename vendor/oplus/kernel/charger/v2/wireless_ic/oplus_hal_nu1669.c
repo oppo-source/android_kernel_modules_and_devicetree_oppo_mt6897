@@ -176,7 +176,8 @@ struct chip_info {
 	u8 trx_ept_code;
 	u16 trx_manu_id;
 	u16 tx_duty;
-	u8 pad91[6];
+	u8 pad91[4];
+	u8 epp_ref_fq[2];
 	/*0xA0*/
 	u8 rx_fod_wt_cmd;
 	u8 rx_fod_len_cmd;
@@ -1265,6 +1266,29 @@ static int nu1669_send_match_q(struct oplus_chg_ic_dev *dev, u8 data[])
 	return 0;
 }
 
+static int nu1669_epp_send_match_q(struct oplus_chg_ic_dev *dev, u8 data[])
+{
+	struct oplus_nu1669 *chip;
+	int rc;
+
+	if (dev == NULL || data == NULL) {
+		chg_err("oplus_chg_ic_dev is NULL\n");
+		return -ENODEV;
+	}
+
+	chip = oplus_chg_ic_get_drvdata(dev);
+	chip->info.epp_ref_fq[0] = data[0];
+	chip->info.epp_ref_fq[1] = data[1];
+	rc = nu1669_info_obj_write(chip, &chip->info.epp_ref_fq, sizeof(chip->info.epp_ref_fq));
+	if (rc < 0) {
+		chg_err("send epp match q err, rc=%d\n", rc);
+		return rc;
+	}
+	chg_info("epp f value:0x%x, q value:0x%x\n", data[0], data[1]);
+
+	return 0;
+}
+
 static int nu1669_set_fod_parm(struct oplus_chg_ic_dev *dev, u8 data[], int len, int mode, int magcvr)
 {
 	struct oplus_nu1669 *chip;
@@ -2151,6 +2175,12 @@ static void nu1669_event_process(struct oplus_nu1669 *chip)
 		}
 	}
 
+	if (int_flag & NU1669_EPP_TX_MANU_ID) {
+		chip->event_code = WLS_EVENT_EPP_TX_MANU_ID;
+		oplus_chg_ic_virq_trigger(chip->ic_dev, OPLUS_IC_VIRQ_EVENT_CHANGED);
+	}
+
+
 out:
 	nu1669_clear_irq(chip, int_flag);
 
@@ -2891,6 +2921,10 @@ static void *oplus_chg_rx_get_func(struct oplus_chg_ic_dev *ic_dev,
 	case OPLUS_IC_FUNC_RX_SET_SILENT:
 		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_RX_SET_SILENT,
 			nu1669_set_silent);
+		break;
+	case OPLUS_IC_FUNC_RX_SEND_EPP_MATCH_Q:
+		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_RX_SEND_EPP_MATCH_Q,
+			nu1669_epp_send_match_q);
 		break;
 	default:
 		chg_err("this func(=%d) is not supported\n", func_id);

@@ -718,8 +718,9 @@ static ssize_t mem_cgroup_force_shrink_anon_percent(struct kernfs_open_file *of,
 		ret = force_shrink_batch(memcg, nr_need_reclaim, &nr_reclaimed,
 						batch, false, false);
 	}
-
+#ifdef CONFIG_CONT_PTE_HUGEPAGE_64K_ZRAM
 out:
+#endif
 	current->flags &= ~PF_SHRINK_ANON;
 	return nbytes;
 }

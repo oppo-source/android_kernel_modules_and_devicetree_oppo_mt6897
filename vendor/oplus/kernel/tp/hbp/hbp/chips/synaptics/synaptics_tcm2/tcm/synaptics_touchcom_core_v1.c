@@ -41,6 +41,8 @@
 #define TCM_V1_MESSAGE_MARKER 0xa5
 #define TCM_V1_MESSAGE_PADDING 0x5a
 
+#define TCM_MAX_FRAME_SIZE     2048
+
 /**
  * @section: Header of TouchComm v1 Message Packet
  *
@@ -839,23 +841,26 @@ static int syna_tcm_v1_read_message(struct tcm_dev *tcm_dev,
 
 	syna_tcm_buf_lock(&tcm_msg->in);
 
-	/* read in the message header */
-	len = MESSAGE_HEADER_SIZE;
+	/* read frame buffer in one time*/
+	len = TCM_MAX_FRAME_SIZE;
 
-	/* if predict read enabled, plus the predicted length
-	 * and determine the length to read
-	 */
-	if (tcm_msg->predict_reads && do_predict) {
-		if (tcm_msg->predict_length > 0) {
-			len += tcm_msg->predict_length;
-			if (tcm_msg->has_crc)
-				len += TCM_MSG_CRC_LENGTH;
-			if (tcm_msg->has_extra_rc)
-				len += TCM_EXTRA_RC_LENGTH;
-			/* end of message byte */
-			len += 1;
-		}
-	}
+	// /* read in the message header */
+	// len = MESSAGE_HEADER_SIZE;
+
+	// /* if predict read enabled, plus the predicted length
+	//  * and determine the length to read
+	//  */
+	// if (tcm_msg->predict_reads && do_predict) {
+	// 	if (tcm_msg->predict_length > 0) {
+	// 		len += tcm_msg->predict_length;
+	// 		if (tcm_msg->has_crc)
+	// 			len += TCM_MSG_CRC_LENGTH;
+	// 		if (tcm_msg->has_extra_rc)
+	// 			len += TCM_EXTRA_RC_LENGTH;
+	// 		/* end of message byte */
+	// 		len += 1;
+	// 	}
+	// }
 
 	/* ensure the size of in.buf, do re-allocate if needed */
 	if (len > tcm_msg->in.buf_size) {

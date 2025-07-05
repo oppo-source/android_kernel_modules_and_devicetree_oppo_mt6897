@@ -73,8 +73,9 @@ static atomic_t is_boost = ATOMIC_INIT(false);
 
 static void set_all_cpu_mask(void)
 {
+    int i;
     cpumask_clear(limit_cpumask);
-    for (int i = 0; i < CPU_NUM; i++) {
+    for (i = 0; i < CPU_NUM; i++) {
         cpumask_set_cpu(i, all_cpumask);
     }
 }
@@ -126,10 +127,13 @@ static void cancel_hrtime(void)
 static void compute_running_percentage(void)
 {
     u64 now = 0;
+    u64 total_time;
+    u64 running_time;
+    int i;
     unsigned long flags;
     now = ktime_get_ns();
     raw_spin_lock_irqsave(&chb_lock, flags);
-    for (int i = 0; i < CRITICAL_TASK_NUM; i++) {
+    for (i = 0; i < CRITICAL_TASK_NUM; i++) {
         task_status[i] = atomic_read(&critical_task_running_status[i]);
         if (critical_task_end_time[i] != 0 && now >= critical_task_end_time[i]) {
             if (task_status[i] == CRITICAL_TASK_RUNNING) {
@@ -143,8 +147,8 @@ static void compute_running_percentage(void)
             }
         }
         critical_task_end_time[i] = now;
-        u64 total_time = critical_task_running_time_ns[i] + critical_task_block_time_ns[i];
-        u64 running_time = critical_task_running_time_ns[i];
+        total_time = critical_task_running_time_ns[i] + critical_task_block_time_ns[i];
+        running_time = critical_task_running_time_ns[i];
         if (total_time <= 0) {
             goto unlock;
         }
@@ -156,13 +160,14 @@ unlock:
 
 static bool decide_boost_status(void)
 {
+    int i, other_idx;
+    unsigned long flags;
     cpumask_clear(limit_cpumask);
-    for(int i = 0; i < CRITICAL_TASK_NUM; i++) {
+    for(i = 0; i < CRITICAL_TASK_NUM; i++) {
         if (running_time_percentage[i] < critical_task_running_time_threshold_percentage[task_status[i]]) {
             continue;
         }
-        int other_idx = (i + 1) % CRITICAL_TASK_NUM;  // CRITICAL_TASK_NUM = 2
-        unsigned long flags;
+        other_idx = (i + 1) % CRITICAL_TASK_NUM;  // CRITICAL_TASK_NUM = 2
         raw_spin_lock_irqsave(&chb_lock, flags);
         if (task_status[other_idx] == CRITICAL_TASK_RUNNING) {
             cpumask_set_cpu(cpu_core[other_idx], limit_cpumask);
@@ -177,8 +182,9 @@ static bool decide_boost_status(void)
 static void update_per_window_running_time(void)
 {
     unsigned long flags;
-    u64 now = ktime_get_ns();
+    u64 now;
     int i;
+    now = ktime_get_ns();
     raw_spin_lock_irqsave(&chb_lock, flags);
 
     for (i = 0; i < CRITICAL_TASK_NUM; i++) {
@@ -203,19 +209,25 @@ static void update_per_window_running_time(void)
 static bool check_slide_window_status(void)
 {
     int i;
-    u64 total_window_time = 0, expire_time_percentage = 0;
+    int other_idx;
+    unsigned long flags;
+    u64 total_window_time, expire_time_percentage;
+    total_window_time = 0;
+    expire_time_percentage = 0;
     if (total_slide_window_num < SLIDE_WINDOW_SIZE || per_window_time_span_ns <= 0) {
         return false;
     }
     total_window_time = SLIDE_WINDOW_SIZE * per_window_time_span_ns;
     cpumask_clear(limit_cpumask);
     for (i = 0; i < CRITICAL_TASK_NUM; i++) {
+        if (total_window_time <= 0) {
+            continue;
+        }
         expire_time_percentage = total_window_running_time_ns[i] * 100 / total_window_time;
         if (expire_time_percentage < critical_task_running_time_threshold_percentage[task_status[i]]) {
             continue;
         }
-        int other_idx = (i + 1) % CRITICAL_TASK_NUM;  // CRITICAL_TASK_NUM = 2
-        unsigned long flags;
+        other_idx = (i + 1) % CRITICAL_TASK_NUM;  // CRITICAL_TASK_NUM = 2
         raw_spin_lock_irqsave(&chb_lock, flags);
         if (task_status[other_idx] == CRITICAL_TASK_RUNNING) {
             cpumask_set_cpu(cpu_core[other_idx], limit_cpumask);
@@ -256,11 +268,12 @@ static void sw_work_fn(struct kthread_work *work)
 
 static enum hrtimer_restart long_stage_callback_task(struct hrtimer *timer)
 {
+    ktime_t kt;
     if (atomic_read(&is_boost)) {
         return HRTIMER_NORESTART;
     }
     kthread_queue_work(&ct_worker, &ct_work);
-    ktime_t kt = ktime_set(0, unitymain_expire_time_ns / expire_next_time_factor);
+    kt = ktime_set(0, unitymain_expire_time_ns / expire_next_time_factor);
     hrtimer_forward_now(timer, kt);
     return HRTIMER_RESTART;
 }
@@ -276,11 +289,12 @@ static enum hrtimer_restart cancel_boost_callback_task(struct hrtimer *timer)
 
 static enum hrtimer_restart slide_window_callback_task(struct hrtimer *timer)
 {
+    ktime_t kt;
     kthread_queue_work(&sw_worker, &sw_work);
     if (per_window_time_span_ns <= 0) {
         return HRTIMER_NORESTART;
     }
-    ktime_t kt = ktime_set(0, per_window_time_span_ns);
+    kt = ktime_set(0, per_window_time_span_ns);
     hrtimer_forward_now(timer, kt);
     return HRTIMER_RESTART;
 }
@@ -334,15 +348,17 @@ void notify_frame_produdce(void)
 
 static void update_critical_task_time(struct task_struct *task, int i, bool is_prev_task)
 {
+    u64 now = 0;
+    unsigned long flags;
+    int cpu, state;
+    pid_t pid;
     if (task && strncmp(task->comm, critical_task[i], strlen(critical_task[i])) == 0) {
-        int state = -1;
-        pid_t pid = task->pid;
+        state = -1;
+        pid = task->pid;
         state = get_critical_task_state(critical_task[i], pid);
         if (state == -1) {
             return;
         } else {
-            u64 now = 0;
-            unsigned long flags;
             now = ktime_get_ns();
             raw_spin_lock_irqsave(&chb_lock, flags);
             if (critical_task_end_time[i] != 0 && now >= critical_task_end_time[i]) {
@@ -355,7 +371,7 @@ static void update_critical_task_time(struct task_struct *task, int i, bool is_p
                     atomic_set(&critical_task_running_status[i], CRITICAL_TASK_NOT_RUNNING);
                 } else {
                     critical_task_block_time_ns[i] += now - critical_task_end_time[i];
-                    int cpu = task_cpu(task);
+                    cpu = task_cpu(task);
                     cpu_core[i] = cpu;
                     atomic_set(&critical_task_running_status[i], CRITICAL_TASK_RUNNING);
                 }
@@ -370,10 +386,11 @@ static void update_critical_task_time(struct task_struct *task, int i, bool is_p
 static void sched_switch_hook(void *unused, bool preempt,
         struct task_struct *prev, struct task_struct *next, unsigned int prev_state)
 {
+    int i;
     if (!ct_enable) {
         return;
     }
-    for (int i = 0; i < CRITICAL_TASK_NUM; i++) {
+    for (i = 0; i < CRITICAL_TASK_NUM; i++) {
         update_critical_task_time(prev, i, true);
         update_critical_task_time(next, i, false);
     }
@@ -424,11 +441,9 @@ static ssize_t ct_enable_proc_read(struct file *file,
 {
     char page[32] = {0};
     int len;
-
     mutex_lock(&chb_mutex);
     len = sprintf(page, "%d\n", ct_enable ? 1 : 0);
     mutex_unlock(&chb_mutex);
-
     return simple_read_from_buffer(buf, count, ppos, page, len);
 }
 
@@ -463,9 +478,7 @@ static ssize_t expire_time_percentage_proc_write(struct file *file,
         unitymain_expire_time_ns = std_frame_length / 100 * unitymain_expire_time_percentage;
         per_window_time_span_ns = std_frame_length / SLIDE_WINDOW_SIZE;
     }
-
     mutex_unlock(&chb_mutex);
-
     return count;
 }
 
@@ -479,7 +492,6 @@ static ssize_t expire_time_percentage_proc_read(struct file *file,
     len = sprintf(page, "target_fps:%d, expire_time_percentage:%d, expire_time_ns:%llu, per_window_time_span_ns:%llu\n",
                     target_fps, unitymain_expire_time_percentage, unitymain_expire_time_ns, per_window_time_span_ns);
     mutex_unlock(&chb_mutex);
-
     return simple_read_from_buffer(buf, count, ppos, page, len);
 }
 

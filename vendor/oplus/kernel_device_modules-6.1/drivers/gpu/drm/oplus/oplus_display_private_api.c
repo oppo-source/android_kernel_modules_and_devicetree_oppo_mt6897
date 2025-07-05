@@ -726,6 +726,9 @@ int panel_serial_number_read(struct drm_crtc *crtc, char cmd, int num)
 			} else if (!strcmp(panel_name, "aa600_p_3_a0025_vdo_panel") || !strcmp(panel_name, "aa597_p_3_a0025_dsi_vdo")) {
 				panel_serial_info.reg_index = serial_number_params->index;
 				panel_serial_info.year      = ((para[panel_serial_info.reg_index] & 0xF0) >> 4) + 1;
+			} else if (!strcmp(panel_name, "aa600_p_7_a0025_vdo_panel") || !strcmp(panel_name, "aa597_p_7_a0025_dsi_vdo")) {
+				panel_serial_info.reg_index = serial_number_params->index;
+				panel_serial_info.year      = ((para[panel_serial_info.reg_index] & 0xF0) >> 4) + 9;
 			} else {
 				panel_serial_info.reg_index = serial_number_params->index;
 				panel_serial_info.year      = (para[panel_serial_info.reg_index] & 0xF0) >> 4;

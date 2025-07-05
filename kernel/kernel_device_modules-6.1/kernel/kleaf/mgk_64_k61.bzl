@@ -706,6 +706,7 @@ mgk_64_k61_device_modules = [
     "sound/soc/codecs/audio/codecs/tfa98xx/snd-soc-tfa98xx.ko",
     "sound/soc/codecs/audio/codecs/aw882xx_v1.13.0/snd-soc-aw882xx.ko",
     "sound/soc/codecs/audio/codecs/oplus_typec_switch/snd-soc-typec-switch.ko",
+    "sound/soc/codecs/audio/oplus_audio_netlink/oplus_audio_netlink.ko",
     "sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko",
     "sound/soc/mediatek/audio_dsp/snd-soc-audiodsp-common.ko",
     "sound/soc/mediatek/audio_scp/mtk-scp-audiocommon.ko",

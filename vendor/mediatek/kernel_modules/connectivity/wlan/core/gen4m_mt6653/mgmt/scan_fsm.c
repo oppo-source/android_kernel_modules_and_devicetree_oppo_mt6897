@@ -1422,6 +1422,7 @@ scnFsmDumpScanDoneInfo(struct ADAPTER *prAdapter,
 	uint8_t ucChCnt = 0;
 	struct SCAN_INFO *prScanInfo;
 	struct SCAN_PARAM *prScanParam;
+	enum ENUM_BAND eBand = BAND_NULL;
 	char strbuf[SCN_SCAN_DONE_PRINT_BUFFER_LENGTH];
 
 	prScanInfo = &(prAdapter->rWifiVar.rScanInfo);
@@ -1434,6 +1435,27 @@ scnFsmDumpScanDoneInfo(struct ADAPTER *prAdapter,
 		= prScanDone->rSparseChannel.ucChannelNum;
 	ucScanChNum = prScanInfo->ucSparseChannelArrayValidNum
 		= prScanDone->ucSparseChannelArrayValidNum;
+
+	for (ucChCnt = 0; ucChCnt < ucScanChNum; ucChCnt++) {
+		prScanInfo->au2ChannelIdleTime[ucChCnt]
+			= prScanDone->au2ChannelIdleTime[ucChCnt];
+		prScanInfo->aucChannelMDRDYCnt[ucChCnt]
+			= prScanDone->aucChannelMDRDYCnt[ucChCnt];
+		prScanInfo->aucChannelBAndPCnt[ucChCnt]
+			= prScanDone->aucChannelBAndPCnt[ucChCnt];
+		prScanInfo->au2ChannelScanTime[ucChCnt]
+			= prScanDone->au2ChannelScanTime[ucChCnt];
+		eBand =
+		SCN_GET_EBAND_BY_CH_NUM(prScanDone->aucChannelNum[ucChCnt]);
+		prScanInfo->aeChannelBand[ucChCnt] = eBand;
+		prScanInfo->aucChannelNum[ucChCnt] =
+			nicRxdChNumTranslate(eBand,
+			prScanDone->aucChannelNum[ucChCnt]);
+		scanFillChnlInfo(prAdapter, eBand,
+			prScanInfo->aucChannelNum[ucChCnt],
+			prScanDone->au2ChannelIdleTime[ucChCnt],
+			prScanDone->au2ChannelScanTime[ucChCnt]);
+	}
 
 #if CFG_SUPPORT_SCAN_NO_AP_RECOVERY
 #if CFG_EXT_SCAN
@@ -1459,60 +1481,30 @@ scnFsmDumpScanDoneInfo(struct ADAPTER *prAdapter,
 			ucScanChNum);
 	}
 
-#if CFG_SUPPORT_ROAMING
 #define print_info_ch(_Mod, _Clz, _Fmt, var) \
 	do { \
 		uint16_t u2Written = 0; \
 		uint16_t u2TotalLen = SCN_SCAN_DONE_PRINT_BUFFER_LENGTH; \
-		enum ENUM_BAND eBand = BAND_NULL; \
 		for (ucChCnt = 0; ucChCnt < ucScanChNum; ucChCnt++) { \
-			eBand = \
-			SCN_GET_EBAND_BY_CH_NUM(prScanDone->var[ucChCnt]); \
-			prScanInfo->aeChannelBand[ucChCnt] = eBand; \
-			prScanInfo->var[ucChCnt] = nicRxdChNumTranslate(eBand, \
-				prScanDone->var[ucChCnt]); \
-			u2Written += kalSnprintf(strbuf + u2Written, \
-				u2TotalLen - u2Written, "%6d", \
-				prScanInfo->var[ucChCnt]); \
-			scanFillChnlIdleSlot(prAdapter, eBand, \
-				prScanInfo->var[ucChCnt], \
-				prScanDone->au2ChannelIdleTime[ucChCnt]); \
-		} \
-		log_dbg(_Mod, _Clz, _Fmt, strbuf); \
-	} while (0)
-#else
-#define print_info_ch(_Mod, _Clz, _Fmt, var) \
-	do { \
-		uint16_t u2Written = 0; \
-		uint16_t u2TotalLen = SCN_SCAN_DONE_PRINT_BUFFER_LENGTH; \
-		enum ENUM_BAND eBand = BAND_NULL; \
-		for (ucChCnt = 0; ucChCnt < ucScanChNum; ucChCnt++) { \
-			eBand = \
-			SCN_GET_EBAND_BY_CH_NUM(prScanDone->var[ucChCnt]); \
-			prScanInfo->aeChannelBand[ucChCnt] = eBand; \
-			prScanInfo->var[ucChCnt] = nicRxdChNumTranslate(eBand, \
-				prScanDone->var[ucChCnt]); \
 			u2Written += kalSnprintf(strbuf + u2Written, \
 				u2TotalLen - u2Written, "%6d", \
 				prScanInfo->var[ucChCnt]); \
 		} \
 		log_dbg(_Mod, _Clz, _Fmt, strbuf); \
 	} while (0)
-#endif
 
 #define print_info(_Mod, _Clz, _Fmt, var) \
 	do { \
 		uint16_t u2Written = 0; \
 		uint16_t u2TotalLen = SCN_SCAN_DONE_PRINT_BUFFER_LENGTH; \
 		for (ucChCnt = 0; ucChCnt < ucScanChNum; ucChCnt++) { \
-			prScanInfo->var[ucChCnt] \
-				= prScanDone->var[ucChCnt]; \
 			u2Written += kalSnprintf(strbuf + u2Written, \
 				u2TotalLen - u2Written, "%6d", \
 				prScanInfo->var[ucChCnt]); \
 		} \
 		log_dbg(_Mod, _Clz, _Fmt, strbuf); \
 	} while (0)
+
 
 	/* If FW scan channel count more than Driver request,
 	*  means this scan done event might have something wrong,

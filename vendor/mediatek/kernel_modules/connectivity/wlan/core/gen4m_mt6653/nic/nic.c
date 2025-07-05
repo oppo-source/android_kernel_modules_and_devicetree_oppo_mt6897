@@ -2006,10 +2006,49 @@ uint8_t nicGetS1(struct ADAPTER *prAdapter,
 	return nicGetVhtS1(prAdapter, eBand, ucPrimaryChannel, ucBandwidth);
 }
 
-uint8_t nicGetVhtS1(struct ADAPTER *prAdapter,
-		    enum ENUM_BAND eBand,
-		    uint8_t ucPrimaryChannel,
+/* Adjusting S1 for BW20/40 */
+uint8_t nicGetHtS1(uint8_t ucPrimaryChannel,
 		    uint8_t ucBandwidth)
+{
+	/* 9.4.2.158 VHT OP: S1 = central channel for BW20/40/80 */
+	if (ucBandwidth == MAX_BW_20MHZ) {
+		return ucPrimaryChannel;
+	} else if (ucBandwidth == MAX_BW_40MHZ) {
+		if (ucPrimaryChannel >= 36 && ucPrimaryChannel <= 40)
+			return 38;
+		else if (ucPrimaryChannel >= 44 && ucPrimaryChannel <= 48)
+			return 46;
+		else if (ucPrimaryChannel >= 52 && ucPrimaryChannel <= 56)
+			return 54;
+		else if (ucPrimaryChannel >= 60 && ucPrimaryChannel <= 64)
+			return 62;
+		else if (ucPrimaryChannel >= 100 && ucPrimaryChannel <= 104)
+			return 102;
+		else if (ucPrimaryChannel >= 108 && ucPrimaryChannel <= 112)
+			return 110;
+		else if (ucPrimaryChannel >= 116 && ucPrimaryChannel <= 120)
+			return 118;
+		else if (ucPrimaryChannel >= 124 && ucPrimaryChannel <= 128)
+			return 126;
+		else if (ucPrimaryChannel >= 132 && ucPrimaryChannel <= 136)
+			return 134;
+		else if (ucPrimaryChannel >= 140 && ucPrimaryChannel <= 144)
+			return 142;
+		else if (ucPrimaryChannel >= 149 && ucPrimaryChannel <= 153)
+			return 151;
+		else if (ucPrimaryChannel >= 157 && ucPrimaryChannel <= 161)
+			return 159;
+		else
+			return 0;
+
+	}
+	return 0;
+}
+
+uint8_t nicGetVhtS1(struct ADAPTER *prAdapter,
+		enum ENUM_BAND eBand,
+		uint8_t ucPrimaryChannel,
+		uint8_t ucBandwidth)
 {
 	enum ENUM_CHNL_EXT eSCO;
 	uint8_t ucSecChannel;
@@ -5694,6 +5733,7 @@ void nicUpdateRSSI(struct ADAPTER *prAdapter,
 {
 	struct BSS_INFO *prBssInfo;
 	struct LINK_SPEED_EX_ *prLq;
+	struct BSS_DESC *prBssDesc;
 
 	ASSERT(prAdapter);
 	ASSERT(ucBssIndex <= prAdapter->ucSwBssIdNum);
@@ -5711,6 +5751,11 @@ void nicUpdateRSSI(struct ADAPTER *prAdapter,
 		return;
 
 	prLq = &prAdapter->rLinkQuality.rLq[ucBssIndex];
+	prBssDesc =
+		scanSearchBssDescByBssid(prAdapter, prBssInfo->aucBSSID);
+
+	if (prBssDesc)
+		prAdapter->ucScanRcpi[ucBssIndex] = prBssDesc->ucRCPI;
 
 	switch (prBssInfo->eNetworkType) {
 	case NETWORK_TYPE_AIS:

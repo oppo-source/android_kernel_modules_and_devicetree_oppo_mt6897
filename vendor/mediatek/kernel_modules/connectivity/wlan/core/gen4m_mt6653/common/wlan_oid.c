@@ -19253,7 +19253,6 @@ wlanoidQueryLteSafeChannel(struct ADAPTER *prAdapter,
 #endif /* CFG_ENABLE_WIFI_DIRECT */
 
 
-#if CFG_SUPPORT_CCM
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Re-trigger CCM when CSA finished.
@@ -19263,6 +19262,7 @@ uint32_t
 wlanoidCcmRetrigger(struct ADAPTER *prAdapter, void *pvQueryBuffer,
 		    uint32_t u4QueryBufferLen, uint32_t *pu4QueryInfoLen)
 {
+#if CFG_SUPPORT_CCM
 	struct BSS_INFO *prBssInfo = (struct BSS_INFO *)pvQueryBuffer;
 
 	if (!prAdapter) {
@@ -19280,7 +19280,9 @@ wlanoidCcmRetrigger(struct ADAPTER *prAdapter, void *pvQueryBuffer,
 		ccmChannelSwitchProducer(prAdapter, prBssInfo, __func__);
 	else
 		ccmChannelSwitchConsumer(prAdapter);
+#else
+	p2pFuncSwitchSapChannel(prAdapter, P2P_DEFAULT_SCENARIO);
+#endif
 
 	return WLAN_STATUS_SUCCESS;
 }
-#endif /* CFG_SUPPORT_CCM */

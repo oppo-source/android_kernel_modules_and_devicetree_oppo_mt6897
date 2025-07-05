@@ -290,7 +290,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_partial_pd_info = {
 		.i4VCFeature = VC_PDAF_STATS_NE_PIX_1,
 		.i4PDPattern = 3,
 		.i4PDRepetition = 4,
-		.i4PDOrder = {1, 0, 0, 1}, /*R = 1, L = 0*/
+		.i4PDOrder = {0, 1, 1, 0}, /*R = 1, L = 0*/
 	},
 };
 

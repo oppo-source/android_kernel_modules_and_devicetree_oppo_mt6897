@@ -247,7 +247,30 @@ static int baseline_autotest_open(struct inode *inode, struct file *file)
 	return single_open(file, tp_auto_test_read_func, PDE_DATA(inode));
 }
 
-DECLARE_PROC_OPS(tp_auto_test_proc_fops, baseline_autotest_open, seq_read, NULL, single_release);
+static ssize_t baseline_autotest_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *ppos)
+{
+	struct syna_tcm *tcm = PDE_DATA(file_inode(file));
+	int value = 0;
+	char buf[4] = {0};
+
+	if (!tcm) {
+		return count;
+	}
+
+	tp_copy_from_user(buf, sizeof(buf), buffer, count, 4);
+
+	if (kstrtoint(buf, 10, &value)) {
+		TP_INFO(tcm->tp_index, "%s: kstrtoint error\n", __func__);
+		return count;
+	}
+
+	TP_INFO(tcm->tp_index, "%s %d\n", __func__, value);
+	tcm->com_test_data.raw_cap_restriction = value;
+	return count;
+}
+
+DECLARE_PROC_OPS(tp_auto_test_proc_fops, baseline_autotest_open, seq_read, baseline_autotest_write, single_release);
 
 
 
@@ -265,30 +288,7 @@ static int tp_auto_test_result_open(struct inode *inode, struct file *file)
 	return single_open(file, tp_auto_test_result_read, PDE_DATA(inode));
 }
 
-static ssize_t baseline_autotest_write(struct file *file,
-		const char __user *buffer, size_t count, loff_t *ppos)
-{
-	int value = 0;
-	char buf[4] = {0};
-	struct touchpanel_data *ts = PDE_DATA(file_inode(file));
-
-	if (!ts) {
-		return count;
-	}
-
-	tp_copy_from_user(buf, sizeof(buf), buffer, count, 4);
-
-	if (kstrtoint(buf, 10, &value)) {
-		TP_INFO(ts->tp_index, "%s: kstrtoint error\n", __func__);
-		return count;
-	}
-
-	TP_INFO(ts->tp_index, "%s %d\n", __func__, value);
-	ts->com_test_data.raw_cap_restriction = value;
-	return count;
-}
-
-DECLARE_PROC_OPS(tp_auto_test_result_fops, tp_auto_test_result_open, seq_read, baseline_autotest_write, single_release);
+DECLARE_PROC_OPS(tp_auto_test_result_fops, tp_auto_test_result_open, seq_read, NULL, single_release);
 
 
 /*proc/touchpanel/framework_mode*/

@@ -17,6 +17,10 @@
 #include "mtk_cam-plat.h"
 #include "mtk_cam-fmt_utils.h"
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
+#define OPLUS_FEATURE_CAMERA_COMMON
+#endif
+
 static unsigned int debug_raw;
 module_param(debug_raw, uint, 0644);
 MODULE_PARM_DESC(debug_raw, "activates debug info");
@@ -314,11 +318,15 @@ mtk_cam_resource_update_work_buf(struct mtk_cam_resource_v2 *user_ctrl)
 	case MTK_CAM_SCEN_NORMAL:
 		exp_num = (scen->scen.normal.max_exp_num == 0) ?
 					1 : scen->scen.normal.max_exp_num;
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 		/* wa: for performace, dc mode work buffer increasing */
 		if (cur_platform->hw->platform_id == 6897)
 			buf_require = res_raw_is_dc_mode(r) ? exp_num * 2 : exp_num - 1;
 		else
 			buf_require = res_raw_is_dc_mode(r) ? exp_num : exp_num - 1;
+#else
+			buf_require = res_raw_is_dc_mode(r) ? exp_num : exp_num - 1;
+#endif
 		buf_require = !!(scen->scen.normal.w_chn_supported) ?
 					buf_require * 2 : buf_require;
 		buf_require = buf_require * (r->ois_compensation ? 2 : 1);

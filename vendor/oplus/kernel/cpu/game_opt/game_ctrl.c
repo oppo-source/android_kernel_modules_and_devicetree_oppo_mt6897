@@ -53,7 +53,6 @@ static int __init game_ctrl_init(void)
 
 static void __exit game_ctrl_exit(void)
 {
-
 	heavy_task_boost_exit();
 	hrtimer_boost_exit();
 }

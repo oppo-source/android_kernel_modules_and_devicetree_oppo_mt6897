@@ -133,7 +133,7 @@ int fqm_dump(struct seq_file *s, void *v)
 		}
 		table = &moni->tables;
 		for (index = 0; index < MAX_FREQ_TABLE_CNT; index++) {
-			if (table->elm[index].min == 0 && table->elm[index].max == 0)
+			if (table->elm[index].updated_time == 0)
 				continue;
 			seq_printf(
 				s, "%lu, %d, %llu, %d, %d, %d, %d, %d, %d, %d, %s\n",

@@ -104,7 +104,8 @@ enum slc_gid_list {
 
 static struct mtk_slbc *slbc;
 
-static atomic_t venc_count = ATOMIC_INIT(0); /* thread save optimized */
+static int venc_count;
+static int dis_sf_count;
 
 static int slb_disable;
 static int slc_disable;
@@ -130,6 +131,7 @@ static int uid_ref[UID_MAX];
 static int slbc_mic_num = 3;
 static int slbc_inner = 5;
 static int slbc_outer = 5;
+static int slbc_cg_adj[2] = {};
 static int gid_ref[GID_MAX];
 static int gid_vld_cnt[GID_MAX];
 
@@ -751,12 +753,12 @@ int slbc_request(struct slbc_data *d)
 		if (d->uid == UID_MM_VENC || d->uid == UID_MM_VENC_FHD ||
 				d->uid == UID_MM_VENC_SL) {
 			mutex_lock(&slbc_ref_lock);
-			if (atomic_read(&venc_count) == 0)
+			if (venc_count == 0)
 				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
-			atomic_inc(&venc_count);
-			pr_info("#@# %s(%d) venc_count %d\n",
-				__func__, __LINE__, atomic_read(&venc_count));
+			venc_count++;
 			mutex_unlock(&slbc_ref_lock);
+			pr_info("#@# %s(%d) venc_count %d\n",
+				__func__, __LINE__, venc_count);
 		}
 	}
 
@@ -821,12 +823,12 @@ int slbc_release(struct slbc_data *d)
 		if (d->uid == UID_MM_VENC || d->uid == UID_MM_VENC_FHD ||
 				d->uid == UID_MM_VENC_SL) {
 			mutex_lock(&slbc_ref_lock);
-			atomic_dec(&venc_count);
-			if (atomic_read(&venc_count) == 0)
+			venc_count--;
+			if (venc_count == 0)
 				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
-			pr_info("#@# %s(%d) venc_count %d\n",
-				__func__, __LINE__, atomic_read(&venc_count));
 			mutex_unlock(&slbc_ref_lock);
+			pr_info("#@# %s(%d) venc_count %d\n",
+				__func__, __LINE__, venc_count);
 		}
 	}
 
@@ -1354,6 +1356,50 @@ int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
 	return 0;
 }
 
+int slbc_adjust_cpu(int size)
+{
+	int ret = 0;
+
+	if (size > 10)
+		size = 0;
+	if (size < 0)
+		size = 0;
+
+	slbc_cg_adj[0] = size;
+	slbc_cg_adj[1] = -1 * size;
+	ret = slbc_sspm_slbc_interface(0, slbc_cg_adj[0]);
+	if (ret)
+		return ret;
+
+	ret = slbc_sspm_slbc_interface(1, slbc_cg_adj[1]);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+int slbc_adjust_gpu(int size)
+{
+	int ret = 0;
+
+	if (size > 10)
+		size = 0;
+	if (size < 0)
+		size = 0;
+
+	slbc_cg_adj[0] = -1 * size;
+	slbc_cg_adj[1] = size;
+	ret = slbc_sspm_slbc_interface(0, slbc_cg_adj[0]);
+	if (ret)
+		return ret;
+
+	ret = slbc_sspm_slbc_interface(1, slbc_cg_adj[1]);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 #ifdef SLBC_DUMP_DATA
 static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 {
@@ -1425,6 +1471,8 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "slbc_enable %x\n", slbc_enable);
 	seq_printf(m, "slb_disable %x\n", slb_disable);
 	seq_printf(m, "slc_disable %x\n", slc_disable);
+	seq_printf(m, "slbc_adjust_cpu: %d\n", slbc_cg_adj[0]);
+	seq_printf(m, "slbc_adjust_gpu: %d\n", slbc_cg_adj[1]);
 	seq_printf(m, "slbc_sram_enable %x\n", slbc_sram_enable);
 	seq_printf(m, "slbc_uid_used 0x%lx\n", slbc_uid_used);
 	seq_printf(m, "slbc_sid_mask 0x%lx\n", slbc_sid_mask);
@@ -1438,7 +1486,8 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "slbc_force 0x%x\n", slbc_force);
 	seq_printf(m, "buffer_ref %x\n", buffer_ref);
 	seq_printf(m, "slbc_ref %x\n", slbc_ref);
-	seq_printf(m, "venc_count %x\n", atomic_read(&venc_count));
+	seq_printf(m, "venc_count %x\n", venc_count);
+	seq_printf(m, "dis_sf_count %x\n", dis_sf_count);
 	seq_printf(m, "debug_level %x\n", debug_level);
 	seq_printf(m, "slbc_sta %x\n", slbc_sta);
 	seq_printf(m, "slbc_ack_c %x\n", slbc_ack_c);
@@ -1614,6 +1663,12 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 
 		/* enable/disable slc */
 		slbc_sspm_enable(slbc_enable);
+	} else if (!strcmp(cmd, "slbc_adjust_cpu")) {
+		pr_info("slbc_adjust_cpu %ld\n", val_1);
+		slbc_adjust_cpu((int)val_1);
+	} else if (!strcmp(cmd, "slbc_adjust_gpu")) {
+		pr_info("slbc_adjust_gpu %ld\n", val_1);
+		slbc_adjust_gpu((int)val_1);
 	} else if (!strcmp(cmd, "slb_disable")) {
 		pr_info("slb disable %ld\n", val_1);
 		slb_disable = val_1;
@@ -1679,16 +1734,32 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 	} else if (!strcmp(cmd, "slc_cpu_setting")) {
 		mutex_lock(&slbc_ref_lock);
 		if (val_1) {
-			if (atomic_read(&venc_count) == 0)
+			if (venc_count == 0)
 				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
-			atomic_inc(&venc_count);
+			venc_count++;
 		} else {
-			atomic_dec(&venc_count);
-			if (atomic_read(&venc_count) == 0)
+			venc_count--;
+			if (venc_count == 0)
 				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
 		}
+		slbc_sram_write(SLBC_VENC_COUNT, venc_count);
 		pr_info("#@# %s(%d) venc_count %d\n",
-				__func__, __LINE__, atomic_read(&venc_count));
+				__func__, __LINE__, venc_count);
+		mutex_unlock(&slbc_ref_lock);
+	} else if (!strcmp(cmd, "dis_sf_setting")) {
+		mutex_lock(&slbc_ref_lock);
+		if (val_1) {
+			if (dis_sf_count == 0)
+				slbc_enable_sf_cmd(0);
+			dis_sf_count++;
+		} else {
+			dis_sf_count--;
+			if (dis_sf_count == 0)
+				slbc_enable_sf_cmd(1);
+		}
+		slbc_sram_write(SLBC_DIS_SF_COUNT, dis_sf_count);
+		pr_info("#@# %s(%d) dis_sf_count %d\n",
+				__func__, __LINE__, dis_sf_count);
 		mutex_unlock(&slbc_ref_lock);
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
 	} else if (!strcmp(cmd, "gid_set")) {
@@ -1896,6 +1967,8 @@ static struct slbc_common_ops common_ops = {
 	.slbc_get_cache_hit_rate = slbc_get_cache_hit_rate,
 	.slbc_get_cache_hit_bw = slbc_get_cache_hit_bw,
 	.slbc_get_cache_usage = slbc_get_cache_usage,
+	.slbc_adjust_cpu = slbc_adjust_cpu,
+	.slbc_adjust_gpu = slbc_adjust_gpu,
 };
 
 static struct slbc_ipi_ops ipi_ops = {
@@ -2168,16 +2241,20 @@ static int slbc_resume_cb(struct device *dev)
 void oplus_slc_cdwb_switch(bool disable)
 {
 	if (disable) {
-		if (atomic_read(&venc_count) == 0)
+		mutex_lock(&slbc_ref_lock);
+		if (venc_count == 0)
 			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
-		atomic_inc(&venc_count);
+		venc_count++;
+		mutex_unlock(&slbc_ref_lock);
 	} else {
-		atomic_dec(&venc_count);
-		if (atomic_read(&venc_count) == 0)
+		mutex_lock(&slbc_ref_lock);
+		venc_count--;
+		if (venc_count == 0)
 			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
+		mutex_unlock(&slbc_ref_lock);
 	}
 	pr_info("#@# %s(%d) oplus_slc_venc_count %d\n",
-			__func__, __LINE__, atomic_read(&venc_count));
+			__func__, __LINE__, venc_count);
 }
 EXPORT_SYMBOL(oplus_slc_cdwb_switch);
 #endif

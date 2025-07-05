@@ -841,8 +841,30 @@
                 "write": false,
                 "overwrite": false
             }
+        },
+        {
+            "lable": "OPLUS_IC_FUNC_RX_SEND_EPP_MATCH_Q",
+            "desc": {
+                "zh": "EPP模式下设置RX的Q值和F值"
+            },
+            "auto_debug_code": false,
+            "parameter_list": ["u8 []"],
+            "parameter_desc": [
+                {
+                    "range": "*",
+                    "type": "in",
+                    "desc": {
+                        "zh": "N/A"
+                    }
+                }
+            ],
+            "vict": {
+                "read": false,
+                "write": false,
+                "overwrite": false
+            }
         }
     ],
 
-    "version": "V3.0:37:bb2775a1414529f7220a3057192ed87579d912ed3d375f1d684716c694e2a758"
+    "version": "V3.1:38:741bb279c316ef2162e2792f49a54ba6e692904569223b504f00319efc082e6f"
 }

@@ -94,6 +94,13 @@
 		3p0-gpios = <&pio 34 0>;
 		1p8-supply = <&mt6368_vrf18_aif>;
 		1p2-supply = <&mt6319_8_vbuck4>;
+		oplus,dsi-serial-number-switch-page;
+		oplus,dsi-serial-number-switch-page-command= <0xF0 0x55 0xAA 0x52 0x08 0x01>;
+		oplus,dsi-serial-number-default-switch-page-command= <0xF0 0x55 0xAA 0x52 0x08 0x00>;
+		oplus,dsi-serial-number-enabled= <1>;
+		oplus,dsi-serial-number-index= <0>;
+		oplus,dsi-serial-number-reg= <0xD7>;
+		oplus,dsi-serial-number-read-count= <7>;
 		pinctrl-names = "default";
 		oplus,ofp-fp-type = <0xA10>;
 		oplus,ofp-fp-local-hbm-calibration;

@@ -721,7 +721,9 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
 				/* do not put chp page into boot_pool */
 				if (boost_pool &&
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
 				    !is_chp_ext_pages(page, compound_order(page)) &&
+#endif
 				    !boost_pool_free(boost_pool, page, j))
 					continue;
 #endif /* CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */

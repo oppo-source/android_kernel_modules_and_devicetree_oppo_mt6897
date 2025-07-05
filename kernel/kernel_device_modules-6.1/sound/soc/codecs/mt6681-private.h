@@ -533,6 +533,10 @@ struct mt6681_priv {
 
 	/* NLE */
 	struct nle_trim_data nle_trim;
+	/* CLH */
+	int lo_enable;
+	int hs_enable;
+	int hs_rload;
 
 	/* debugfs */
 	struct dentry *debugfs;

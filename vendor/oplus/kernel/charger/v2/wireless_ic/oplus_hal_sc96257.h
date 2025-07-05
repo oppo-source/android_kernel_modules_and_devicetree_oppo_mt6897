@@ -247,6 +247,7 @@ enum {
 #define WP_IRQ_RX_V2X_OVP		BIT(27)
 #define WP_IRQ_RX_V2X_VV_UVP		BIT(28)
 #define WP_IRQ_RX_V2X_VV_OVP		BIT(29)
+#define WP_IRQ_RX_EPP_ID_SUCCESS	BIT(30)
 /*tx only*/
 #define WP_IRQ_TX_DET_RX		BIT(14)
 #define WP_IRQ_TX_EPT			BIT(15)

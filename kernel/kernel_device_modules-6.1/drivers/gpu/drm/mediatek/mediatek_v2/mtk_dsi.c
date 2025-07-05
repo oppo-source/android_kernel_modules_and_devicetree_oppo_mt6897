@@ -6949,12 +6949,14 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 void mipi_dsi_dcs_write_gce_delay(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				  const void *data, size_t len)
 {
+	u16 gpr;
 	struct mipi_dsi_msg msg = {
 		.tx_buf = data,
 		.tx_len = len
 	};
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	gpr = mtk_get_gpr(comp, handle);
 
 	switch (len) {
 	case 0:
@@ -7031,7 +7033,7 @@ void mipi_dsi_dcs_write_gce_delay(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			dsi->ddp_comp.regs_pa + DSI_INTSTA,
 			VM_CMD_DONE_INT_EN, VM_CMD_DONE_INT_EN);
 
-		cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(100), CMDQ_GPR_R14);//for video panel delay
+		cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(100), gpr);//for video panel delay
 
 		cmdq_pkt_set_event(handle,
 			mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
@@ -7039,7 +7041,7 @@ void mipi_dsi_dcs_write_gce_delay(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 
 	mtk_dsi_power_keep_gce(dsi, handle, false);
 }
-
+EXPORT_SYMBOL(mipi_dsi_dcs_write_gce_delay);
 
 void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				  const void *data, size_t len)
@@ -10804,6 +10806,12 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		}
 #endif /* OPLUS_FEATURE_DISPLAY */
 
+#ifdef OPLUS_FEATURE_DISPLAY_ONSCREENFINGERPRINT
+		if (oplus_ofp_is_supported() && oplus_ofp_video_mode_30hz_aod_is_enabled()) {
+			oplus_ofp_video_mode_aod_handle(dsi->encoder.crtc, dsi->ext, dsi->panel, dsi, mipi_dsi_dcs_write_gce_dyn, handle);
+		}
+#endif /* OPLUS_FEATURE_DISPLAY_ONSCREENFINGERPRINT */
+
 		/*1.2 send cmd: send cmd*/
 		mtk_dsi_send_switch_cmd(dsi, handle, mtk_crtc, src_mode,
 					drm_mode_vrefresh(&adjusted_mode));
@@ -10938,6 +10946,12 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 
 		if (dsi && dsi->ext && dsi->ext->params
 			&& dsi->ext->params->change_fps_by_vfp_send_cmd) {
+#ifdef OPLUS_FEATURE_DISPLAY_ONSCREENFINGERPRINT
+			if (oplus_ofp_is_supported() && oplus_ofp_video_mode_30hz_aod_is_enabled()) {
+				oplus_ofp_video_mode_aod_handle(dsi->encoder.crtc, dsi->ext, dsi->panel, dsi, mipi_dsi_dcs_write_gce_dyn, handle);
+			}
+#endif /* OPLUS_FEATURE_DISPLAY_ONSCREENFINGERPRINT */
+
 			/*1.2 send cmd: send cmd*/
 			mtk_dsi_send_switch_cmd(dsi, handle, mtk_crtc, src_mode,
 						drm_mode_vrefresh(&adjusted_mode));

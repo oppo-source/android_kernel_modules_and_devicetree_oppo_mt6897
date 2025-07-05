@@ -832,6 +832,7 @@ struct oplus_chg_track {
 	oplus_chg_track_trigger chg_into_liquid_load_trigger;
 	oplus_chg_track_trigger plugout_state_trigger;
 	oplus_chg_track_trigger dual_chan_err_load_trigger;
+	oplus_chg_track_trigger usb_lpd_load_trigger;
 	struct delayed_work uisoc_load_trigger_work;
 	struct delayed_work soc_trigger_work;
 	struct delayed_work uisoc_trigger_work;
@@ -846,6 +847,7 @@ struct oplus_chg_track {
 	struct delayed_work charging_break_trigger_work;
 	struct delayed_work wls_charging_break_trigger_work;
 	struct delayed_work usbtemp_load_trigger_work;
+	struct delayed_work usb_lpd_load_trigger_work;
 	struct delayed_work vbatt_too_low_load_trigger_work;
 	struct delayed_work vbatt_diff_over_load_trigger_work;
 	struct delayed_work uisoc_keep_1_t_load_trigger_work;
@@ -1014,6 +1016,7 @@ static struct flag_reason_table track_flag_reason_table[] = {
 	{ TRACK_NOTIFY_FLAG_ENDURANCE_INFO, "EnduranceInfo" },
 	{ TRACK_NOTIFY_FLAG_EIS_INFO, "EisInfo" },
 	{ TRACK_NOTIFY_FLAG_PLC_INFO, "PlcInfo" },
+	{ TRACK_NOTIFY_FLAG_LPD_INFO, "LPDInfo" },
 	{ TRACK_NOTIFY_FLAG_ANTI_EXPANSION_INFO, "AntiExpansionInfo" },
 	{ TRACK_NOTIFY_FLAG_DEC_CV_INFO, "DecCvInfo" },
 	{ TRACK_NOTIFY_FLAG_WIRED_RETENTION_ONLINE, "WiredRetentionOnline" },
@@ -3701,6 +3704,33 @@ oplus_chg_track_record_charger_info(struct oplus_monitor *monitor,
 					    p_trigger_data, index);
 }
 
+static int
+oplus_chg_track_record_lpd_info(struct oplus_chg_track *track,
+				oplus_chg_track_trigger *p_trigger_data)
+{
+	int index = 0;
+
+	if (!p_trigger_data)
+		return -1;
+
+	if (oplus_wired_get_lpd_info_status(track->monitor->wls_topic) == OPLUS_LPD_NOT_DETECT)
+			return -1;
+
+	index = strlen(p_trigger_data->crux_info);
+	if (index < 0 || index >= OPLUS_CHG_TRACK_CURX_INFO_LEN) {
+		chg_err("index is invalid\n");
+		return -1;
+	}
+	if (index < OPLUS_CHG_TRACK_CURX_INFO_LEN) {
+		index += scnprintf(
+			&(p_trigger_data->crux_info[index]),
+			OPLUS_CHG_TRACK_CURX_INFO_LEN - index, "%s",
+			track->usb_lpd_load_trigger.crux_info);
+	}
+	chg_info("%s\n", p_trigger_data->crux_info);
+	return 0;
+}
+
 static void oplus_chg_track_charger_info_trigger_work(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
@@ -3712,6 +3742,7 @@ static void oplus_chg_track_charger_info_trigger_work(struct work_struct *work)
 
 	chip->track_status.wls_need_upload = false;
 	chip->track_status.wls_need_upload = false;
+	oplus_chg_track_record_lpd_info(chip, &chip->charger_info_trigger);
 	oplus_chg_track_upload_trigger_data(&chip->charger_info_trigger);
 }
 
@@ -3726,6 +3757,7 @@ static void oplus_chg_track_no_charging_trigger_work(struct work_struct *work)
 
 	chip->track_status.wls_need_upload = false;
 	chip->track_status.wls_need_upload = false;
+	oplus_chg_track_record_lpd_info(chip, &chip->no_charging_trigger);
 	oplus_chg_track_upload_trigger_data(&chip->no_charging_trigger);
 }
 
@@ -3740,6 +3772,7 @@ static void oplus_chg_track_slow_charging_trigger_work(struct work_struct *work)
 
 	chip->track_status.wls_need_upload = false;
 	chip->track_status.wls_need_upload = false;
+	oplus_chg_track_record_lpd_info(chip, &chip->slow_charging_trigger);
 	oplus_chg_track_upload_trigger_data(&chip->slow_charging_trigger);
 }
 
@@ -3779,6 +3812,18 @@ static void oplus_chg_track_usbtemp_load_trigger_work(struct work_struct *work)
 		return;
 
 	oplus_chg_track_upload_trigger_data(&chip->usbtemp_load_trigger);
+}
+
+static void oplus_chg_track_usb_lpd_load_trigger_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct oplus_chg_track *chip = container_of(
+		dwork, struct oplus_chg_track, usb_lpd_load_trigger_work);
+
+	if (!chip)
+		return;
+
+	oplus_chg_track_upload_trigger_data(&chip->usb_lpd_load_trigger);
 }
 
 static void
@@ -4508,6 +4553,9 @@ static int oplus_chg_track_init(struct oplus_chg_track *track_dev)
 	chip->usbtemp_load_trigger.type_reason =
 		TRACK_NOTIFY_TYPE_GENERAL_RECORD;
 	chip->usbtemp_load_trigger.flag_reason = TRACK_NOTIFY_FLAG_USBTEMP_INFO;
+	chip->usb_lpd_load_trigger.type_reason =
+		TRACK_NOTIFY_TYPE_GENERAL_RECORD;
+	chip->usb_lpd_load_trigger.flag_reason = TRACK_NOTIFY_FLAG_LPD_INFO;
 	chip->vbatt_diff_over_load_trigger.type_reason =
 		TRACK_NOTIFY_TYPE_GENERAL_RECORD;
 	chip->vbatt_diff_over_load_trigger.flag_reason =
@@ -4636,6 +4684,8 @@ static int oplus_chg_track_init(struct oplus_chg_track *track_dev)
 			  oplus_chg_track_wls_charging_break_trigger_work);
 	INIT_DELAYED_WORK(&chip->usbtemp_load_trigger_work,
 			  oplus_chg_track_usbtemp_load_trigger_work);
+	INIT_DELAYED_WORK(&chip->usb_lpd_load_trigger_work,
+			  oplus_chg_track_usb_lpd_load_trigger_work);
 	INIT_DELAYED_WORK(&chip->vbatt_too_low_load_trigger_work,
 			  oplus_chg_track_vbatt_too_low_load_trigger_work);
 	INIT_DELAYED_WORK(&chip->vbatt_diff_over_load_trigger_work,
@@ -7147,6 +7197,27 @@ static int oplus_chg_track_upload_usbtemp_info(struct oplus_chg_track *track)
 
 	schedule_delayed_work(&track->usbtemp_load_trigger_work, 0);
 	chg_info("%s\n", track->usbtemp_load_trigger.crux_info);
+
+	return 0;
+}
+
+static int oplus_chg_track_upload_usb_lpd_info(struct oplus_chg_track *track)
+{
+	union mms_msg_data data = { 0 };
+	int index;
+	int rc;
+
+
+	rc = oplus_mms_get_item_data(track->monitor->err_topic,
+				     ERR_ITEM_LPD, &data, false);
+	if (rc < 0) {
+		chg_err("get msg data error, rc=%d\n", rc);
+		return rc;
+	}
+	index = snprintf(track->usb_lpd_load_trigger.crux_info,
+			 OPLUS_CHG_TRACK_CURX_INFO_LEN, "%s", data.strval);
+
+	chg_info("%s\n", track->usb_lpd_load_trigger.crux_info);
 
 	return 0;
 }
@@ -10051,6 +10122,9 @@ static void oplus_chg_track_err_subs_callback(struct mms_subscribe *subs,
 			break;
 		case ERR_ITEM_DEC_CV_INFO:
 			oplus_chg_track_upload_dec_cv_info(track);
+			break;
+		case ERR_ITEM_LPD:
+			oplus_chg_track_upload_usb_lpd_info(track);
 			break;
 		default:
 			break;

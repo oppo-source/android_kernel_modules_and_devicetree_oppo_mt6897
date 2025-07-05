@@ -105,6 +105,7 @@
 		oplus,dsi-serial-number-reg= <0x81>;
 		oplus,dsi-serial-number-read-count= <7>;
 		oplus,ofp-fp-type = <0x10>;
+		oplus,ofp-need-to-update-lhbm-brightness;
 		res-switch = <2>;
 		pinctrl-names = "default";
 		oplus,ofp-longrui-aod-config = <0x02>;

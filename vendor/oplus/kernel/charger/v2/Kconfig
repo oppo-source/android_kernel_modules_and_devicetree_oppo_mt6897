@@ -257,3 +257,8 @@ config OPLUS_STATE_RETENTION
 	  Say Y here to declare state retention support
 
 endif #OPLUS_CHG_VOOCPHY
+
+config OPLUS_LIQUID_DETECTION
+	bool "liquid detection support"
+	help
+	  Say Y here to declare liquid detection support

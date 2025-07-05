@@ -652,15 +652,15 @@ static int sy7806e_zhuquec2_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *
 	int rval = -EINVAL;
 	unsigned int flash1_led_state = 0;
 	unsigned int flash2_led_state = 0;
-	pr_info("%s: set old flash current before open", __func__);
+	pr_info("%s: set old flash current before open and en high", __func__);
+	sy7806e_zhuquec2_pinctrl_set(SY7806E_ZHUQUEC2_PINCTRL_PIN_HWEN, SY7806E_ZHUQUEC2_PINCTRL_PINSTATE_HIGH);
+	msleep(2);
 	rval = regmap_read(sy7806e_zhuquec2_flash_data->regmap, REG_ENABLE, &flash1_led_state);
 	rval = regmap_read(sy7806e_2_zhuquec2_flash_data->regmap, REG_ENABLE, &flash2_led_state);
 	if (((flash1_led_state & 0x03) != 0) || ((flash2_led_state & 0x03) != 0)) {
 		pr_info("%s: flash led is enabled and does not need to be opened", __func__);
 		return 0;
 	}
-	sy7806e_zhuquec2_pinctrl_set(SY7806E_ZHUQUEC2_PINCTRL_PIN_HWEN, SY7806E_ZHUQUEC2_PINCTRL_PINSTATE_HIGH);
-	msleep(2);
 	flash_device_id = 0;
 	rval = regmap_read(sy7806e_zhuquec2_flash_data->regmap, REG_DEVICE_ID, &flash_device_id);
 	pr_info("%s: flash1_device_id :%x", __func__, flash_device_id);

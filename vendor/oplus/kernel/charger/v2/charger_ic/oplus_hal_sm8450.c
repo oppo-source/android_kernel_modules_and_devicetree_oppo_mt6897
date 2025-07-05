@@ -42,6 +42,7 @@
 #include <oplus_impedance_check.h>
 #include <plat_ufcs/plat_ufcs_notify.h>
 #include <oplus_chg_cpa.h>
+#include <oplus_chg_monitor.h>
 
 #define BCC_TYPE_IS_SVOOC 1
 #define BCC_TYPE_IS_VOOC 0
@@ -246,6 +247,37 @@ static const char * const qc_power_supply_usb_type_text[] = {
 };
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
+static bool is_err_topic_available(struct battery_chg_dev *chip)
+{
+	if (!chip->err_topic)
+		chip->err_topic = oplus_mms_get_by_name("error");
+	return !!chip->err_topic;
+}
+
+static void oplus_publish_close_cp_item_work(struct work_struct *work)
+{
+	struct battery_chg_dev *chip = container_of(work, struct battery_chg_dev, publish_close_cp_item_work.work);
+	struct mms_msg *msg;
+	int rc;
+
+	if (!is_err_topic_available(chip)) {
+		chg_err("error topic not found\n");
+		return;
+	}
+
+	msg = oplus_mms_alloc_int_msg(MSG_TYPE_ITEM, MSG_PRIO_MEDIUM, ERR_ITEM_CLOSE_CP, 1);
+	if (msg == NULL) {
+		chg_err("alloc close cp msg error\n");
+		return;
+	}
+
+	rc = oplus_mms_publish_msg(chip->err_topic, msg);
+	if (rc < 0) {
+		chg_err("publish close cp msg error, rc=%d\n", rc);
+		kfree(msg);
+	}
+}
+
 static int oem_battery_chg_write(struct battery_chg_dev *bcdev, void *data,
 	int len)
 {
@@ -2225,6 +2257,7 @@ static void handle_notification(struct battery_chg_dev *bcdev, void *data,
 		} else {
 			chg_info("the current protol is %d.", protocol);
 		}
+		schedule_delayed_work(&bcdev->publish_close_cp_item_work, 0);
 		break;
 	case BC_UFCS_PDO_READY:
 		bcdev->ufcs_pdo_ready = true;
@@ -8293,6 +8326,7 @@ static int battery_chg_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&bcdev->recheck_input_current_work, oplus_recheck_input_current_work);
 	INIT_DELAYED_WORK(&bcdev->qc_type_check_work, oplus_qc_type_check_work);
 	INIT_DELAYED_WORK(&bcdev->vbus_collapse_rerun_icl_work, oplus_vbus_collapse_rerun_icl_work);
+	INIT_DELAYED_WORK(&bcdev->publish_close_cp_item_work, oplus_publish_close_cp_item_work);
 	INIT_DELAYED_WORK(&bcdev->ibus_collapse_rerun_aicl_work, oplus_ibus_collapse_rerun_aicl_work);
 	INIT_DELAYED_WORK(&bcdev->sourcecap_done_work, oplus_sourcecap_done_work);
 #endif

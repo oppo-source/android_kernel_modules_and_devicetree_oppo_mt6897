@@ -13016,6 +13016,7 @@ void __kalIndicateChannelSwitch(struct GLUE_INFO *prGlueInfo,
 	uint8_t band = 0;
 	struct BSS_INFO *prBssInfo;
 	uint8_t linkIdx = 0;
+	uint32_t u4BufLen = 0;
 
 	prBssInfo = GET_BSS_INFO_BY_INDEX(prGlueInfo->prAdapter,
 		ucBssIndex);
@@ -13096,8 +13097,9 @@ void __kalIndicateChannelSwitch(struct GLUE_INFO *prGlueInfo,
 #endif
 
 	/* Check SAP channel */
-	p2pFuncSwitchSapChannel(prGlueInfo->prAdapter,
-		P2P_DEFAULT_SCENARIO);
+	DBGLOG(CCM, TRACE, "CSA done, re-trigger CCM\n");
+	kalIoctl(prGlueInfo, wlanoidCcmRetrigger, prBssInfo,
+				sizeof(struct BSS_INFO), &u4BufLen);
 }
 
 void kalAisChnlSwitchNotifyWork(struct work_struct *work)

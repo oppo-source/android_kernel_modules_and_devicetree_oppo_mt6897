@@ -47,7 +47,7 @@
 static gfp_t order_flags[] = { HIGH_ORDER_GFP, HIGH_ORDER_GFP, LOW_ORDER_GFP };
 
 // int orders[3] = { 9, 4, 0 };
-int orders[3] = { 9, 4, 3 };
+int orders[3] = { 9, 4, 2 };
 #define NUM_ORDERS ARRAY_SIZE(orders)
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 

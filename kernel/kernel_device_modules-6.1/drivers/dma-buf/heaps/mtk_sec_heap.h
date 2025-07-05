@@ -10,6 +10,8 @@
 #ifndef _MTK_SEC_HEAP_H
 #define _MTK_SEC_HEAP_H
 
+#include <linux/mm.h>
+
 #define ROUNDUP(a, b) (((a) + ((b)-1)) & ~((b)-1))
 
 #define PMM_MSG_ORDER_SHIFT (24UL)
@@ -24,7 +26,11 @@
 #define HYP_PMM_MERGED_TABLE (0XBB00FFAD)
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
 #define PG_sec_rsv (PG_cont_ext_alloc + 4)
+#else
+#define PG_sec_rsv (__NR_PAGEFLAGS + 12)
+#endif
 #define PageSecRsv(page) test_bit(PG_sec_rsv, &(page)->flags)
 #define SetPageSecRsv(page) set_bit(PG_sec_rsv, &(page)->flags)
 

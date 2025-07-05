@@ -224,6 +224,8 @@ int slbc_get_cache_size(enum slc_ach_uid uid);
 int slbc_get_cache_hit_rate(enum slc_ach_uid uid);
 int slbc_get_cache_hit_bw(enum slc_ach_uid uid);
 int slbc_get_cache_usage(int *cpu, int *gpu, int *other);
+int slbc_adjust_cpu(int size);
+int slbc_adjust_gpu(int size);
 #else
 __weak int slbc_status(struct slbc_data *d)
 {
@@ -315,6 +317,14 @@ __weak int slbc_get_cache_hit_bw(enum slc_ach_uid uid)
 	return -EDISABLED;
 }
 __weak int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
+{
+	return -EDISABLED;
+}
+__weak int slbc_adjust_cpu(int size)
+{
+	return -EDISABLED;
+}
+__weak int slbc_adjust_gpu(int size)
 {
 	return -EDISABLED;
 }

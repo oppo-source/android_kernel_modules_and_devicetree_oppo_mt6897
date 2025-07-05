@@ -278,14 +278,8 @@ static void oplus_quirks_update_plugin_timer(struct oplus_quirks *chip, unsigned
 	}
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 	mod_timer(&chip->update_plugin_timer, jiffies+msecs_to_jiffies(25000));
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0))
-	try_to_del_timer_sync(&chip->update_plugin_timer);
-	chip->update_plugin_timer.expires  = jiffies + msecs_to_jiffies(ms);
-	add_timer(&chip->update_plugin_timer);
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
-	timer_delete_sync(&chip->update_plugin_timer);
-	chip->update_plugin_timer.expires  = jiffies + msecs_to_jiffies(ms);
-	add_timer(&chip->update_plugin_timer);
+#else
+	mod_timer(&chip->update_plugin_timer, jiffies + msecs_to_jiffies(ms));
 #endif
 }
 

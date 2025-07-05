@@ -1192,6 +1192,8 @@ statsGetTlvStatTotalLen(struct GLUE_INFO *prGlueInfo, uint8_t type,
 		pTlvTbl = apfnCgsTbl;
 		u4MaxTagNum = STATS_CGS_TAG_MAX_NUM;
 		break;
+	default:
+		break;
 	}
 
 	if (!pTlvTbl || ucNum == 0 || !arTagList)
@@ -1637,6 +1639,8 @@ statsGetInfoHdlr(uint8_t ucBssIdx, struct GLUE_INFO *prGlueInfo,
 	case STATS_CGS_TAG:
 		pTlvTbl = apfnCgsTbl;
 		u4MaxTagNum = STATS_CGS_TAG_MAX_NUM;
+		break;
+	default:
 		break;
 	}
 

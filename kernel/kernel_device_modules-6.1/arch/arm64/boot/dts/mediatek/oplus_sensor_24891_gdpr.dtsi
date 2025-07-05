@@ -125,7 +125,6 @@
 			i2c_addr = <0x48>;
 			direction = <4>;
 			eint_num = <18>;
-			als_ratio = <541>;
 			als_buffer_length =<4>;
 			als_type = <2>;//<1-normal;2-under screen;3-normal needed compensation>
 			device_name = "stk6a7x";
@@ -136,6 +135,18 @@
 			als_coef_d = <6600>; //*100
 			als_coef_e = <9000>; //*100
 			als_coef_ratio = <50>;
+		};
+		als_panel_P_3_1: als_panel_P_3_1 {
+			status = "okay";
+			device_name = "stk63701";
+			support_panel = <7>; // 1-SAMSUNG, 2-BOE, 3-TIANMA, 4-NT36672C, 5-HX83112F, 6-TM, 7-P_3, 8-P_B
+			als_ratio = <541>;
+		};
+		als_panel_P_7_1: als_panel_P_7_1 {
+			status = "okay";
+			device_name = "stk63701";
+			support_panel = <12>; // 1-SAMSUNG, 2-BOE, 3-TIANMA, 4-NT36672C, 5-HX83112F, 6-TM, 7-P_3, 8-P_B
+			als_ratio = <410>;
 		};
 		pick_up: pick_up {
 			status = "okay";

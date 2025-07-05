@@ -357,24 +357,6 @@ struct xsphy_instance {
 	struct work_struct procfs_work;
 };
 
-struct mtk_xsphy {
-	struct device *dev;
-	void __iomem *glb_base;	/* only shared u3 sif */
-	struct xsphy_instance **phys;
-	int nphys;
-	int src_ref_clk; /* MHZ, reference clock for slew rate calibrate */
-	int src_coef;    /* coefficient for slew rate calibrate */
-	bool tx_chirpK_disable; /* Disable tx chirpK at normol status */
-	bool bc11_switch_disable; /* Force usb control dpdm */
-	struct proc_dir_entry *root;
-	struct workqueue_struct *wq;
-	int (*suspend)(struct device *dev);
-	int (*resume)(struct device *dev);
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	struct proc_dir_entry * oplus_usb_root;
-#endif
-};
-
 #ifdef OPLUS_FEATURE_CHG_BASIC
 enum oplus_xsphy_type {
 	PHY_EFUSE_INTR = 0,
@@ -396,7 +378,30 @@ enum oplus_xsphy_type {
 	U3_TX_LCXCP1,
 	XSPHY_MAX_PARAMS_NUM
 };
+#endif
+struct mtk_xsphy {
+	struct device *dev;
+	void __iomem *glb_base;	/* only shared u3 sif */
+	struct xsphy_instance **phys;
+	int nphys;
+	int src_ref_clk; /* MHZ, reference clock for slew rate calibrate */
+	int src_coef;    /* coefficient for slew rate calibrate */
+	bool tx_chirpK_disable; /* Disable tx chirpK at normol status */
+	bool bc11_switch_disable; /* Force usb control dpdm */
+	struct proc_dir_entry *root;
+	struct workqueue_struct *wq;
+	int (*suspend)(struct device *dev);
+	int (*resume)(struct device *dev);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct proc_dir_entry * oplus_usb_root;
+	int def_params_val[XSPHY_MAX_PARAMS_NUM];
+	int params_id_seq[XSPHY_MAX_PARAMS_NUM];
+	int params_update_num;
+#endif
+};
 
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
 static const char *const params_name[] = {
 	"efuse-intr",
 	"efuse-term",
@@ -418,9 +423,6 @@ static const char *const params_name[] = {
 	"max-params-len",
 };
 
-static int def_params_val[XSPHY_MAX_PARAMS_NUM];
-static int params_id_seq[XSPHY_MAX_PARAMS_NUM];
-static int params_update_num;
 #endif
 static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 		struct xsphy_instance *inst);
@@ -1380,46 +1382,53 @@ static int u2_phy_procfs_exit(struct xsphy_instance *inst)
 #ifdef OPLUS_FEATURE_CHG_BASIC
 static int oplus_u2_xsphy_params_set_def(struct xsphy_instance *inst)
 {
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
+
 	if (!inst)
 		return -EINVAL;
 
-	inst->efuse_intr = def_params_val[PHY_EFUSE_INTR];
-	inst->efuse_term_cal = def_params_val[U2_EFUSE_TERM];
-	inst->eye_src = def_params_val[U2_EYE_SRC];
-	inst->eye_vrt = def_params_val[U2_EYE_VRT];
-	inst->eye_term = def_params_val[U2_EYE_TERM];
-	inst->discth = def_params_val[U2_DISTACH];
-	inst->rx_sqth = def_params_val[U2_RX_SQTH];
-	inst->rev6 = def_params_val[U2_REV6];
-	inst->intr_ofs = def_params_val[U2_INTR_OFS];
-	inst->term_ofs = def_params_val[U2_TERM_OFS];
-	inst->pll_fbksel = def_params_val[U2_PLL_FBKSEL];
-	inst->pll_posdiv = def_params_val[U2_PLL_POSDIV];
+	inst->efuse_intr = xsphy->def_params_val[PHY_EFUSE_INTR];
+	inst->efuse_term_cal = xsphy->def_params_val[U2_EFUSE_TERM];
+	inst->eye_src = xsphy->def_params_val[U2_EYE_SRC];
+	inst->eye_vrt = xsphy->def_params_val[U2_EYE_VRT];
+	inst->eye_term = xsphy->def_params_val[U2_EYE_TERM];
+	inst->discth = xsphy->def_params_val[U2_DISTACH];
+	inst->rx_sqth = xsphy->def_params_val[U2_RX_SQTH];
+	inst->rev6 = xsphy->def_params_val[U2_REV6];
+	inst->intr_ofs = xsphy->def_params_val[U2_INTR_OFS];
+	inst->term_ofs = xsphy->def_params_val[U2_TERM_OFS];
+	inst->pll_fbksel = xsphy->def_params_val[U2_PLL_FBKSEL];
+	inst->pll_posdiv = xsphy->def_params_val[U2_PLL_POSDIV];
 
 	return 0;
 }
 
 static int oplus_u3_xsphy_params_set_def(struct xsphy_instance *inst)
 {
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
 	if (!inst)
 		return -EINVAL;
 
-	inst->efuse_intr = def_params_val[PHY_EFUSE_INTR];
-	inst->efuse_tx_imp = def_params_val[U3_EFUSE_TX_IMP];
-	inst->efuse_rx_imp = def_params_val[U3_EFUSE_RX_IMP];
-	inst->tx_lctxcm1 = def_params_val[U3_TX_LCXCM1];
-	inst->tx_lctxc0 = def_params_val[U3_TX_LCXC0];
-	inst->tx_lctxcp1 = def_params_val[U3_TX_LCXCP1];
+	inst->efuse_intr = xsphy->def_params_val[PHY_EFUSE_INTR];
+	inst->efuse_tx_imp = xsphy->def_params_val[U3_EFUSE_TX_IMP];
+	inst->efuse_rx_imp = xsphy->def_params_val[U3_EFUSE_RX_IMP];
+	inst->tx_lctxcm1 = xsphy->def_params_val[U3_TX_LCXCM1];
+	inst->tx_lctxc0 = xsphy->def_params_val[U3_TX_LCXC0];
+	inst->tx_lctxcp1 = xsphy->def_params_val[U3_TX_LCXCP1];
 
 	return 0;
 }
 
 static int oplus_xsphy_params_set_def(struct xsphy_instance *inst)
 {
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
 	if (!inst)
 		return -EINVAL;
 
-	params_update_num = 0;
+	xsphy->params_update_num = 0;
 
 	if (inst->type == PHY_TYPE_USB2)
 		return oplus_u2_xsphy_params_set_def(inst);
@@ -1468,10 +1477,12 @@ static int oplus_u3_xsphy_params_get(struct xsphy_instance *inst, u32 *params_va
 static int proc_oplus_xsphy_params_show(struct seq_file *s, void *unused)
 {
 	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
 	u32 index;
 	u32 params_val[XSPHY_MAX_PARAMS_NUM] = {0};
 
-	if (params_update_num == 0) {
+	if (xsphy->params_update_num == 0) {
 		seq_printf(s, "default");
 		return 0;
 	}
@@ -1482,14 +1493,14 @@ static int proc_oplus_xsphy_params_show(struct seq_file *s, void *unused)
 		oplus_u3_xsphy_params_get(inst, params_val);
 	}
 
-	for (index = 0; index < params_update_num; index++) {
-		if (params_id_seq[index] < 0)
+	for (index = 0; index < xsphy->params_update_num; index++) {
+		if (xsphy->params_id_seq[index] < 0)
 			continue;
 
-		if (index == params_update_num - 1)
-			seq_printf(s, "%s:0x%02x", params_name[params_id_seq[index]], params_val[params_id_seq[index]]);
+		if (index == xsphy->params_update_num - 1)
+			seq_printf(s, "%s:0x%02x", params_name[xsphy->params_id_seq[index]], params_val[xsphy->params_id_seq[index]]);
 		else
-			seq_printf(s, "%s:0x%02x,", params_name[params_id_seq[index]], params_val[params_id_seq[index]]);
+			seq_printf(s, "%s:0x%02x,", params_name[xsphy->params_id_seq[index]], params_val[xsphy->params_id_seq[index]]);
 	}
 
 	return 0;
@@ -1504,14 +1515,16 @@ static int oplus_xsphy_params_parse(u32 *params_seq, int* params_val, u32 cnt, s
 {
 	int index;
 	int seq_i;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
 
-	for (index = 0, seq_i = 0; index < cnt && seq_i < params_update_num; index = index + 2, ++seq_i) {
+	for (index = 0, seq_i = 0; index < cnt && seq_i < xsphy->params_update_num; index = index + 2, ++seq_i) {
 		if (params_seq[index] >= XSPHY_MAX_PARAMS_NUM) {
 			oplus_xsphy_params_set_def(inst);
 			return -EINVAL;
 		}
 
-		params_id_seq[seq_i] = params_seq[index];
+		xsphy->params_id_seq[seq_i] = params_seq[index];
 		params_val[params_seq[index]] = params_seq[index + 1];
 	}
 
@@ -1521,13 +1534,15 @@ static int oplus_xsphy_params_parse(u32 *params_seq, int* params_val, u32 cnt, s
 static void oplus_check_params(int* params_val, struct xsphy_instance *inst)
 {
 	int id;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
 
 	for (id = 0; id < XSPHY_MAX_PARAMS_NUM; ++id) {
-		if (def_params_val[id] == -EINVAL
-		  || (id == U2_INTR_OFS && def_params_val[id] == -(P2AR_RG_INTR_CAL_MASK + 1))
-		  || (id == U2_TERM_OFS && def_params_val[id] == -(P2ARA_RG_TERM_CAL_MASK + 1))) {
+		if (xsphy->def_params_val[id] == -EINVAL
+		  || (id == U2_INTR_OFS && xsphy->def_params_val[id] == -(P2AR_RG_INTR_CAL_MASK + 1))
+		  || (id == U2_TERM_OFS && xsphy->def_params_val[id] == -(P2ARA_RG_TERM_CAL_MASK + 1))) {
 			dev_info(&inst->phy->dev, "param: %s is not configured in dtsi, reset default\n", params_name[id]);
-			params_val[id] = def_params_val[id];
+			params_val[id] = xsphy->def_params_val[id];
 		}
 	}
 }
@@ -1633,6 +1648,8 @@ static ssize_t proc_oplus_xsphy_params_write(struct file *file,
 {
 	struct seq_file *s = file->private_data;
 	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
 	size_t ret = 0;
 	char buf[1024];
 	char val_str[128];
@@ -1644,12 +1661,12 @@ static ssize_t proc_oplus_xsphy_params_write(struct file *file,
 	u32 val = 0;
 	u32 id = 0;
 
-	params_update_num = 0;
+	xsphy->params_update_num = 0;
 
 	memset(buf, 0x00, sizeof(buf));
 	memset(params_seq, 0x00, sizeof(params_seq));
 	memset(params_val, 0xFF, sizeof(params_val));
-	memset(params_id_seq, 0x00, sizeof(params_id_seq));
+	memset(xsphy->params_id_seq, 0x00, sizeof(xsphy->params_id_seq));
 
 	if (count > sizeof(buf) - 1) {
 		dev_info(&inst->phy->dev, "data length out of range, count=%zu\n", count);
@@ -1704,7 +1721,7 @@ static ssize_t proc_oplus_xsphy_params_write(struct file *file,
 		return -EINVAL;
 	}
 
-	params_update_num = cnt / 2;
+	xsphy->params_update_num = cnt / 2;
 	ret = oplus_xsphy_params_parse(params_seq, params_val, cnt, inst);
 	if (ret) {
 		dev_info(&inst->phy->dev, "params parse error\n");
@@ -1757,7 +1774,7 @@ static int oplus_xsphy_procfs_init(struct mtk_xsphy *xsphy,
 	}
 
 	xsphy->oplus_usb_root = oplus_usb_root;
-	params_update_num = 0;
+	xsphy->params_update_num = 0;
 
 	return 0;
 
@@ -2321,18 +2338,18 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 			inst->discth, inst->rx_sqth, inst->host_rx_sqth, inst->rev6,
 			inst->rev6_host);
 #ifdef OPLUS_FEATURE_CHG_BASIC
-		def_params_val[PHY_EFUSE_INTR] = inst->efuse_intr;
-		def_params_val[U2_EFUSE_TERM] = inst->efuse_term_cal;
-		def_params_val[U2_EYE_SRC] = inst->eye_src;
-		def_params_val[U2_EYE_VRT] = inst->eye_vrt;
-		def_params_val[U2_EYE_TERM] = inst->eye_term;
-		def_params_val[U2_DISTACH] = inst->discth;
-		def_params_val[U2_RX_SQTH] = inst->rx_sqth;
-		def_params_val[U2_REV6] = inst->rev6;
-		def_params_val[U2_INTR_OFS] = inst->intr_ofs ;
-		def_params_val[U2_TERM_OFS] = inst->term_ofs ;
-		def_params_val[U2_PLL_FBKSEL] = inst->pll_fbksel;
-		def_params_val[U2_PLL_POSDIV] = inst->pll_posdiv;
+		xsphy->def_params_val[PHY_EFUSE_INTR] = inst->efuse_intr;
+		xsphy->def_params_val[U2_EFUSE_TERM] = inst->efuse_term_cal;
+		xsphy->def_params_val[U2_EYE_SRC] = inst->eye_src;
+		xsphy->def_params_val[U2_EYE_VRT] = inst->eye_vrt;
+		xsphy->def_params_val[U2_EYE_TERM] = inst->eye_term;
+		xsphy->def_params_val[U2_DISTACH] = inst->discth;
+		xsphy->def_params_val[U2_RX_SQTH] = inst->rx_sqth;
+		xsphy->def_params_val[U2_REV6] = inst->rev6;
+		xsphy->def_params_val[U2_INTR_OFS] = inst->intr_ofs ;
+		xsphy->def_params_val[U2_TERM_OFS] = inst->term_ofs ;
+		xsphy->def_params_val[U2_PLL_FBKSEL] = inst->pll_fbksel;
+		xsphy->def_params_val[U2_PLL_POSDIV] = inst->pll_posdiv;
 #endif
 		break;
 	case PHY_TYPE_USB3:
@@ -2361,12 +2378,12 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 			inst->efuse_intr, inst->efuse_tx_imp,
 			inst->efuse_rx_imp, inst->u3_rx_fix, inst->u3_gen2_hqa);
 #ifdef OPLUS_FEATURE_CHG_BASIC
-		def_params_val[PHY_EFUSE_INTR] = inst->efuse_intr;
-		def_params_val[U3_EFUSE_TX_IMP] = inst->efuse_tx_imp;
-		def_params_val[U3_EFUSE_RX_IMP] = inst->efuse_rx_imp;
-		def_params_val[U3_TX_LCXCM1] = inst->tx_lctxcm1;
-		def_params_val[U3_TX_LCXC0] = inst->tx_lctxc0;
-		def_params_val[U3_TX_LCXCP1] = inst->tx_lctxcp1;
+		xsphy->def_params_val[PHY_EFUSE_INTR] = inst->efuse_intr;
+		xsphy->def_params_val[U3_EFUSE_TX_IMP] = inst->efuse_tx_imp;
+		xsphy->def_params_val[U3_EFUSE_RX_IMP] = inst->efuse_rx_imp;
+		xsphy->def_params_val[U3_TX_LCXCM1] = inst->tx_lctxcm1;
+		xsphy->def_params_val[U3_TX_LCXC0] = inst->tx_lctxc0;
+		xsphy->def_params_val[U3_TX_LCXCP1] = inst->tx_lctxcp1;
 #endif
 		break;
 	default:

@@ -231,7 +231,8 @@ struct mmap_buf_format {
 
 #define OS14_NEW_RING_START			(371)
 #define OS14_NEW_RING_END			(410)
-
+#define OS15_NEW_RING_START			(322)
+#define OS15_NEW_RING_END			(341)
 #define AW_WAVEFORM_INDEX_CS_PRESS		(16)
 #define AW_WAVEFORM_INDEX_TRANSIENT		(8)
 #define AW_WAVEFORM_INDEX_SINE_CYCLE		(9)

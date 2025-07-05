@@ -436,6 +436,9 @@ uint8_t nicGetVhtS1(struct ADAPTER *prAdapter,
 		enum ENUM_BAND eBand,
 		uint8_t ucPrimaryChannel,
 		uint8_t ucBandwidth);
+uint8_t nicGetHtS1(uint8_t ucPrimaryChannel,
+		uint8_t ucBandwidth);
+
 #if (CFG_SUPPORT_WIFI_6G == 1)
 uint8_t nicGetHe6gS1(struct ADAPTER *prAdapter,
 		uint8_t ucPrimaryChannel,

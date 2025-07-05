@@ -281,7 +281,6 @@ struct LCM_setting_table lhbm_pressed_icon_on_cmd[] = {
 	{REGFLAG_CMD, 2, {0x97,0xCC}},
 	{REGFLAG_CMD, 2, {0x98,0x02}},
 	{REGFLAG_CMD, 2, {0x99,0x74}},
-	{REGFLAG_DELAY, 8, {} },
 };
 
 

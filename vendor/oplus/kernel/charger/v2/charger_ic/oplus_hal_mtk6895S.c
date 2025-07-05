@@ -6751,6 +6751,24 @@ static int mtk_chg_get_usb_aicl_enhance(struct oplus_chg_ic_dev *ic_dev, bool *e
 	return 0;
 }
 
+static int mtk_chg_get_lpd_info(struct oplus_chg_ic_dev *ic_dev, u32 *buf, u32 flag)
+{
+#if IS_ENABLED(CONFIG_OPLUS_LIQUID_DETECTION)
+	struct tcpc_device *tcpc = NULL;
+
+	tcpc = tcpc_dev_get_by_name("type_c_port0");
+	if (tcpc == NULL) {
+		chg_err("get type_c_port0 fail\n");
+		return -EINVAL;
+	}
+	if (tcpc->ops && tcpc->ops->get_lpd_info)
+		return tcpc->ops->get_lpd_info(tcpc, buf, flag);
+	chg_err("get_lpd_info fail");
+	return -ENOTSUPP;
+#endif
+	return -ENOTSUPP;
+}
+
 static void *oplus_chg_get_func(struct oplus_chg_ic_dev *ic_dev,
 				enum oplus_chg_ic_func func_id)
 {
@@ -6991,6 +7009,9 @@ static void *oplus_chg_get_func(struct oplus_chg_ic_dev *ic_dev,
 		break;
 	case OPLUS_IC_FUNC_BUCK_DIS_INSERT_DETECT:
 		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_BUCK_DIS_INSERT_DETECT, oplus_chg_wls_set_usb_drv);
+		break;
+	case OPLUS_IC_FUNC_BUCK_GET_LPD_INFO:
+		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_BUCK_GET_LPD_INFO, mtk_chg_get_lpd_info);
 		break;
 	default:
 		chg_err("this func(=%d) is not supported\n", func_id);

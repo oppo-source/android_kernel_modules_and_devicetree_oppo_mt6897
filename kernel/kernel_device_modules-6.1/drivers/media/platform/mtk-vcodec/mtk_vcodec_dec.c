@@ -47,6 +47,11 @@ struct mtk_codec_framesizes
 static unsigned int default_out_fmt_idx;
 static unsigned int default_cap_fmt_idx;
 
+int mtk_vdec_lpw_start;
+int mtk_vdec_lpw_start_limit;
+int mtk_vdec_lpw_limit = MTK_VDEC_GROUP_CNT;
+int mtk_vdec_lpw_timeout = MTK_VDEC_WAIT_GROUP_MS;
+
 #define NUM_SUPPORTED_FRAMESIZE ARRAY_SIZE(mtk_vdec_framesizes)
 #define NUM_FORMATS ARRAY_SIZE(mtk_vdec_formats)
 static struct vb2_mem_ops vdec_dma_contig_memops;
@@ -445,6 +450,17 @@ static int mtk_vdec_get_lpw_limit(struct mtk_vcodec_ctx *ctx)
 	return mtk_vdec_lpw_limit;
 }
 
+static int mtk_vdec_get_lpw_start_limit(struct mtk_vcodec_ctx *ctx)
+{
+	if (mtk_vdec_lpw_start > 0)
+		return mtk_vdec_lpw_start;
+
+	if (mtk_vdec_lpw_start < 0)
+		return ctx->dpb_size + mtk_vdec_lpw_start;
+
+	return ctx->dpb_size;
+}
+
 static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
 {
 	struct mtk_vcodec_ctx *ctx = container_of(timer, struct mtk_vcodec_ctx, lpw_timer);
@@ -684,11 +700,14 @@ static bool mtk_vdec_lpw_check_dec_stop(struct mtk_vcodec_ctx *ctx,
 
 	if (before_decode && ctx->lpw_dec_start_cnt > 0) {
 		ctx->lpw_dec_start_cnt--;
-		if (ctx->lpw_dec_start_cnt <= mtk_vdec_lpw_limit && pair_cnt <= limit_cnt) {
-			// done driver dpb size but no more pair to decode
-			mtk_lpw_debug(1, "[%d] lpw_dec_start_cnt less %d not done but no more pair cnt %d(%d,%d)",
-				ctx->id, ctx->lpw_dec_start_cnt, pair_cnt, src_cnt, dst_cnt);
-			ctx->lpw_dec_start_cnt = 0;
+		if (pair_cnt <= limit_cnt) {
+			has_switch = true; // for get out of in_group
+			if (mtk_vdec_lpw_start_limit > 0 && ctx->lpw_dec_start_cnt <= mtk_vdec_lpw_start_limit) {
+				// done driver dpb size but no more pair to decode
+				mtk_lpw_debug(1, "[%d] lpw_dec_start_cnt less %d not done but no more pair cnt %d(%d,%d)",
+					ctx->id, ctx->lpw_dec_start_cnt, pair_cnt, src_cnt, dst_cnt);
+				ctx->lpw_dec_start_cnt = 0;
+			}
 		}
 		if (ctx->lpw_dec_start_cnt == 0) {
 			ctx->lpw_state = VDEC_LPW_WAIT;
@@ -697,7 +716,8 @@ static bool mtk_vdec_lpw_check_dec_stop(struct mtk_vcodec_ctx *ctx,
 					ctx->id, debug_str, ctx->lpw_state,
 					pair_cnt, src_cnt, dst_cnt);
 				has_switch = true;
-			}
+			} else
+				has_switch = false;
 		}
 	} else if (ctx->lpw_dec_start_cnt == 0 && pair_cnt <= limit_cnt) {
 		ctx->lpw_state = VDEC_LPW_WAIT;
@@ -2011,20 +2031,24 @@ static void mtk_vdec_worker(struct work_struct *work)
 
 	if (ctx->low_pw_mode) {
 		unsigned long flags;
+		bool has_stop;
 
 		spin_lock_irqsave(&ctx->lpw_lock, flags);
 		mtk_vdec_lpw_stop_timer(ctx, false);
 
 		if (!ctx->in_group) {
 			ctx->in_group = true;
-			ctx->group_start_time = jiffies_to_nsecs(jiffies);
-			ctx->lpw_set_start_ts = true;
-			ctx->group_dec_cnt = 0;
+			if (ctx->lpw_dec_start_cnt <= 0) {
+				ctx->group_start_time = jiffies_to_nsecs(jiffies);
+				ctx->lpw_set_start_ts = true;
+				ctx->group_dec_cnt = 0;
+			}
 		}
 		ctx->group_dec_cnt++;
 
-		mtk_vdec_lpw_check_dec_stop(ctx, false, true, "before dec");
-		if (ctx->in_group && (ctx->lpw_state == VDEC_LPW_WAIT || ctx->dynamic_low_latency))
+		has_stop = mtk_vdec_lpw_check_dec_stop(ctx, false, true, "before dec");
+		if (ctx->in_group && (ctx->lpw_state == VDEC_LPW_WAIT || ctx->dynamic_low_latency ||
+					(ctx->lpw_dec_start_cnt > 0 && has_stop)))
 			ctx->in_group = false;
 
 		if (vdec_if_set_param(ctx, SET_PARAM_VDEC_IN_GROUP, (void *)ctx->in_group) != 0)
@@ -4160,7 +4184,7 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		spin_lock_irqsave(&ctx->lpw_lock, flags);
 		mtk_vdec_lpw_stop_timer(ctx, false);
 		ctx->lpw_state = VDEC_LPW_DEC;
-		ctx->lpw_dec_start_cnt = ctx->dpb_size;
+		ctx->lpw_dec_start_cnt = mtk_vdec_get_lpw_start_limit(ctx);
 		ctx->in_group = true;
 		ctx->dynamic_low_latency = false;
 		ctx->lpw_last_disp_ts = 0;

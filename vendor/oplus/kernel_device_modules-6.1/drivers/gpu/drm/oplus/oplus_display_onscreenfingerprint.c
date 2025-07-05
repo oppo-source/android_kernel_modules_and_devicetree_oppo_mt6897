@@ -167,6 +167,10 @@ int oplus_ofp_init(void *device)
 	p_oplus_ofp_params->fp_type_compatible_mode = of_property_read_bool(dev->of_node, "oplus,ofp-fp-type-compatible-mode");
 	OFP_INFO("fp_type_compatible_mode:%d\n", p_oplus_ofp_params->fp_type_compatible_mode);
 
+	/* indicates whether lhbm on brightness needs to be read and updated or not */
+	p_oplus_ofp_params->need_to_update_lhbm_brightness = of_property_read_bool(dev->of_node, "oplus,ofp-need-to-update-lhbm-brightness");
+	OFP_INFO("need_to_update_lhbm_brightness:%d\n", p_oplus_ofp_params->need_to_update_lhbm_brightness);
+
 	if (oplus_ofp_is_supported()) {
 		/* read by the framework for compatibility with different aod modes */
 		rc = of_property_read_u32(dev->of_node, "oplus,ofp-longrui-aod-config", &value);
@@ -824,9 +828,11 @@ int oplus_ofp_lhbm_backlight_update(void *drm_crtc)
 		return -EINVAL;
 	}
 
-	if (!p_oplus_ofp_params->need_to_update_lhbm_pressed_icon_gamma) {
-		OFP_DEBUG("need_to_update_lhbm_pressed_icon_gamma is not set, no need to update backlight after dimlayer_hbm on/off\n");
-		return 0;
+	if(!p_oplus_ofp_params->need_to_update_lhbm_brightness) {
+		if (!p_oplus_ofp_params->need_to_update_lhbm_pressed_icon_gamma) {
+			OFP_DEBUG("need_to_update_lhbm_pressed_icon_gamma is not set, no need to update backlight after dimlayer_hbm on/off\n");
+			return 0;
+		}
 	}
 
 	if (drm_crtc_index(crtc)) {
@@ -1729,7 +1735,7 @@ bool oplus_ofp_backlight_filter(void *drm_crtc, void *cmdq_pkt, unsigned int bl_
 		/* backlight will affect hbm on time in some panel, need to separate the 51 cmd for stable hbm on time */
 		OFP_INFO("dim layer exist, filter backlight %u setting in advance\n", bl_level);
 		need_filter_backlight = true;
-	} else if (oplus_ofp_get_aod_state()) {
+	} else if (oplus_ofp_get_aod_state() && !oplus_ofp_video_mode_30hz_aod_is_enabled()) {
 		OFP_INFO("aod state is true, filter backlight %u setting\n", bl_level);
 		need_filter_backlight = true;
 	} else if (!oplus_ofp_get_aod_state() && (hbm_enable & OPLUS_OFP_PROPERTY_AOD_LAYER) && bl_level
@@ -2190,9 +2196,9 @@ void oplus_ofp_aod_off_set_work_handler(struct work_struct *work_item)
 	oplus_disp_trace_begin("oplus_ofp_aod_off_set_work_handler");
 	OFP_INFO("send aod off cmd to speed up aod unlocking\n");
 	if(oplus_ofp_video_mode_30hz_aod_is_enabled()) {
+		oplus_ofp_aod_unlocking_update();
 		ret = mtk_ddic_vdo_aod_ctrl(0, true);
 		oplus_ofp_set_aod_state(false);
-		oplus_ofp_aod_unlocking_update();
 		p_oplus_ofp_params->aod_off_cmd_timestamp = ktime_get();
 		OFP_DEBUG("aod_off_cmd_timestamp:%lld\n", ktime_to_ms(p_oplus_ofp_params->aod_off_cmd_timestamp));
 	} else
@@ -3557,7 +3563,8 @@ int oplus_panel_ext_init(struct drm_crtc *crtc)
 	if((!strcmp("ac222_p_7_a0014_dsi_cmd_panel", panel_name)
 		|| !strcmp("ac230_p_7_a0014_dsi_cmd_t1", panel_name)
 		|| !strcmp("ac264_p_7_a0014_dsi_cmd", panel_name)
-		|| !strcmp("panel_ae016_p_7_a0014_dsi_cmd", panel_name))
+		|| !strcmp("panel_ae016_p_7_a0014_dsi_cmd", panel_name)
+		|| !strcmp("aa597_p_7_a0025_dsi_vdo", panel_name))
 		&& !g_gamma_regs_read_done) {
 		rc |= oplus_panel_ac178_gamma_compensation(dsi);
 	}

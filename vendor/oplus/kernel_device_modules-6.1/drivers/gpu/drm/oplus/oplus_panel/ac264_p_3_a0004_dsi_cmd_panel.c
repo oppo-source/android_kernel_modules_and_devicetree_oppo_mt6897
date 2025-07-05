@@ -1127,8 +1127,10 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 				cb(dsi, handle, aod_off_cmd[i].para_list, aod_off_cmd[i].count);
 		}
 	}
-	if(!oplus_ofp_backlight_filter(crtc, handle, oplus_display_brightness))
-		lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
+	if(!oplus_ofp_get_aod_unlocking()) {
+		if(!oplus_ofp_backlight_filter(crtc, handle, oplus_display_brightness))
+			lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
+	}
 	if (temp_seed_mode)
 		panel_set_seed(dsi, cb, handle, temp_seed_mode);
 	OFP_INFO("send aod off cmd\n");

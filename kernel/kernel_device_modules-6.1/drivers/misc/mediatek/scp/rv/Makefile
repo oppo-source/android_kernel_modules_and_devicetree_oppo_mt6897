@@ -1,6 +1,9 @@
 obj-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_helper.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_excep.o
+ifneq ($(CONFIG_OPLUS_SENSOR_WAKEUP_TRACE), n)
+CFLAGS_scp_wrapper_ipi.o += -DOPLUS_FEATURE_SENSOR_WAKEUP_TRACE
+endif
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_wrapper_ipi.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_irq.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_logger.o

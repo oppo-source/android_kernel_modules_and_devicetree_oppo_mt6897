@@ -184,13 +184,12 @@ static int cmp_task_wake_count(const void *a, const void *b)
 
 static int rt_info_show(struct seq_file *m, void *v)
 {
-	reset_critical_task_time();
 	int i, result_num, gl_num;
 	struct render_related_thread *results;
 	char *page;
 	char task_name[TASK_COMM_LEN];
 	ssize_t len = 0;
-
+	reset_critical_task_time();
 	if (atomic_read(&have_valid_render_pid) == 0)
 		return -ESRCH;
 
@@ -386,12 +385,13 @@ static void register_rt_info_vendor_hooks(void)
 
 int get_critical_task_state(const char *name, pid_t pid)
 {
+	struct task_struct *task = NULL;
+	int name_len, i;
 	if (total_num <= 0 || atomic_read(&have_valid_render_pid) == 0) {
 		return -1;
 	}
-	struct task_struct *task = NULL;
-	int name_len = strlen(name);
-	for (int i = 0; i < total_num; i++) {
+	name_len = strlen(name);
+	for (i = 0; i < total_num; i++) {
 		if (related_threads[i].task && strncmp(name, related_threads[i].task->comm, name_len) == 0) {
 			task = related_threads[i].task;
 			break;
@@ -400,7 +400,6 @@ int get_critical_task_state(const char *name, pid_t pid)
 	if (task == NULL || task_pid_nr(task) != pid) {
 		return -1;
 	}
-
 	if (task_is_running(task)) {
 		return 0;
 	} else {

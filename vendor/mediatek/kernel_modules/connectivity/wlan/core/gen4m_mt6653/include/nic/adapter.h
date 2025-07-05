@@ -2837,6 +2837,7 @@ struct ADAPTER {
 #else
 	struct PARAM_GET_STA_STATISTICS rQueryStaStatistics;
 #endif
+	uint8_t ucScanRcpi[MAX_BSSID_NUM];
 	struct PARAM_802_11_STATISTICS_STRUCT rStat;
 	uint32_t u4BufLen;
 #endif /* CFG_SUPPORT_LINK_QUALITY_MONITOR */
@@ -3058,7 +3059,7 @@ struct ADAPTER {
 	struct EMI_POWER_LIMIT_INFO
 		rTxpwrEmiInfo[PWR_LIMIT_RF_BAND_NUM][PWR_LIMIT_PROTOCOL_NUM];
 	bool fgPwrLmtCacheExist;
-	u_int32_t u4PwrLmtLockCounter;
+	u_int32_t i4PwrLmtLockCounter;
 #endif
 
 #if CFG_SUPPORT_CCM

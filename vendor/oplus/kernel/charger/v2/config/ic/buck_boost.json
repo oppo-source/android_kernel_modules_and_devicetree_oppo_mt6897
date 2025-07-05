@@ -1287,8 +1287,47 @@
                 "write": false,
                 "overwrite": false
             }
+        },
+        {
+            "lable": "OPLUS_IC_FUNC_BUCK_GET_LPD_INFO",
+            "desc": {
+                "zh": "获取潮湿检测信息"
+            },
+            "auto_debug_code": true,
+            "parameter_list": ["u32 *", "u32"],
+            "parameter_desc": [
+                {
+                    "range": "0-*",
+                    "type": "out",
+                    "desc": {
+                        "zh": "用于存放潮湿检测数据"
+                    }
+                },
+                {
+                    "range": "0-*",
+                    "type": "in",
+                    "desc": {
+                        "zh": "用于标记需要获取的潮湿检测数据源"
+                    }
+                }
+            ],
+            "vict": {
+                "read": {
+                    "cmd": "vict -f {id} -G vic-*",
+                    "desc": {
+                        "zh": "获取潮湿检测数据,对应数据分别为:SBU1,SBU2,SBU1_PULLUP,SBU2_PULLUP,CC1,CC2,DM,DP"
+                    }
+                },
+                "write": false,
+                "overwrite": {
+                    "cmd": "vict -f {id} -O {val} vic-*",
+                    "desc": {
+                        "zh": "val单位为mv输入顺序为:SBU1,SBU2,SBU1_PULLUP,SBU2_PULLUP,CC1,CC2,DM,DP"
+                    }
+                }
+            }
         }
     ],
 
-    "version": "V2.2:46:c4285c3e1829a175785a27cc4ca474bf9fa1d76bf17bd6521cc1092d27dc825e"
+    "version": "V2.3:47:e1275e5df36010c455e16271cf1ce152893fe17d03b56f87a86e56e8027958b7"
 }

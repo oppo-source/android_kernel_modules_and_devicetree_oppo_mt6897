@@ -9955,10 +9955,30 @@ void txPwrCtrlLoadConfig(struct ADAPTER *prAdapter)
 #endif
 }
 
+#if (CFG_SUPPORT_PWR_LMT_EMI == 1)
+#if KERNEL_VERSION(4, 15, 0) <= CFG80211_VERSION_CODE
+void txPwrCtrlCMDTimeout(struct timer_list *timer)
+#else
+void txPwrCtrlCMDTimeout(unsigned long data)
+#endif
+{
+#if KERNEL_VERSION(4, 15, 0) <= CFG80211_VERSION_CODE
+	struct GLUE_INFO *prGlueInfo =
+		from_timer(prGlueInfo, timer, rTxPowerLimitTimer);
+#else
+	struct GLUE_INFO *prGlueInfo = (struct GLUE_INFO *)data;
+#endif
+
+	rlmDomainPwrLmtEmiStatusCtrl(prGlueInfo->prAdapter,
+		TX_PWR_EMI_STATUS_ACTION_CLEAR);
+}
+#endif
+
 void txPwrCtrlInit(struct ADAPTER *prAdapter)
 {
 #if (CFG_SUPPORT_PWR_LMT_EMI == 1)
 	uint32_t i, j, u4PwrLimitSize;
+	struct GLUE_INFO *prGlueInfo;
 #endif
 
 #if (CFG_SUPPORT_PWR_LMT_EMI == 1)
@@ -9969,6 +9989,19 @@ void txPwrCtrlInit(struct ADAPTER *prAdapter)
 			sizeof(struct SET_COUNTRY_CHANNEL_POWER_LIMIT *)
 			* PWR_LIMIT_RF_BAND_NUM,
 			VIR_MEM_TYPE);
+
+	prGlueInfo = prAdapter->prGlueInfo;
+#if KERNEL_VERSION(4, 15, 0) <= CFG80211_VERSION_CODE
+	timer_setup(&prGlueInfo->rTxPowerLimitTimer,
+		txPwrCtrlCMDTimeout, 0);
+#else
+	init_timer(&prGlueInfo->rTxPowerLimitTimer);
+	prGlueInfo->rTxPowerLimitTimer.data =
+		(unsigned long)prGlueInfo;
+	prGlueInfo->rTxPowerLimitTimer.function =
+		txPwrCtrlCMDTimeout;
+#endif
+
 
 	if (prAdapter->prPwrLimit == NULL) {
 		DBGLOG(RLM, INFO,
@@ -10000,7 +10033,6 @@ void txPwrCtrlInit(struct ADAPTER *prAdapter)
 		}
 	}
 #endif
-
 
 	LINK_INITIALIZE(&prAdapter->rTxPwr_DefaultList);
 	LINK_INITIALIZE(&prAdapter->rTxPwr_DynamicList);
@@ -10047,6 +10079,8 @@ void txPwrCtrlUninit(struct ADAPTER *prAdapter)
 		VIR_MEM_TYPE,
 		sizeof(struct SET_COUNTRY_CHANNEL_POWER_LIMIT *)
 		* PWR_LIMIT_RF_BAND_NUM);
+
+	del_timer_sync(&prAdapter->prGlueInfo->rTxPowerLimitTimer);
 #endif
 }
 /* dynamic tx power control: end **********************************************/
@@ -12007,6 +12041,127 @@ bool rlmDomainIsEfuseUsed(void)
 	return g_mtk_regd_control.isEfuseCountryCodeUsed;
 }
 
+static const uint16_t g_u2SpecifyCountryGroup[] = {
+	COUNTRY_CODE_ET, COUNTRY_CODE_DZ, COUNTRY_CODE_MA, COUNTRY_CODE_EG,
+	COUNTRY_CODE_TN, COUNTRY_CODE_NG, COUNTRY_CODE_AU, COUNTRY_CODE_CA,
+	COUNTRY_CODE_MX, COUNTRY_CODE_MY, COUNTRY_CODE_RU, COUNTRY_CODE_ID
+};
+
+bool rlmDomainGetSpecifyCountry(struct ADAPTER *prAdapter)
+{
+	uint16_t u2CountryCode = prAdapter->rWifiVar.u2CountryCode;
+	uint16_t ucSpecifyCountryGroupSize =
+		ARRAY_SIZE(g_u2SpecifyCountryGroup);
+	uint16_t i = 0;
+
+	for (i = 0; i < ucSpecifyCountryGroupSize; i++)
+		if (g_u2SpecifyCountryGroup[i] == u2CountryCode)
+			return TRUE;
+
+	return FALSE;
+}
+
+uint8_t rlmDomainGetChannelBwForCountry(
+			struct ADAPTER *prAdapter,
+			enum ENUM_BAND eBand,
+			uint8_t channelNum,
+			enum ENUM_CHNL_EXT eSco,
+			uint8_t maxChannelBw)
+{
+	uint8_t i, j;
+	uint8_t channelBw = maxChannelBw;
+	uint8_t ucCornerChannel, targetChannel;
+	struct DOMAIN_SUBBAND_INFO *prSubband;
+	struct DOMAIN_INFO_ENTRY *prDomainInfo;
+
+	if (channelNum >= 100 && channelNum <= 128
+		&& maxChannelBw >= MAX_BW_160MHZ
+		&& eBand == BAND_5G && prAdapter->fgEnable5GBand
+		&& rlmDomainGetSpecifyCountry(prAdapter)) {
+		channelBw = MAX_BW_80MHZ;
+		DBGLOG(RLM, TRACE,
+			"Downgrade to BW80 for specified country %d, CH %d Modify current BW from %d to %d\n",
+			prAdapter->rWifiVar.u2CountryCode,
+			channelNum, maxChannelBw, channelBw);
+			maxChannelBw = channelBw;
+	}
+
+	/* Corner case 1: for countries that support CH132-CH140
+	 * but don't support CH144
+	 */
+	if (maxChannelBw >= MAX_BW_80MHZ
+		&& channelNum >= 132 && channelNum <= 140) {
+		ucCornerChannel = 144;
+	}
+	/* Corner case 2: for countries that support CH116
+	 * but don't support CH120-CH128
+	 */
+	else if (maxChannelBw >= MAX_BW_80MHZ && channelNum == 116)
+		ucCornerChannel = 120;
+	/* Corner case 3: for countries that support CH8/9
+	 * but don't support CH12/13
+	 * EX: CH8 & SCA -> 2nd CH is 12; CH9 & SCA -> 2nd CH is 13
+	 */
+	else if (maxChannelBw == MAX_BW_40MHZ &&
+		(channelNum == 8 || channelNum == 9)
+		&& eSco == CHNL_EXT_SCA) {
+		ucCornerChannel = 12;
+	} else
+		return maxChannelBw;
+
+	prDomainInfo = rlmDomainGetDomainInfo(prAdapter);
+	for (i = 0; i < MAX_SUBBAND_NUM; i++) {
+		prSubband = &prDomainInfo->rSubBand[i];
+
+		if (prSubband->ucBand == BAND_5G && !prAdapter->fgEnable5GBand)
+			continue;
+
+		if (prSubband->ucBand == eBand) {
+			for (j = 0; j < prSubband->ucNumChannels; j++) {
+				targetChannel =
+					prSubband->ucFirstChannelNum +
+					j * prSubband->ucChannelSpan;
+				if (targetChannel == ucCornerChannel) {
+					DBGLOG(RLM, TRACE,
+						"Find corner channel: %d! Thus, no need to modify current BW\n",
+						ucCornerChannel);
+					return maxChannelBw;
+				}
+			}
+		}
+	}
+
+	/* Corner case 1 handling */
+	if (maxChannelBw >= MAX_BW_80MHZ && ucCornerChannel == 144) {
+		if (channelNum == 132 || channelNum == 136)
+			channelBw = MAX_BW_40MHZ;
+		else if (channelNum == 140)
+			channelBw = MAX_BW_20MHZ;
+		DBGLOG(RLM, TRACE,
+			"<Country %d> Cannot find corner channel: %d! Modify current BW from %d to %d\n",
+			prAdapter->rWifiVar.u2CountryCode,
+			ucCornerChannel, maxChannelBw, channelBw);
+	}
+	/* Corner case 2 handling */
+	if (maxChannelBw >= MAX_BW_80MHZ && ucCornerChannel == 120) {
+		channelBw = MAX_BW_20MHZ;
+		DBGLOG(RLM, TRACE,
+			"<Country %d> Cannot find corner channel: %d! Modify current BW from %d to %d\n",
+			prAdapter->rWifiVar.u2CountryCode,
+			ucCornerChannel, maxChannelBw, channelBw);
+	}
+	/* Corner case 3 handling */
+	if (maxChannelBw == MAX_BW_40MHZ && ucCornerChannel == 12) {
+		channelBw = MAX_BW_20MHZ;
+		DBGLOG(RLM, TRACE,
+			"<Country %d> Cannot find corner channel: %d! Modify current BW from %d to %d\n",
+			prAdapter->rWifiVar.u2CountryCode,
+			ucCornerChannel, maxChannelBw, channelBw);
+	}
+
+	return channelBw;
+}
+
 uint8_t rlmDomainGetChannelBw(enum ENUM_BAND eBand, uint8_t channelNum)
 {
 	uint32_t ch_idx = 0, start_idx = 0, end_idx = 0;
@@ -12434,10 +12589,12 @@ uint32_t txPwrCtrlApplyDynPwrSetting(struct ADAPTER *prAdapter,
 	return 0;
 }
 
+#define TXPWR_CMD_TIMEOUT 5000 /* msec */
 bool rlmDomainPwrLmtEmiStatusCtrl(struct ADAPTER *prAdapter,
 	enum ENUM_TX_PWR_EMI_STATUS_ACTION action)
 {
 	bool ret = FALSE;
+	struct GLUE_INFO *prGlueInfo;
 #if CFG_ENABLE_WAKE_LOCK
 	KAL_WAKE_LOCK_T * rTxWakeLock =
 		prAdapter->prGlueInfo->rTxPowerEmiWakeLock;
@@ -12448,8 +12605,10 @@ bool rlmDomainPwrLmtEmiStatusCtrl(struct ADAPTER *prAdapter,
 		"UPDATE_CMD",
 		"UPDATE_EVENT",
 		"CHECK",
+		"CLEAR",
 	};
 
+	prGlueInfo = prAdapter->prGlueInfo;
 	/*********************************************************************/
 	/* (1)req cmd -> (2)update cmd  -> (3)req end  -> (4)update done     */
 	/* count++    ->                -> count--     ->                    */
@@ -12461,40 +12620,60 @@ bool rlmDomainPwrLmtEmiStatusCtrl(struct ADAPTER *prAdapter,
 	DBGLOG(RLM, TRACE,
 		"[In]TxPower wakelock ctrl : action :%s, counter[%d], ret:%d",
 		au1PwrLmtStatusAction[action],
-		prAdapter->u4PwrLmtLockCounter,
+		prAdapter->i4PwrLmtLockCounter,
 		ret);
 
 	switch (action) {
 	case TX_PWR_EMI_STATUS_ACTION_UPDATE_CMD:
 	case TX_PWR_EMI_STATUS_ACTION_REQUEST_CHANNEL_START:
-		prAdapter->u4PwrLmtLockCounter++;
-		if (prAdapter->u4PwrLmtLockCounter == 1) {
+		prAdapter->i4PwrLmtLockCounter++;
+		if (prAdapter->i4PwrLmtLockCounter == 1) {
 #if CFG_ENABLE_WAKE_LOCK
 			if (!KAL_WAKE_LOCK_ACTIVE(prAdapter, rTxWakeLock)) {
 				DBGLOG(RLM, TRACE, "Start wake lock!");
 				KAL_WAKE_LOCK(prAdapter, rTxWakeLock);
 			}
+		/* start timer */
+		mod_timer(&prGlueInfo->rTxPowerLimitTimer,
+			jiffies + TXPWR_CMD_TIMEOUT * HZ / MSEC_PER_SEC);
 #endif
 		}
 		break;
 	case TX_PWR_EMI_STATUS_ACTION_UPDATE_EVENT:
 	case TX_PWR_EMI_STATUS_ACTION_REQUEST_CHANNEL_END:
-		prAdapter->u4PwrLmtLockCounter--;
-		if (prAdapter->u4PwrLmtLockCounter == 0) {
+		prAdapter->i4PwrLmtLockCounter--;
+		if (prAdapter->i4PwrLmtLockCounter <= 0) {
 #if CFG_ENABLE_WAKE_LOCK
 			if (KAL_WAKE_LOCK_ACTIVE(prAdapter, rTxWakeLock)) {
 				DBGLOG(RLM, TRACE, "Stop wake lock!");
 				KAL_WAKE_UNLOCK(prAdapter, rTxWakeLock);
+				/* stop timer */
+				del_timer(&prGlueInfo->rTxPowerLimitTimer);
 			}
 #endif
+			prAdapter->i4PwrLmtLockCounter = 0;
 			rlmDomainSendCachePwrLmtData(prAdapter);
 		}
+
 		break;
 	case TX_PWR_EMI_STATUS_ACTION_CHECK:
-		if (prAdapter->u4PwrLmtLockCounter > 0)
+		if (prAdapter->i4PwrLmtLockCounter > 0)
 			ret = TRUE;
 		else
 			ret = FALSE;
+		break;
+
+	case TX_PWR_EMI_STATUS_ACTION_CLEAR:
+#if CFG_ENABLE_WAKE_LOCK
+		prAdapter->i4PwrLmtLockCounter = 0;
+		if (KAL_WAKE_LOCK_ACTIVE(prAdapter, rTxWakeLock)) {
+			DBGLOG(RLM, TRACE, "Stop wake lock!");
+			KAL_WAKE_UNLOCK(prAdapter, rTxWakeLock);
+	}
+#endif
+		rlmDoaminSetPwrLmtNewDataFlag(prAdapter, TRUE);
+		rlmDomainSendCachePwrLmtData(prAdapter);
+		rlmDoaminSetPwrLmtNewDataFlag(prAdapter, FALSE);
 		break;
 	default:
 		break;
@@ -12503,7 +12682,7 @@ bool rlmDomainPwrLmtEmiStatusCtrl(struct ADAPTER *prAdapter,
 	DBGLOG(RLM, TRACE,
 		"[Out]TxPower wakelock ctrl : action :%s, counter[%d], ret:%d",
 		au1PwrLmtStatusAction[action],
-		prAdapter->u4PwrLmtLockCounter,
+		prAdapter->i4PwrLmtLockCounter,
 		ret);
 
 	return ret;

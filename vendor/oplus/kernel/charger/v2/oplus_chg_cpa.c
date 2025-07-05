@@ -111,7 +111,6 @@ struct oplus_cpa {
 	bool pps_online_keep;
 	bool pps_charging;
 	bool pps_oplus_adapter;
-	u32 pps_adapter_id;
 
 	bool retention_state;
 	bool pre_retention_state;
@@ -1090,12 +1089,6 @@ static void oplus_cpa_pps_subs_callback(struct mms_subscribe *subs,
 				break;
 			cpa->pps_charging = !!data.intval;
 			break;
-		case PPS_ITEM_ADAPTER_ID:
-			rc = oplus_mms_get_item_data(cpa->pps_topic, id, &data, false);
-			if (rc < 0)
-				break;
-			cpa->pps_adapter_id = (u32)data.intval;
-			break;
 		case PPS_ITEM_OPLUS_ADAPTER:
 			rc = oplus_mms_get_item_data(cpa->pps_topic, id, &data, false);
 			if (rc < 0)
@@ -1134,9 +1127,6 @@ static void oplus_cpa_subscribe_pps_topic(struct oplus_mms *topic,
 	rc = oplus_mms_get_item_data(cpa->pps_topic, PPS_ITEM_CHARGING, &data, true);
 	if (rc >= 0)
 		cpa->pps_charging = !!data.intval;
-	rc = oplus_mms_get_item_data(cpa->pps_topic, PPS_ITEM_ADAPTER_ID, &data, true);
-	if (rc >= 0)
-		cpa->pps_adapter_id = (u32)data.intval;
 	rc = oplus_mms_get_item_data(cpa->pps_topic, PPS_ITEM_OPLUS_ADAPTER, &data, true);
 	if (rc >= 0)
 		cpa->pps_oplus_adapter = !!data.intval;
@@ -2005,10 +1995,7 @@ static int oplus_cpa_get_adapter_power(struct oplus_cpa *chip)
 	if (chip->ufcs_online) {
 		power = oplus_ufcs_get_ufcs_power(chip->ufcs_topic) * 1000;
 	} else if (chip->pps_online || chip->pps_online_keep) {
-		if (chip->pps_oplus_adapter)
-			power = oplus_pps_adapter_id_to_power(chip->pps_adapter_id) * 1000;
-		else
-			power = oplus_pps_adapter_id_to_power(PPS_FASTCHG_TYPE_THIRD) * 1000;
+		power = oplus_pps_get_adapter_power_mw(chip->pps_topic);
 	} else if (chip->vooc_online) {
 		cur_sid = chip->vooc_sid;
 		chg_info("cur_sid = 0x%08x\n", cur_sid);
@@ -2102,13 +2089,11 @@ int oplus_cpa_get_actual_used_power(struct oplus_mms *topic)
 		pps_or_ufcs_power = oplus_ufcs_get_ufcs_power(chip->ufcs_topic);
 	} else 	if (chip->pps_online || chip->pps_online_keep) {
 		if (chip->pps_oplus_adapter) {
-			pps_or_ufcs_ing = oplus_pps_adapter_id_to_protocol_type(chip->pps_adapter_id);
-			if (pps_or_ufcs_ing)
-				pps_or_ufcs_power = oplus_pps_adapter_id_to_power(chip->pps_adapter_id);
+			pps_or_ufcs_ing = PROTOCOL_CHARGING_PPS_OPLUS;
 		} else {
 			pps_or_ufcs_ing = PROTOCOL_CHARGING_PPS_THIRD;
-			pps_or_ufcs_power = oplus_pps_adapter_id_to_power(PPS_FASTCHG_TYPE_THIRD);
 		}
+		pps_or_ufcs_power = oplus_pps_get_charging_power_watt(chip->pps_topic);
 	}
 
 	if (pps_or_ufcs_ing > 0)
@@ -2121,10 +2106,10 @@ int oplus_cpa_get_actual_used_power(struct oplus_mms *topic)
 
 	if (pre_cpa_power != cpa_power) {
 		pre_cpa_power = cpa_power;
-		chg_info("%d %d %d %d, %d %d %d %d, %d %d %d\n",
+		chg_info("%d %d %d %d, %d %d %d %d, %d %d\n",
 			  adapter_power, project_power, chip->ufcs_online, chip->pps_online,
 			  chip->ufcs_oplus_adapter, chip->pps_oplus_adapter, pps_or_ufcs_ing, pps_or_ufcs_power,
-			  cpa_power, chip->ufcs_adapter_id, chip->pps_adapter_id);
+			  cpa_power, chip->ufcs_adapter_id);
 	}
 
 	actual_power_used = cpa_power;

@@ -55,6 +55,9 @@
 #define UFCS_PRELIMINARY_IMP_TIME_MS	200
 #define UFCS_RESTART_TIMEOUT_MS	10000
 
+#define UFCS_WAIT_CURR_DOWN_TIMES	200
+#define UFCS_QUIT_CP_OVER_CURR		4000
+
 #define UFCS_EIS_VOL_MV			9000
 #define UFCS_EIS_CURR_MA		2000
 #define UFCS_EIS_MONITOR_TIME_MS	50
@@ -1049,27 +1052,27 @@ static void oplus_ufcs_push_err_info(struct oplus_ufcs *chip, enum ufcs_user_err
 	if (buf == NULL)
 		return;
 
-	index = snprintf(buf, PAGE_SIZE, "$$err_reason@@%s$$value@@%d$$dev_info@@0x%llx"
+	index = scnprintf(buf, PAGE_SIZE, "$$err_reason@@%s$$value@@%d$$dev_info@@0x%llx"
 		"$$cable_info@@0x%llx$$emark_info@@0x%llx",
 		oplus_ufcs_get_err_type_str(type), value, chip->dev_info, chip->cable_info, chip->emark_info);
 	if (chip->pdo_num > 0)
-		index += snprintf(buf + index, PAGE_SIZE, "$$pdo_info@@");
+		index += scnprintf(buf + index, PAGE_SIZE, "$$pdo_info@@");
 	for (i = 0; i < chip->pdo_num; i++) {
 		if (i == chip->pdo_num - 1)
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pdo[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pdo[i]);
 		else
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pdo[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pdo[i]);
 	}
 
 	if (chip->pie_num > 0)
-		index += snprintf(buf + index, PAGE_SIZE, "$$pie_info@@");
+		index += scnprintf(buf + index, PAGE_SIZE, "$$pie_info@@");
 	for (i = 0; i < chip->pie_num; i++) {
 		if (i == chip->pie_num - 1)
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pie[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pie[i]);
 		else
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pie[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pie[i]);
 	}
-	index += snprintf(buf + index, PAGE_SIZE, "$$power_max@@%d",
+	index += scnprintf(buf + index, PAGE_SIZE, "$$power_max@@%d",
 		oplus_cpa_protocol_get_power(chip->cpa_topic, CHG_PROTOCOL_UFCS));
 
 	msg = oplus_mms_alloc_str_msg(MSG_TYPE_ITEM, MSG_PRIO_MEDIUM, ERR_ITEM_UFCS, buf);
@@ -2217,8 +2220,10 @@ static enum ufcs_power_imax oplus_ufcs_get_power_ability(struct oplus_ufcs *chip
 			UFCS_OPLUS_VND_POWER_INFO_VOL_MAX(chip->pie[i]) / 1000;
 		switch (UFCS_OPLUS_VND_POWER_INFO_TYPE(chip->pie[i])) {
 		case UFCS_OPLUS_POWER_INFO_UFCS:
-			if (UFCS_OPLUS_VND_POWER_INFO_CURR_MAX(chip->pie[i]) > power_imax)
+			if ((UFCS_OPLUS_VND_POWER_INFO_CURR_MAX(chip->pie[i]) > power_imax) &&
+			    (UFCS_OPLUS_VND_POWER_INFO_VOL_MAX(chip->pie[i]) >= chip->config.target_vbus_mv))
 				power_imax = UFCS_OPLUS_VND_POWER_INFO_CURR_MAX(chip->pie[i]);
+
 			rc = oplus_cpa_protocol_get_power(chip->cpa_topic, CHG_PROTOCOL_UFCS);
 			if (rc < 0) {
 				chg_err("can't get ufcs protocol power info\n");
@@ -2723,6 +2728,7 @@ static int oplus_ufcs_charge_start(struct oplus_ufcs *chip)
 		chg_err("can't get cp input voltage, rc=%d\n", rc);
 		return rc;
 	}
+	chg_info("cp_vin=%d target_vbus=%d vbat=%d start_check=%d\n", cp_vin, target_vbus, vbat_mv, chip->start_check);
 	if ((cp_vin >= target_vbus && cp_vin <= (target_vbus + chip->config.upper_compensation_mv))
 		|| chip->start_check) {
 		if (chip->start_check) {
@@ -2763,7 +2769,10 @@ static int oplus_ufcs_charge_start(struct oplus_ufcs *chip)
 						}
 					}
 
-
+					if (chip->start_retry_count > 0) {
+						oplus_ufcs_push_err_info(chip, UFCS_ERR_STARTUP_FAIL,
+							chip->start_retry_count);
+					}
 					chip->start_retry_count = 0;
 					chip->startup_retry_times = 0;
 					chip->start_check = false;
@@ -2786,6 +2795,7 @@ static int oplus_ufcs_charge_start(struct oplus_ufcs *chip)
 				chg_err("cp not work, retry=%d\n", chip->start_retry_count);
 			}
 			if (chip->start_retry_count >= UFCS_START_RETAY_MAX) {
+				oplus_ufcs_push_err_info(chip, UFCS_ERR_STARTUP_FAIL, chip->start_retry_count + 1);
 				chip->start_retry_count = 0;
 				chip->start_check = false;
 				oplus_ufcs_cp_set_work_start(chip, false);
@@ -2796,7 +2806,24 @@ static int oplus_ufcs_charge_start(struct oplus_ufcs *chip)
 				return -EFAULT;
 			}
 			chip->start_retry_count++;
-			return UFCS_START_CHECK_DELAY_MS;
+			rc = oplus_ufcs_cp_set_work_start(chip, false);
+			if (rc < 0) {
+				chg_err("set cp work start error, rc=%d\n", rc);
+				return rc;
+			}
+			rc = oplus_ufcs_cp_set_work_mode(chip, chip->cp_work_mode);
+			if (rc < 0) {
+				chg_err("cp set %s mode error, rc=%d\n",
+					oplus_cp_work_mode_str(chip->cp_work_mode), rc);
+				return rc;
+			}
+			rc = oplus_ufcs_config_cp_watchdog(chip, UFCS_CP_WATCHDOG_TIMEOUT_MS);
+			if (rc < 0) {
+				chg_err("ufcs config cp watchdog error,rc=%d", rc);
+				return rc;
+			}
+			oplus_ufcs_cp_adc_enable(chip, true);
+			goto update_vol;
 		}
 		rc = oplus_ufcs_cp_enable(chip, true);
 		if (rc < 0 && (rc != -ENOTSUPP)) {
@@ -2808,13 +2835,12 @@ static int oplus_ufcs_charge_start(struct oplus_ufcs *chip)
 			chg_err("set cp work start error, rc=%d\n", rc);
 			return rc;
 		}
-		chip->start_retry_count = 0;
 		chip->start_check = true;
 
 		return UFCS_START_CHECK_DELAY_MS;
 	}
 
-	chip->start_retry_count = 0;
+update_vol:
 	chip->start_check = false;
 
 	if (abs(cp_vin - target_vbus) >= OPLUS_UFCS_VOLT_UPDATE_V6)
@@ -3715,7 +3741,7 @@ static bool oplus_ufcs_btb_temp_check(struct oplus_ufcs *chip)
 			if (btb_temp >= UFCS_BTB_TEMP_MAX)
 				oplus_ufcs_push_err_info(chip, UFCS_ERR_BTB_OVER, btb_temp);
 			else if (cp_temp >= UFCS_CP_TEMP_MAX)
-				oplus_ufcs_push_err_info(chip, UFCS_ERR_MOS_OVER, usb_temp);
+				oplus_ufcs_push_err_info(chip, UFCS_ERR_MOS_OVER, cp_temp);
 			else
 				oplus_ufcs_push_err_info(chip, UFCS_ERR_USBTEMP_OVER, usb_temp);
 		}
@@ -3832,6 +3858,11 @@ static void oplus_ufcs_check_temp(struct oplus_ufcs *chip)
 
 	if (chip->ufcs_fastchg_batt_temp_status == UFCS_BAT_TEMP_SWITCH_CURVE) {
 		chg_err("ufcs battery temp switch curve range\n");
+		if (chip->target_curr_ma >= UFCS_QUIT_CP_OVER_CURR) {
+			cancel_delayed_work_sync(&chip->current_work);
+			oplus_ufcs_pdo_set(chip, chip->target_vbus_mv, UFCS_QUIT_CP_OVER_CURR);
+			msleep(UFCS_WAIT_CURR_DOWN_TIMES);
+		}
 		vote(chip->ufcs_disable_votable, SWITCH_RANGE_VOTER, true, 1, false);
 	}
 
@@ -4261,8 +4292,15 @@ static void oplus_ufcs_monitor_work(struct work_struct *work)
 
 	if (!chip->ufcs_charging) {
 		rc = oplus_ufcs_charge_start(chip);
-		if (rc < 0)
-			goto exit;
+		if (rc < 0) {
+			if (chip->ufcs_online) {
+				chg_info("rc=%d, goto next\n", rc);
+				goto next;
+			} else {
+				chg_info("rc=%d, goto exit\n", rc);
+				goto exit;
+			}
+		}
 		delay = rc;
 	} else {
 		rc = oplus_ufcs_get_batt_temp_curr(chip);
@@ -4331,6 +4369,9 @@ exit:
 		chip->ufcs_fastchg_batt_temp_status = UFCS_MONITOR_CYCLE_MS;
 		schedule_delayed_work(&chip->switch_check_work, msecs_to_jiffies(range_switch_dealy));
 	}
+	return;
+next:
+	oplus_ufcs_force_exit(chip);
 }
 
 enum {
@@ -4735,27 +4776,27 @@ static void oplus_ufcs_err_flag_push_work(struct work_struct *work)
 	if (buf == NULL)
 		return;
 
-	index = snprintf(buf, PAGE_SIZE, "$$reason@@0x%x$$dev_info@@0x%llx"
+	index = scnprintf(buf, PAGE_SIZE, "$$reason@@0x%x$$dev_info@@0x%llx"
 		"$$cable_info@@0x%llx$$emark_info@@0x%llx",
 		chip->err_flag, chip->dev_info, chip->cable_info, chip->emark_info);
 	if (chip->pdo_num > 0)
-		index += snprintf(buf + index, PAGE_SIZE, "$$pdo_info@@");
+		index += scnprintf(buf + index, PAGE_SIZE, "$$pdo_info@@");
 	for (i = 0; i < chip->pdo_num; i++) {
 		if (i == chip->pdo_num - 1)
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pdo[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pdo[i]);
 		else
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pdo[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pdo[i]);
 	}
 
 	if (chip->pie_num > 0)
-		index += snprintf(buf + index, PAGE_SIZE, "$$pie_info@@");
+		index += scnprintf(buf + index, PAGE_SIZE, "$$pie_info@@");
 	for (i = 0; i < chip->pie_num; i++) {
 		if (i == chip->pie_num - 1)
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pie[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pie[i]);
 		else
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pie[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pie[i]);
 	}
-	index += snprintf(buf + index, PAGE_SIZE, "$$power_max@@%d",
+	index += scnprintf(buf + index, PAGE_SIZE, "$$power_max@@%d",
 		oplus_cpa_protocol_get_power(chip->cpa_topic, CHG_PROTOCOL_UFCS));
 
 	msg = oplus_mms_alloc_str_msg(MSG_TYPE_ITEM, MSG_PRIO_MEDIUM, ERR_ITEM_UFCS, buf);
@@ -4784,27 +4825,27 @@ static void oplus_ufcs_fifo_overflow_push_work(struct work_struct *work)
 	if (buf == NULL)
 		return;
 
-	index = snprintf(buf, PAGE_SIZE, "$$reason@@fifo_overflow$$err_flag@@0x%x"
+	index = scnprintf(buf, PAGE_SIZE, "$$reason@@fifo_overflow$$err_flag@@0x%x"
 		"$$dev_info@@0x%llx$$cable_info@@0x%llx$$emark_info@@0x%llx",
 		chip->err_flag, chip->dev_info, chip->cable_info, chip->emark_info);
 	if (chip->pdo_num > 0)
-		index += snprintf(buf + index, PAGE_SIZE, "$$pdo_info@@");
+		index += scnprintf(buf + index, PAGE_SIZE, "$$pdo_info@@");
 	for (i = 0; i < chip->pdo_num; i++) {
 		if (i == chip->pdo_num - 1)
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pdo[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pdo[i]);
 		else
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pdo[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pdo[i]);
 	}
 
 	if (chip->pie_num > 0)
-		index += snprintf(buf + index, PAGE_SIZE, "$$pie_info@@");
+		index += scnprintf(buf + index, PAGE_SIZE, "$$pie_info@@");
 	for (i = 0; i < chip->pie_num; i++) {
 		if (i == chip->pie_num - 1)
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pie[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx", chip->pie[i]);
 		else
-			index += snprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pie[i]);
+			index += scnprintf(buf + index, PAGE_SIZE, "0x%llx,", chip->pie[i]);
 	}
-	index += snprintf(buf + index, PAGE_SIZE, "$$power_max@@%d",
+	index += scnprintf(buf + index, PAGE_SIZE, "$$power_max@@%d",
 		oplus_cpa_protocol_get_power(chip->cpa_topic, CHG_PROTOCOL_UFCS));
 
 	msg = oplus_mms_alloc_str_msg(MSG_TYPE_ITEM, MSG_PRIO_MEDIUM, ERR_ITEM_UFCS, buf);

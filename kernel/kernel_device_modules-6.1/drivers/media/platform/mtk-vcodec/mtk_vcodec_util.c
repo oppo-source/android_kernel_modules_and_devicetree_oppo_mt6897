@@ -151,14 +151,6 @@ EXPORT_SYMBOL(mtk_venc_vcp_log);
 struct VENC_SLB_CB_T mtk_venc_slb_cb = {0};
 EXPORT_SYMBOL(mtk_venc_slb_cb);
 
-/* For vcp vdec low power mode force setting limit grouping count */
-int mtk_vdec_lpw_limit = MTK_VDEC_GROUP_CNT;
-EXPORT_SYMBOL_GPL(mtk_vdec_lpw_limit);
-
-/* For vcp vdec low power mode force setting timer default timeout (ms) */
-int mtk_vdec_lpw_timeout = MTK_VDEC_WAIT_GROUP_MS;
-EXPORT_SYMBOL_GPL(mtk_vdec_lpw_timeout);
-
 /* For vdec slc switch on/off */
 bool mtk_vdec_slc_enable = true;
 EXPORT_SYMBOL_GPL(mtk_vdec_slc_enable);

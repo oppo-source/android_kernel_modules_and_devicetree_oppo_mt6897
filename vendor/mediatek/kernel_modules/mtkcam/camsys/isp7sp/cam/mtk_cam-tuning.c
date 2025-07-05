@@ -214,41 +214,6 @@ void OISComp_Fun1(struct MTK_TSF_OIS_COMP_STRUCT1 *ptInStruct, int *pInBuf1, int
 	}
 }
 
-void OISComp_Fun2_3(struct MTK_TSF_OIS_COMP_STRUCT1 *ptInStruct, int *pInBuf, unsigned int *pOtBuf)
-{
-	int idx1, idx2;
-	int value1;
-	int para3 = ptInStruct->para3 - 1;
-	int para4 = ptInStruct->para4 - 1;
-	int product = para3 * para4;
-	long long int val1, val2, val3;
-	int *p_i;
-	int ch[4] = { 0,1,2,3 };
-	long long int temp = 0;
-
-	if(enable_oiscomp_log)
-		pr_info("%s\n", __func__);
-
-	for (idx2 = 0; idx2 < 4; idx2++) {
-		value1 = ch[idx2];
-		p_i = pInBuf + value1 * product * 12;
-		for (idx1 = 0; idx1 < product; idx1++) {
-			int var = (idx1 * 32) + (value1 * 8);
-
-			for (int k = 0; k < 4; k++) {
-				val1 = *(p_i++);
-				val2 = *(p_i++);
-				val3 = *(p_i++);
-
-				temp = (val3 << 40) | (val2 << 20) | val1;
-
-				pOtBuf[var++] = temp & 0xFFFFFFFF;
-				pOtBuf[var++] = temp >> 32;
-			}
-		}
-	}
-}
-
 int OISComp_Fun2_2_3_1(int InVar1, unsigned int InPara1)
 {
 	int para1 = 1 << (InPara1 - 1);
@@ -581,8 +546,6 @@ int OISComp_Fun2(struct MTK_TSF_OIS_COMP_STRUCT1 *ptInStruct1, struct MTK_TSF_OI
 	memcpy(ptInStruct2->p_para3, pInBuf1, 1156 * sizeof(int));
 	if(OISComp_Fun2_2(ptInStruct1, ptInStruct2, pInBuf3)!=true)
 		return false;
-
-	OISComp_Fun2_3(ptInStruct1, pInBuf3, pInBuf2);
 
 	return ret;
 }
@@ -1332,6 +1295,38 @@ MEAN_CALCULATE:
 	last_ois_res = *ois;
 }
 
+void oplus_cam_copy_res(int *pInBuf, struct mtk_cam_tuning *param)
+{
+	int idx1, idx2;
+	int value1;
+	int condition = (param->x_num == 0 || param->y_num == 0);
+	int para3 = condition ? 16 : param->x_num - 1;
+	int para4 = condition ? 16 : param->y_num - 1;
+	unsigned int *pOtBuf = param->shading_tbl;
+	int product = para3 * para4;
+	long long int val1, val2, val3;
+	int *p_i;
+	int ch[4] = { 0,1,2,3 };
+	for (idx2 = 0; idx2 < 4; idx2++) {
+		value1 = ch[idx2];
+		p_i = pInBuf + value1 * product * 12;
+		for (idx1 = 0; idx1 < product; idx1++) {
+			int var = (idx1 * 32) + (value1 * 8);
+
+			for (int k = 0; k < 4; k++) {
+				val1 = *(p_i++);
+				val2 = *(p_i++);
+				val3 = *(p_i++);
+
+				long long int temp = (val3 << 40) | (val2 << 20) | val1;
+
+				pOtBuf[var++] = temp & 0xFFFFFFFF;
+				pOtBuf[var++] = temp >> 32;
+			}
+		}
+	}
+}
+
 /*
  * oplus's part: end
  */
@@ -1384,6 +1379,7 @@ void mtk_cam_tuning_update(struct mtk_cam_tuning *param)
 	mtk_ois_comp_core(param, ois_x, ois_y, &ois_vector_size);
 #else /* OPLUS_FEATURE_CAMERA_COMMON */
 	struct out_ois_param ois;
+	u64 current_ts_ns;
 	memset(&ois, 0, sizeof(struct out_ois_param));
 	oplus_cam_get_ois_data();
 	oplus_cam_calc_ois_data(param, &ois);
@@ -1391,6 +1387,12 @@ void mtk_cam_tuning_update(struct mtk_cam_tuning *param)
 	LOG_INF("%s: seq_num:%d input ois.ois_x %d ois.ois_y %d  ois.ois_vector_size %d",
 		__func__, param->seq_num, ois.ois_x, ois.ois_y, ois.ois_vector_size);
 	mtk_ois_comp_core(param, &ois.ois_x, &ois.ois_y, &ois.ois_vector_size);
+	current_ts_ns = ktime_get_boottime_ns();
+	if (current_ts_ns - param->begin_ts_ns < CAM_TUNING_ALGO_DEADLINE_NS) {
+		oplus_cam_copy_res(gBUF10, param);
+	} else {
+		LOG_INF("%s: seq_num:%d bypass shading table update", __func__, param->seq_num);
+	}
 #endif /*OPLUS_FEATURE_CAMERA_COMMON */
 	return;
 }

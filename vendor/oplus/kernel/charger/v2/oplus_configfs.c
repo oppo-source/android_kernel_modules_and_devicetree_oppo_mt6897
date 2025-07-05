@@ -133,7 +133,6 @@ struct oplus_configfs_device {
 	bool pps_online_keep;
 	bool pps_charging;
 	bool pps_oplus_adapter;
-	u32 pps_adapter_id;
 
 	int vbat_uv_thr;
 	int real_cool_down;
@@ -1255,6 +1254,12 @@ static ssize_t fast_charge_show(struct device *dev,
 			chg_err("can't get wls type, rc=%d\n", rc);
 		else if (data.intval == OPLUS_CHG_WLS_SVOOC || data.intval == OPLUS_CHG_WLS_PD_65W)
 			fastchg = true;
+
+		rc = oplus_mms_get_item_data(chip->wls_topic, WLS_ITEM_ICON_TYPE, &data, true);
+		if (rc < 0)
+			chg_err("can't get wls type, rc=%d\n", rc);
+		else if (data.intval == OPLUS_CHG_WLS_SVOOC || data.intval == OPLUS_CHG_WLS_PD_65W)
+			fastchg = true;
 	}
 
 	return sprintf(buf, "%d\n", fastchg);
@@ -1567,7 +1572,7 @@ static ssize_t ppschg_ing_show(struct device *dev,
 			val = PROTOCOL_CHARGING_UFCS_THIRD;
 	} else 	if (chip->pps_online || chip->pps_online_keep) {
 		if (chip->pps_oplus_adapter)
-			val = oplus_pps_adapter_id_to_protocol_type(chip->pps_adapter_id);
+			val = PROTOCOL_CHARGING_PPS_OPLUS;
 		else
 			val = PROTOCOL_CHARGING_PPS_THIRD;
 	}
@@ -1585,10 +1590,7 @@ static ssize_t ppschg_power_show(struct device *dev,
 	if (chip->ufcs_online) {
 		power = oplus_ufcs_get_ufcs_power(chip->ufcs_topic);
 	} else 	if (chip->pps_online || chip->pps_online_keep) {
-		if (chip->pps_oplus_adapter)
-			power = oplus_pps_adapter_id_to_power(chip->pps_adapter_id);
-		else
-			power = oplus_pps_adapter_id_to_power(PPS_FASTCHG_TYPE_THIRD);
+		power = oplus_pps_get_charging_power_watt(chip->pps_topic);
 	}
 
 	return sprintf(buf, "%d\n", power);
@@ -3127,10 +3129,7 @@ static int get_adapter_power(struct oplus_configfs_device *chip)
 	} else if (chip->ufcs_online) {
 		power = oplus_ufcs_get_ufcs_power(chip->ufcs_topic) * 1000;
 	} else 	if (chip->pps_online || chip->pps_online_keep) {
-		if (chip->pps_oplus_adapter)
-			power = oplus_pps_adapter_id_to_power(chip->pps_adapter_id) * 1000;
-		else
-			power = oplus_pps_adapter_id_to_power(PPS_FASTCHG_TYPE_THIRD) * 1000;
+		power = oplus_pps_get_adapter_power_mw(chip->pps_topic);
 	} else if (chip->vooc_online) {
 		if (fast_chg_type_by_user > 0) {
 			cur_sid = oplus_adapter_id_to_sid(chip->vooc_topic, fast_chg_type_by_user);
@@ -3301,6 +3300,12 @@ static ssize_t protocol_type_show(struct device *dev,
 			fast_chg_type = WLS_ADAPTER_TYPE_SVOOC;
 		else
 			fast_chg_type = CHARGER_SUBTYPE_DEFAULT;
+
+		rc = oplus_mms_get_item_data(chip->wls_topic, WLS_ITEM_ICON_TYPE, &data, true);
+		if (rc < 0)
+			chg_err("wls get WLS_ITEM_ICON_TYPE err\n");
+		else if (data.intval == OPLUS_CHG_WLS_SVOOC || data.intval == OPLUS_CHG_WLS_PD_65W)
+			fast_chg_type = WLS_ADAPTER_TYPE_SVOOC;
 	}
 
 	if (protocol_type_by_user > 0)
@@ -3382,13 +3387,11 @@ static ssize_t ui_power_show(struct device *dev,
 		pps_or_ufcs_power = oplus_ufcs_get_ufcs_power(chip->ufcs_topic);
 	} else 	if (chip->pps_online || chip->pps_online_keep) {
 		if (chip->pps_oplus_adapter) {
-			pps_or_ufcs_ing = oplus_pps_adapter_id_to_protocol_type(chip->pps_adapter_id);
-			if (pps_or_ufcs_ing)
-				pps_or_ufcs_power = oplus_pps_adapter_id_to_power(chip->pps_adapter_id);
+			pps_or_ufcs_ing = PROTOCOL_CHARGING_PPS_OPLUS;
 		} else {
 			pps_or_ufcs_ing = PROTOCOL_CHARGING_PPS_THIRD;
-			pps_or_ufcs_power = oplus_pps_adapter_id_to_power(PPS_FASTCHG_TYPE_THIRD);
 		}
+		pps_or_ufcs_power = oplus_pps_get_charging_power_watt(chip->pps_topic);
 	}
 
 	if (pps_or_ufcs_ing > 0)
@@ -3411,10 +3414,10 @@ static ssize_t ui_power_show(struct device *dev,
 
 	if (pre_ui_power != ui_power) {
 		pre_ui_power = ui_power;
-		chg_info("ui_power_show %d %d %d %d %d, %d %d %d %d, %d %d %d %d\n",
+		chg_info("ui_power_show %d %d %d %d %d, %d %d %d %d, %d %d %d\n",
 			  adapter_power, project_power, chip->ufcs_online, chip->pps_online, chip->pps_online_keep,
 			  chip->ufcs_oplus_adapter, chip->pps_oplus_adapter, pps_or_ufcs_ing, pps_or_ufcs_power,
-			  ui_power, chip->ufcs_adapter_id, chip->pps_adapter_id, ui_power_by_user);
+			  ui_power, chip->ufcs_adapter_id, ui_power_by_user);
 	}
 	return sprintf(buf, "%u\n", ui_power);
 }
@@ -3499,13 +3502,11 @@ static ssize_t cpa_power_show(struct device *dev,
 		pps_or_ufcs_power = oplus_ufcs_get_ufcs_power(chip->ufcs_topic);
 	} else 	if (chip->pps_online || chip->pps_online_keep) {
 		if (chip->pps_oplus_adapter) {
-			pps_or_ufcs_ing = oplus_pps_adapter_id_to_protocol_type(chip->pps_adapter_id);
-			if (pps_or_ufcs_ing)
-				pps_or_ufcs_power = oplus_pps_adapter_id_to_power(chip->pps_adapter_id);
+			pps_or_ufcs_ing = PROTOCOL_CHARGING_PPS_OPLUS;
 		} else {
 			pps_or_ufcs_ing = PROTOCOL_CHARGING_PPS_THIRD;
-			pps_or_ufcs_power = oplus_pps_adapter_id_to_power(PPS_FASTCHG_TYPE_THIRD);
 		}
+		pps_or_ufcs_power = oplus_pps_get_charging_power_watt(chip->pps_topic);
 	}
 
 	if (pps_or_ufcs_ing > 0)
@@ -3520,10 +3521,10 @@ static ssize_t cpa_power_show(struct device *dev,
 
 	if (pre_cpa_power != cpa_power) {
 		pre_cpa_power = cpa_power;
-		chg_info("ui_power_show %d %d %d %d, %d %d %d %d, %d %d %d %d\n",
+		chg_info("ui_power_show %d %d %d %d, %d %d %d %d, %d %d %d\n",
 			  adapter_power, project_power, chip->ufcs_online, chip->pps_online,
 			  chip->ufcs_oplus_adapter, chip->pps_oplus_adapter, pps_or_ufcs_ing, pps_or_ufcs_power,
-			  cpa_power, chip->ufcs_adapter_id, chip->pps_adapter_id, cpa_power_by_user);
+			  cpa_power, chip->ufcs_adapter_id, cpa_power_by_user);
 	}
 	return sprintf(buf, "%u\n", cpa_power);
 }
@@ -3636,6 +3637,55 @@ static ssize_t chg_up_limit_store(struct device *dev, struct device_attribute *a
 	return count;
 }
 DEVICE_ATTR_RW(chg_up_limit);
+
+#define LPD_CONFIG_BUF_SIZE		128
+static char lpd_config_buf[LPD_CONFIG_BUF_SIZE];
+static ssize_t lpd_config_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct oplus_configfs_device *chip = dev->driver_data;
+
+	if (!chip) {
+		chg_err("chip is NULL\n");
+		return -EINVAL;
+	}
+
+	return sprintf(buf, "%s\n", lpd_config_buf);
+}
+
+static ssize_t lpd_config_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	char *parse_ptr, *trimmed, *token;
+	struct oplus_configfs_device *chip = dev->driver_data;
+	int values[MAX_LPD_CONFIG_NUM];
+	int i = 0;
+	int ret;
+	size_t copy_size = min_t(size_t, count, LPD_CONFIG_BUF_SIZE - 1);
+
+	memcpy(lpd_config_buf, buf, copy_size);
+	lpd_config_buf[copy_size] = '\0';
+	parse_ptr = lpd_config_buf;
+
+	while ((token = strsep(&parse_ptr, ",")) != NULL && i < MAX_LPD_CONFIG_NUM) {
+		trimmed = strim(token);
+		if (*trimmed == '\0') {
+			chg_err("Empty token at position %d\n", i);
+			continue;
+		}
+
+		ret = kstrtoint(trimmed, 10, &values[i]);
+		if (ret != 0) {
+			chg_err("Invalid number '%s' at position %d\n", trimmed, i);
+			return -EINVAL;
+		}
+
+		chg_info("values[%d] = %d\n", i, values[i]);
+		i++;
+	}
+
+	oplus_wired_set_lpd_config(chip->wired_topic, values);
+	return count;
+}
+DEVICE_ATTR_RW(lpd_config);
 
 static ssize_t super_endurance_mode_status_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -3918,6 +3968,7 @@ static struct device_attribute *oplus_common_attributes[] = {
 	&dev_attr_chg_up_limit,
 	&dev_attr_plc,
 	&dev_attr_dec_delta,
+	&dev_attr_lpd_config,
 	NULL
 };
 
@@ -4849,12 +4900,6 @@ static void oplus_configfs_pps_subs_callback(struct mms_subscribe *subs,
 				break;
 			chip->pps_charging = !!data.intval;
 			break;
-		case PPS_ITEM_ADAPTER_ID:
-			rc = oplus_mms_get_item_data(chip->pps_topic, id, &data, false);
-			if (rc < 0)
-				break;
-			chip->pps_adapter_id = (u32)data.intval;
-			break;
 		case PPS_ITEM_OPLUS_ADAPTER:
 			rc = oplus_mms_get_item_data(chip->pps_topic, id, &data, false);
 			if (rc < 0)
@@ -4897,9 +4942,6 @@ static void oplus_configfs_subscribe_pps_topic(struct oplus_mms *topic,
 	rc = oplus_mms_get_item_data(chip->pps_topic, PPS_ITEM_CHARGING, &data, true);
 	if (rc >= 0)
 		chip->pps_charging = !!data.intval;
-	rc = oplus_mms_get_item_data(chip->pps_topic, PPS_ITEM_ADAPTER_ID, &data, true);
-	if (rc >= 0)
-		chip->pps_adapter_id = (u32)data.intval;
 	rc = oplus_mms_get_item_data(chip->pps_topic, PPS_ITEM_OPLUS_ADAPTER, &data, true);
 	if (rc >= 0)
 		chip->pps_oplus_adapter = !!data.intval;

@@ -6864,11 +6864,11 @@ struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_LEGACY
 	}
 	,
 	{	{'G', '6'}
-		, 151, {63, 63, 63, 63, 63, 63, 34, 34, 63, 63, 63, 63}
+		, 151, {63, 63, 63, 63, 63, 63, 38, 38, 63, 63, 63, 63}
 	}
 	,
 	{	{'G', '6'}
-		, 155, {63, 63, 63, 63, 63, 63, 63, 63, 28, 28, 63, 63}
+		, 155, {63, 63, 63, 63, 63, 63, 63, 63, 32, 32, 63, 63}
 	}
 	,
 	{	{'G', '6'}
@@ -6992,7 +6992,7 @@ struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_HE
 			64, 64, 64,  /* RU52 L,H,U*/
 			64, 64, 64,  /* RU106 L,H,U*/
 			64, 64, 64,  /* RU242 L,H,U ax20M*/
-			34, 34, 34,  /* RU484 L,H,U ax40M*/
+			64, 64, 64,  /* RU484 L,H,U ax40M*/
 			64, 64, 64,  /* RU996 L,H,U ax80M*/
 			64, 64, 64,  /* RU1992 L,H,U ax160M*/
 			}
@@ -7004,7 +7004,7 @@ struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_HE
 			64, 64, 64,  /* RU106 L,H,U*/
 			64, 64, 64,  /* RU242 L,H,U ax20M*/
 			64, 64, 64,  /* RU484 L,H,U ax40M*/
-			28, 28, 28,  /* RU996 L,H,U ax80M*/
+			32, 32, 32,  /* RU996 L,H,U ax80M*/
 			64, 64, 64,  /* RU1992 L,H,U ax160M*/
 			}
 	},
@@ -7014,7 +7014,7 @@ struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_HE
 			64, 64, 64,  /* RU52 L,H,U*/
 			64, 64, 64,  /* RU106 L,H,U*/
 			64, 64, 64,  /* RU242 L,H,U ax20M*/
-			36, 36, 36,  /* RU484 L,H,U ax40M*/
+			64, 64, 64,  /* RU484 L,H,U ax40M*/
 			64, 64, 64,  /* RU996 L,H,U ax80M*/
 			64, 64, 64,  /* RU1992 L,H,U ax160M*/
 			}
@@ -7243,7 +7243,7 @@ struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_EHT
 			40, 40, 40,  /* EHT52 L,H,U*/
 			64, 64, 64,  /* EHT106 L,H,U*/
 			64, 64, 64,  /* EHT242 L,H,U*/
-			34, 34, 34,  /* EHT484 L,H,U*/
+			64, 64, 64,  /* EHT484 L,H,U*/
 			64, 64, 64,  /* EHT996 L,H,U*/
 			64, 64, 64,  /* EHT996X2 L,H,U*/
 			64, 64, 64,  /* EHT996X4 L,H,U*/
@@ -7264,7 +7264,7 @@ struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_EHT
 			64, 64, 64,  /* EHT106 L,H,U*/
 			64, 64, 64,  /* EHT242 L,H,U*/
 			64, 64, 64,  /* EHT484 L,H,U*/
-			28, 28, 28,  /* EHT996 L,H,U*/
+			34, 34, 34,  /* EHT996 L,H,U*/
 			64, 64, 64,  /* EHT996X2 L,H,U*/
 			64, 64, 64,  /* EHT996X4 L,H,U*/
 			34, 34, 34,  /* EHT26_52 L,H,U*/
@@ -7283,7 +7283,7 @@ struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_EHT
 			64, 64, 64,  /* EHT52 L,H,U*/
 			64, 64, 64,  /* EHT106 L,H,U*/
 			64, 64, 64,  /* EHT242 L,H,U*/
-			36, 36, 36,  /* EHT484 L,H,U*/
+			64, 64, 64,  /* EHT484 L,H,U*/
 			64, 64, 64,  /* EHT996 L,H,U*/
 			64, 64, 64,  /* EHT996X2 L,H,U*/
 			64, 64, 64,  /* EHT996X4 L,H,U*/

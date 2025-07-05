@@ -8,7 +8,8 @@
 
 #define CAM_TUNING_BEGIN_F_RATIO 50
 #define CAM_TUNING_DELAY_NS      0
-#define CAM_TUNING_DEADLINE_NS   2000000
+#define CAM_TUNING_DEADLINE_NS        3000000
+#define CAM_TUNING_ALGO_DEADLINE_NS   2000000
 
 #define MTK_CAM_LSCI_TABLE_SIZE 32768
 
@@ -76,6 +77,8 @@ int oplus_hf_client_poll_sensor(struct hf_client *client,
 	struct hf_manager_event *data, int count, unsigned int bufIndex);
 
 int oplus_cam_poll_ois_data_thread(void *arg);
+
+void oplus_cam_copy_res(int *pInBuf, struct mtk_cam_tuning *param);
 /*
  * oplus's part: end
  */

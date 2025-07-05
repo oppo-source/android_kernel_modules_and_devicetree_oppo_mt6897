@@ -751,7 +751,7 @@ static uint32_t apsGetEstimatedTput(struct ADAPTER *ad, struct BSS_DESC *bss,
 	uint8_t rcpi = 0, ppduDuration = 5, ucChannelCuInfo = 0;
 	uint16_t amsduByte = apsGetAmsduByte(ad, bss, bidx);
 	uint16_t baSize = mpduLen[bss->eChannelWidth];
-	uint16_t slot = 0;
+	uint16_t slot = 0, u2Dwell = 0;
 	uint32_t airTime = 0, idle = 0, ideal = 0, tput = 0, est = 0;
 	int32_t a = 0, b = 0, delta = 5;
 	uint8_t *pucIEs = NULL;
@@ -777,9 +777,10 @@ static uint32_t apsGetEstimatedTput(struct ADAPTER *ad, struct BSS_DESC *bss,
 			} else {
 				slot = scanGetChnlIdleSlot(ad,
 					bss->eBand, bss->ucChannelNum);
-
+				u2Dwell = scanGetChnlDwellTime(ad,
+									bss->eBand, bss->ucChannelNum);
 				/* 90000 ms = 90ms dwell time to micro sec */
-				idle = (slot * 9 * 100) / (90000);
+				idle = (slot * 9 * 100) / (u2Dwell * 1000);
 				airTime  = idle > 100 ? 100 : idle;
 				/* Give a default value of air time */
 				if (airTime == 0)
@@ -1176,9 +1177,9 @@ static uint16_t apsCalculateScoreByIdleTime(struct ADAPTER *prAdapter,
 	struct BSS_DESC *prBssDesc, uint8_t ucBssIndex,
 	enum ENUM_BAND eBand)
 {
-	struct SCAN_INFO *info;
-	struct SCAN_PARAM *param;
-	struct BSS_INFO *bss;
+	struct SCAN_INFO *prScanInfo;
+	struct SCAN_PARAM *prScanParam;
+
 	int32_t score, rssi, cu = 0, cuRatio, dwell;
 	uint32_t rssiFactor, cuFactor, rssiWeight, cuWeight;
 	uint32_t slot = 0, idle;
@@ -1210,21 +1211,15 @@ static uint16_t apsCalculateScoreByIdleTime(struct ADAPTER *prAdapter,
 	if (prBssDesc->fgExistBssLoadIE) {
 		cu = prBssDesc->ucChnlUtilization;
 	} else {
-		bss = aisGetAisBssInfo(prAdapter, ucBssIndex);
-		info = &(prAdapter->rWifiVar.rScanInfo);
-		param = &(info->rScanParam);
+		prScanInfo = &(prAdapter->rWifiVar.rScanInfo);
+		prScanParam = &(prScanInfo->rScanParam);
 
-		if (param->u2ChannelDwellTime > 0)
-			dwell = param->u2ChannelDwellTime;
-		else if (bss->eConnectionState == MEDIA_STATE_CONNECTED)
-			dwell = CHNL_DWELL_TIME_ONLINE;
-		else
-			dwell = CHNL_DWELL_TIME_DEFAULT;
-
-		for (i = 0; i < info->ucSparseChannelArrayValidNum; i++) {
-			if (prBssDesc->ucChannelNum == info->aucChannelNum[i] &&
-					eBand == info->aeChannelBand[i]) {
-				slot = info->au2ChannelIdleTime[i];
+		for (i = 0; i < prScanInfo->ucSparseChannelArrayValidNum; i++) {
+			if (prBssDesc->ucChannelNum ==
+				prScanInfo->aucChannelNum[i] &&
+				eBand == prScanInfo->aeChannelBand[i]) {
+				slot = prScanInfo->au2ChannelIdleTime[i];
+				dwell = prScanInfo->au2ChannelScanTime[i];
 				idle = (slot * 9 * 100) / (dwell * 1000);
 #if CFG_SUPPORT_ROAMING
 				if (eRoamType == ROAM_TYPE_PER) {
@@ -1259,13 +1254,16 @@ static uint16_t apsCalculateScoreByIdleTime(struct ADAPTER *prAdapter,
 	score = (rssiFactor * rssiWeight + cuFactor * cuWeight) >> 6;
 
 	DBGLOG(APS, TRACE,
-		MACSTR
-		" Band[%s],chl[%d],slt[%d],ld[%d] idle Score %d,rssi[%d],cu[%d],cuR[%d],rf[%d],rw[%d],cf[%d],cw[%d]\n",
+	MACSTR" Band[%s],chl[%d],slt&dw[%d,%d],ld[%d],idle Score[%d]\n",
 		MAC2STR(prBssDesc->aucBSSID),
 		apucBandStr[prBssDesc->eBand],
-		prBssDesc->ucChannelNum, slot,
-		prBssDesc->fgExistBssLoadIE, score, rssi, cu, cuRatio,
-		rssiFactor, rssiWeight, cuFactor, cuWeight);
+		prBssDesc->ucChannelNum, slot, dwell,
+		prBssDesc->fgExistBssLoadIE, score);
+	DBGLOG(APS, TRACE,
+	"rssi[%d],cu[%d],cuR[%d],rf[%d],rw[%d],cf[%d],cw[%d]\n",
+		rssi, cu, cuRatio, rssiFactor, rssiWeight,
+		cuFactor, cuWeight);
+
 #if CFG_SUPPORT_ROAMING
 done:
 #endif

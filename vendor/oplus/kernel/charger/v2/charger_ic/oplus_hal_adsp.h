@@ -148,6 +148,7 @@ struct oplus_ap_read_ufcs_resp_msg {
 struct oplus_ap_read_req_msg {
 	struct pmic_glink_hdr hdr;
 	u32 message_id;
+	u32 value;
 };
 
 struct oplus_ap_read_buffer_resp_msg {
@@ -162,6 +163,7 @@ enum oplus_ap_message_id {
 	AP_MESSAGE_GET_GAUGE_REG_INFO,
 	AP_MESSAGE_GET_GAUGE_CALIB_TIME,
 	AP_MESSAGE_GET_GAUGE_BATTINFO,
+	AP_MESSAGE_GET_LPD_INFO,
 	AP_MESSAGE_MAX_SIZE = 32,
 };
 

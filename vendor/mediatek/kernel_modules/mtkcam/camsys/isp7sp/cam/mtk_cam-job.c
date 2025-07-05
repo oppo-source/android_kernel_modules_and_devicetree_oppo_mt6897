@@ -155,12 +155,6 @@ static void mtk_cam_tuning_work(struct kthread_work *work)
 
 	/* check time stamp if or not over time */
 	p->end_ts_ns = ktime_get_boottime_ns();
-	MTK_CAM_TRACE_BEGIN(
-		BASIC, "%s:check-(b:%lluns, e:%lluns, diff:%lluns)", __func__,
-		p->begin_ts_ns, p->end_ts_ns, p->end_ts_ns - p->begin_ts_ns);
-	if (p->end_ts_ns - p->begin_ts_ns < CAM_TUNING_DEADLINE_NS)
-		job->is_error = 0;
-	MTK_CAM_TRACE_END(BASIC);
 
 	if (CAM_DEBUG_ENABLED(JOB))
 		pr_info("%s seq_no:0x%x-processing time:%llu ns (b:%llu ns, e:%llu ns)\n",
@@ -449,7 +443,6 @@ static int mtk_cam_job_pack_init(struct mtk_cam_job *job,
 	job->timestamp_mono = 0;
 	job->timestamp_buf = NULL;
 	job->raw_switch = false;
-	job->is_error = is_ois_compensation(job) ? 1 : 0;
 
 	memset(&job->ufbc_header, 0, sizeof(job->ufbc_header));
 
@@ -2352,12 +2345,12 @@ _job_pack_otf_stagger(struct mtk_cam_job *job,
 
 		job->stream_on_seninf = true;
 	}
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	if (is_dc_mode(job)) {
 		/* wa: for performace, dc mode work buffer increasing */
 		job->scq_period = job->scq_period * 10;
 	}
-
+#endif
 	job->do_ipi_config = false;
 	if (check_if_need_configure(ctx->configured, job->seamless_switch,
 				    job->raw_switch)) {
@@ -2578,12 +2571,12 @@ _job_pack_normal(struct mtk_cam_job *job,
 
 		job->stream_on_seninf = true;
 	}
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	if (is_dc_mode(job)) {
 		/* wa: for performace, dc mode work buffer increasing */
 		job->scq_period = job->scq_period * 10;
 	}
-
+#endif
 	job->do_ipi_config = false;
 	if (check_if_need_configure(ctx->configured,
 				    job->seamless_switch,

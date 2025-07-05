@@ -5303,7 +5303,7 @@ out:
 #ifdef CONFIG_CONT_PTE_HUGEPAGE_64K_ZRAM
 		 atomic64_read(&hybs->zram_chp_stored_size),
 #else
-		 0,
+		 0ULL,
 #endif
 		 atomic64_read(&hybs->zram_stored_size), ret);
 	return ret;

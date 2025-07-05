@@ -5418,11 +5418,13 @@ void scanLogCacheFlushAll(struct ADAPTER *prAdapter,
 	KAL_RELEASE_SPIN_LOCK(prAdapter, SPIN_LOCK_BSSLIST_CFG);
 }
 
-void scanFillChnlIdleSlot(struct ADAPTER *ad, enum ENUM_BAND eBand,
-	uint8_t ucChNum, uint16_t u2IdleTime)
+void scanFillChnlInfo(struct ADAPTER *ad, enum ENUM_BAND eBand,
+	uint8_t ucChNum, uint16_t u2IdleTime, uint16_t u2DwellTime)
 {
 	struct CHNL_IDLE_SLOT *prSlotInfo =
 		&(ad->rWifiVar.rScanInfo.rSlotInfo);
+	struct CHNL_DWELL_TIME *prDwellInfo =
+		&(ad->rWifiVar.rScanInfo.rDwellInfo);
 	uint8_t index = 0;
 
 	if (eBand == BAND_2G4) {
@@ -5431,6 +5433,7 @@ void scanFillChnlIdleSlot(struct ADAPTER *ad, enum ENUM_BAND eBand,
 
 		index = (ucChNum - 1);
 		prSlotInfo->au2ChIdleTime2G4[index] = u2IdleTime;
+		prDwellInfo->au2ChDwellTime2G4[index] = u2DwellTime;
 	} else if (eBand == BAND_5G) {
 		if (ucChNum < 36 || ucChNum > 165)
 			return;
@@ -5442,6 +5445,7 @@ void scanFillChnlIdleSlot(struct ADAPTER *ad, enum ENUM_BAND eBand,
 		else if (ucChNum >= 149 && ucChNum <= 165)
 			index = (ucChNum - 69) / 4;
 		prSlotInfo->au2ChIdleTime5G[index] = u2IdleTime;
+		prDwellInfo->au2ChDwellTime5G[index] = u2DwellTime;
 #if (CFG_SUPPORT_WIFI_6G == 1)
 	} else if (eBand == BAND_6G) {
 		if (ucChNum < 1 || ucChNum > 233)
@@ -5449,6 +5453,7 @@ void scanFillChnlIdleSlot(struct ADAPTER *ad, enum ENUM_BAND eBand,
 
 		index = (ucChNum - 1) / 4;
 		prSlotInfo->au2ChIdleTime6G[index] = u2IdleTime;
+		prDwellInfo->au2ChDwellTime6G[index] = u2DwellTime;
 #endif
 	}
 }
@@ -5491,6 +5496,43 @@ uint16_t scanGetChnlIdleSlot(struct ADAPTER *ad, enum ENUM_BAND eBand,
 	return u2Slot;
 }
 
+uint16_t scanGetChnlDwellTime(struct ADAPTER *ad, enum ENUM_BAND eBand,
+	uint8_t ucChNum)
+{
+	struct CHNL_DWELL_TIME *prDwellInfo =
+		&(ad->rWifiVar.rScanInfo.rDwellInfo);
+	uint8_t index = 0;
+	uint16_t u2DwellTime = 0;
+
+	if (eBand == BAND_2G4) {
+		if (ucChNum < 1 || ucChNum > 14)
+			return 0;
+
+		index = (ucChNum - 1);
+		u2DwellTime = prDwellInfo->au2ChDwellTime2G4[index];
+	} else if (eBand == BAND_5G) {
+		if (ucChNum < 36 || ucChNum > 165)
+			return 0;
+
+		if (ucChNum >= 36 && ucChNum <= 64)
+			index = (ucChNum - 36) / 4;
+		else if (ucChNum >= 100 && ucChNum <= 144)
+			index = (ucChNum - 68) / 4;
+		else if (ucChNum >= 149 && ucChNum <= 165)
+			index = (ucChNum - 69) / 4;
+		u2DwellTime = prDwellInfo->au2ChDwellTime5G[index];
+#if (CFG_SUPPORT_WIFI_6G == 1)
+	} else if (eBand == BAND_6G) {
+		if (ucChNum < 1 || ucChNum > 233)
+			return 0;
+
+		index = (ucChNum - 1) / 4;
+		u2DwellTime = prDwellInfo->au2ChDwellTime6G[index];
+#endif
+	}
+
+	return u2DwellTime;
+}
 
 /*----------------------------------------------------------------------------*/
 /*!

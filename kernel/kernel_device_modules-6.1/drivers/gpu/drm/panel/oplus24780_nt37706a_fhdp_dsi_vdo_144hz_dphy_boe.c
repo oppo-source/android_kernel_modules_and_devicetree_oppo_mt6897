@@ -36,14 +36,14 @@
 #include "../../../../misc/mediatek/include/mt-plat/mtk_boot_common.h"
 #include "../oplus/oplus_display_onscreenfingerprint.h"
 
-//static unsigned int nt37703a_vdo_dphy_buf_thresh[14] ={896, 1792, 2688, 3584, 4480,
-//    5376, 6272, 6720, 7168, 7616, 7744, 7872, 8000, 8064};
-//static unsigned int nt37703a_vdo_dphy_range_min_qp[15] ={0, 4, 5, 5, 7, 7, 7, 7, 7,
-//    7, 9, 9, 9, 11, 23};
-//static unsigned int nt37703a_vdo_dphy_range_max_qp[15] ={8, 8, 9, 10, 11, 11, 11,
-//    12, 13, 14, 15, 16, 17, 17, 19};
-//static int nt37703a_vdo_dphy_range_bpg_ofs[15] ={2, 0, 0, -2, -4, -6, -8, -8, -8,
-//    -10, -10, -12, -12, -12, -12};
+static unsigned int nt37706a_vdo_dphy_buf_thresh[14] ={896, 1792, 2688, 3584, 4480,
+    5376, 6272, 6720, 7168, 7616, 7744, 7872, 8000, 8064};
+static unsigned int nt37706a_vdo_dphy_range_min_qp[15] ={0, 4, 5, 5, 7, 7, 7, 7, 7,
+    7, 9, 9, 9, 13, 16};
+static unsigned int nt37706a_vdo_dphy_range_max_qp[15] ={8, 8, 9, 10, 11, 11, 11,
+    12, 13, 14, 14, 15, 15, 16, 17};
+static int nt37706a_vdo_dphy_range_bpg_ofs[15] ={2, 0, 0, -2, -4, -6, -8, -8, -8,
+    -10, -10, -12, -12, -12, -12};
 
 struct lcm {
     struct device *dev;
@@ -68,7 +68,7 @@ extern unsigned long seed_mode;
 static int current_fps = 60;
 static bool aod_state = false;
 
-#define MAX_NORMAL_BRIGHTNESS   3515
+#define MAX_NORMAL_BRIGHTNESS   3598
 #define LCM_BRIGHTNESS_TYPE 2
 #define FINGER_HBM_BRIGHTNESS 3730
 
@@ -203,8 +203,8 @@ static void lcm_panel_init(struct lcm *ctx)
     //For other refer OP manual Ch 4.4
     lcm_dcs_write_seq_static(ctx, 0x90, 0x03);
     lcm_dcs_write_seq_static(ctx, 0x6F, 0x01);
-    lcm_dcs_write_seq_static(ctx, 0x90, 0x03);
-    lcm_dcs_write_seq_static(ctx, 0x91, 0xAB, 0xA8, 0x00, 0x28, 0xD2, 0x00, 0x02, 0x5C, 0x04, 0x06, 0x00, 0x08, 0x02, 0xAB, 0x02, 0x20, 0x10, 0xE0);
+    lcm_dcs_write_seq_static(ctx, 0x90, 0x43);
+    lcm_dcs_write_seq_static(ctx, 0x91, 0xAB, 0xA8, 0x00, 0x28, 0xC2, 0x00, 0x02, 0x41, 0x04, 0x33, 0x00, 0x08, 0x02, 0x77, 0x02, 0x20, 0x10, 0xE0);
 
     //update PMIC SC6010 setting
     lcm_dcs_write_seq_static(ctx, 0xF0,0x55,0xAA,0x52,0x08,0x00);
@@ -270,8 +270,8 @@ static void lcm_panel_init(struct lcm *ctx)
     //Setting Loading Effect x1.0
     lcm_dcs_write_seq_static(ctx, 0x5F, 0x00, 0x00);
 
-    //Switch DBV to Ox0DBB
-    lcm_dcs_write_seq_static(ctx, 0x51, 0x0D, 0xBB);
+    //Switch DBV to Ox0000
+    lcm_dcs_write_seq_static(ctx, 0x51, 0x00, 0x00);
 
     //Sleep out
     lcm_dcs_write_seq_static(ctx, 0x11, 0x00);
@@ -361,6 +361,8 @@ static int lcm_enable(struct drm_panel *panel)
 
 #define FRAME_WIDTH             (1280)
 #define FRAME_HEIGHT            (2800)
+#define FRAME_WIDTH_VIR         (1080)
+#define FRAME_HEIGHT_VIR        (2362)
 #define HFP_144HZ               (20)
 #define HFP                     (132)
 #define HBP                     (20)
@@ -372,52 +374,109 @@ static int lcm_enable(struct drm_panel *panel)
 #define VBP                     (26)
 #define VSA                     (2)
 
-static const struct drm_display_mode disp_mode_60Hz = {
-    .clock = ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP_60HZ + VBP + VSA) * 60) / 1000,
-    .hdisplay = FRAME_WIDTH,
-    .hsync_start = FRAME_WIDTH + HFP,
-    .hsync_end = FRAME_WIDTH + HFP + HSA,
-    .htotal = FRAME_WIDTH + HFP + HSA + HBP,
-    .vdisplay = FRAME_HEIGHT,
-    .vsync_start = FRAME_HEIGHT + VFP_60HZ,
-    .vsync_end = FRAME_HEIGHT + VFP_60HZ + VSA,
-    .vtotal = FRAME_HEIGHT + VFP_60HZ + VSA + VBP,
-};
+static const struct drm_display_mode display_mode[MODE_NUM * RES_NUM] = {
+    // sdc_144hz_mode
+    {
+        .clock = ((FRAME_WIDTH + HFP_144HZ + HBP + HSA) * (FRAME_HEIGHT + VFP_144HZ + VBP + VSA) * 144) / 1000,
+        .hdisplay = FRAME_WIDTH,
+        .hsync_start = FRAME_WIDTH + HFP_144HZ,
+        .hsync_end = FRAME_WIDTH + HFP_144HZ + HSA,
+        .htotal = FRAME_WIDTH + HFP_144HZ + HSA + HBP,
+        .vdisplay = FRAME_HEIGHT,
+        .vsync_start = FRAME_HEIGHT + VFP_144HZ,
+        .vsync_end = FRAME_HEIGHT + VFP_144HZ + VSA,
+        .vtotal = FRAME_HEIGHT + VFP_144HZ + VSA + VBP,
+    },
+    // sdc_120hz_mode
+    {
+        .clock = ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP_120HZ + VBP + VSA) * 120) / 1000,
+        .hdisplay = FRAME_WIDTH,
+        .hsync_start = FRAME_WIDTH + HFP,
+        .hsync_end = FRAME_WIDTH + HFP + HSA,
+        .htotal = FRAME_WIDTH + HFP + HSA + HBP,
+        .vdisplay = FRAME_HEIGHT,
+        .vsync_start = FRAME_HEIGHT + VFP_120HZ,
+        .vsync_end = FRAME_HEIGHT + VFP_120HZ + VSA,
+        .vtotal = FRAME_HEIGHT + VFP_120HZ + VSA + VBP,
+    },
 
-static const struct drm_display_mode disp_mode_90Hz = {
-    .clock = ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP_90HZ + VBP + VSA) * 90) / 1000,
-    .hdisplay = FRAME_WIDTH,
-    .hsync_start = FRAME_WIDTH + HFP,
-    .hsync_end = FRAME_WIDTH + HFP + HSA,
-    .htotal = FRAME_WIDTH + HFP + HSA + HBP,
-    .vdisplay = FRAME_HEIGHT,
-    .vsync_start = FRAME_HEIGHT + VFP_90HZ,
-    .vsync_end = FRAME_HEIGHT + VFP_90HZ + VSA,
-    .vtotal = FRAME_HEIGHT + VFP_90HZ + VSA + VBP,
-};
+    // sdc_90hz_mode
+    {
+        .clock = ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP_90HZ + VBP + VSA) * 90) / 1000,
+        .hdisplay = FRAME_WIDTH,
+        .hsync_start = FRAME_WIDTH + HFP,
+        .hsync_end = FRAME_WIDTH + HFP + HSA,
+        .htotal = FRAME_WIDTH + HFP + HSA + HBP,
+        .vdisplay = FRAME_HEIGHT,
+        .vsync_start = FRAME_HEIGHT + VFP_90HZ,
+        .vsync_end = FRAME_HEIGHT + VFP_90HZ + VSA,
+        .vtotal = FRAME_HEIGHT + VFP_90HZ + VSA + VBP,
+    },
 
-static const struct drm_display_mode disp_mode_120Hz = {
-    .clock = ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP_120HZ + VBP + VSA) * 120) / 1000,
-    .hdisplay = FRAME_WIDTH,
-    .hsync_start = FRAME_WIDTH + HFP,
-    .hsync_end = FRAME_WIDTH + HFP + HSA,
-    .htotal = FRAME_WIDTH + HFP + HSA + HBP,
-    .vdisplay = FRAME_HEIGHT,
-    .vsync_start = FRAME_HEIGHT + VFP_120HZ,
-    .vsync_end = FRAME_HEIGHT + VFP_120HZ + VSA,
-    .vtotal = FRAME_HEIGHT + VFP_120HZ + VSA + VBP,
-};
+    // sdc_60hz_mode
+    {
+        .clock = ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP_60HZ + VBP + VSA) * 60) / 1000,
+        .hdisplay = FRAME_WIDTH,
+        .hsync_start = FRAME_WIDTH + HFP,
+        .hsync_end = FRAME_WIDTH + HFP + HSA,
+        .htotal = FRAME_WIDTH + HFP + HSA + HBP,
+        .vdisplay = FRAME_HEIGHT,
+        .vsync_start = FRAME_HEIGHT + VFP_60HZ,
+        .vsync_end = FRAME_HEIGHT + VFP_60HZ + VSA,
+        .vtotal = FRAME_HEIGHT + VFP_60HZ + VSA + VBP,
+    },
 
-static const struct drm_display_mode disp_mode_144Hz = {
-    .clock = ((FRAME_WIDTH + HFP_144HZ + HBP + HSA) * (FRAME_HEIGHT + VFP_144HZ + VBP + VSA) * 144) / 1000,
-    .hdisplay = FRAME_WIDTH,
-    .hsync_start = FRAME_WIDTH + HFP_144HZ,
-    .hsync_end = FRAME_WIDTH + HFP_144HZ + HSA,
-    .htotal = FRAME_WIDTH + HFP_144HZ + HSA + HBP,
-    .vdisplay = FRAME_HEIGHT,
-    .vsync_start = FRAME_HEIGHT + VFP_144HZ,
-    .vsync_end = FRAME_HEIGHT + VFP_144HZ + VSA,
-    .vtotal = FRAME_HEIGHT + VFP_144HZ + VSA + VBP,
+    // vir_fhd_sdc_144hz_mode
+    {
+        .clock = ((FRAME_WIDTH_VIR + HFP_144HZ + HBP + HSA) * (FRAME_HEIGHT_VIR + VFP_144HZ + VBP + VSA) * 144) / 1000,
+        .hdisplay = FRAME_WIDTH_VIR,
+        .hsync_start = FRAME_WIDTH_VIR + HFP_144HZ,
+        .hsync_end = FRAME_WIDTH_VIR + HFP_144HZ + HSA,
+        .htotal = FRAME_WIDTH_VIR + HFP_144HZ + HSA + HBP,
+        .vdisplay = FRAME_HEIGHT_VIR,
+        .vsync_start = FRAME_HEIGHT_VIR + VFP_144HZ,
+        .vsync_end = FRAME_HEIGHT_VIR + VFP_144HZ + VSA,
+        .vtotal = FRAME_HEIGHT_VIR + VFP_144HZ + VSA + VBP,
+    },
+
+    // vir_fhd_sdc_120hz_mode
+    {
+        .clock = ((FRAME_WIDTH_VIR + HFP + HBP + HSA) * (FRAME_HEIGHT_VIR + VFP_120HZ + VBP + VSA) * 120) / 1000,
+        .hdisplay = FRAME_WIDTH_VIR,
+        .hsync_start = FRAME_WIDTH_VIR + HFP,
+        .hsync_end = FRAME_WIDTH_VIR + HFP + HSA,
+        .htotal = FRAME_WIDTH_VIR + HFP + HSA + HBP,
+        .vdisplay = FRAME_HEIGHT_VIR,
+        .vsync_start = FRAME_HEIGHT_VIR + VFP_120HZ,
+        .vsync_end = FRAME_HEIGHT_VIR + VFP_120HZ + VSA,
+        .vtotal = FRAME_HEIGHT_VIR + VFP_120HZ + VSA + VBP,
+    },
+
+    // vir_fhd_sdc_90hz_mode
+    {
+        .clock = ((FRAME_WIDTH_VIR + HFP + HBP + HSA) * (FRAME_HEIGHT_VIR + VFP_90HZ + VBP + VSA) * 90) / 1000,
+        .hdisplay = FRAME_WIDTH_VIR,
+        .hsync_start = FRAME_WIDTH_VIR + HFP,
+        .hsync_end = FRAME_WIDTH_VIR + HFP + HSA,
+        .htotal = FRAME_WIDTH_VIR + HFP + HSA + HBP,
+        .vdisplay = FRAME_HEIGHT_VIR,
+        .vsync_start = FRAME_HEIGHT_VIR + VFP_90HZ,
+        .vsync_end = FRAME_HEIGHT_VIR + VFP_90HZ + VSA,
+        .vtotal = FRAME_HEIGHT_VIR + VFP_90HZ + VSA + VBP,
+    },
+
+    // vir_fhd_sdc_60hz_mode
+    {
+        .clock = ((FRAME_WIDTH_VIR + HFP + HBP + HSA) * (FRAME_HEIGHT_VIR + VFP_60HZ + VBP + VSA) * 60) / 1000,
+        .hdisplay = FRAME_WIDTH_VIR,
+        .hsync_start = FRAME_WIDTH_VIR + HFP,
+        .hsync_end = FRAME_WIDTH_VIR + HFP + HSA,
+        .htotal = FRAME_WIDTH_VIR + HFP + HSA + HBP,
+        .vdisplay = FRAME_HEIGHT_VIR,
+        .vsync_start = FRAME_HEIGHT_VIR + VFP_60HZ,
+        .vsync_end = FRAME_HEIGHT_VIR + VFP_60HZ + VSA,
+        .vtotal = FRAME_HEIGHT_VIR + VFP_60HZ + VSA + VBP,
+    },
 };
 
 static struct mtk_panel_params ext_params_60Hz = {
@@ -426,7 +485,7 @@ static struct mtk_panel_params ext_params_60Hz = {
     .change_fps_by_vfp_send_cmd_need_delay = 1,
     .dyn_fps = {
         .switch_en = 1,
-        .vact_timing_fps = 120,
+        .vact_timing_fps = 60,
         .dfps_cmd_table[0] = {0, 6 , {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x08}},
         .dfps_cmd_table[1] = {0, 2 , {0xB1, 0x02}},
         .dfps_cmd_table[2] = {0, 2 , {0x2F, 0x03}},
@@ -489,12 +548,12 @@ static struct mtk_panel_params ext_params_60Hz = {
         .slice_width = 640,
         .chunk_size = 640,
         .xmit_delay = 512,
-        .dec_delay = 604,
+        .dec_delay = 577,
         .scale_value = 32,
-        .increment_interval = 1030,
+        .increment_interval = 1075,
         .decrement_interval = 8,
-        .line_bpg_offset = 13,
-        .nfl_bpg_offset = 683,
+        .line_bpg_offset = 12,
+        .nfl_bpg_offset = 631,
         .slice_bpg_offset = 544,
         .initial_offset = 6144,
         .final_offset = 4320,
@@ -506,13 +565,13 @@ static struct mtk_panel_params ext_params_60Hz = {
         .rc_quant_incr_limit1 = 15,
         .rc_tgt_offset_hi = 3,
         .rc_tgt_offset_lo = 3,
-        //.ext_pps_cfg = {
-        //    .enable = 1,
-        //    .rc_buf_thresh = nt37703a_vdo_dphy_buf_thresh,
-        //    .range_min_qp = nt37703a_vdo_dphy_range_min_qp,
-        //    .range_max_qp = nt37703a_vdo_dphy_range_max_qp,
-        //    .range_bpg_ofs = nt37703a_vdo_dphy_range_bpg_ofs,
-        //    },
+        .ext_pps_cfg = {
+            .enable = 1,
+            .rc_buf_thresh = nt37706a_vdo_dphy_buf_thresh,
+            .range_min_qp = nt37706a_vdo_dphy_range_min_qp,
+            .range_max_qp = nt37706a_vdo_dphy_range_max_qp,
+            .range_bpg_ofs = nt37706a_vdo_dphy_range_bpg_ofs,
+        },
     },
 };
 
@@ -522,7 +581,7 @@ static struct mtk_panel_params ext_params_90Hz = {
     .change_fps_by_vfp_send_cmd_need_delay = 1,
     .dyn_fps = {
         .switch_en = 1,
-        .vact_timing_fps = 120,
+        .vact_timing_fps = 90,
         .dfps_cmd_table[0] = {0, 6 , {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x08}},
         .dfps_cmd_table[1] = {0, 2 , {0xB1, 0x02}},
         .dfps_cmd_table[2] = {0, 2 , {0x2F, 0x02}},
@@ -585,12 +644,12 @@ static struct mtk_panel_params ext_params_90Hz = {
         .slice_width = 640,
         .chunk_size = 640,
         .xmit_delay = 512,
-        .dec_delay = 604,
+        .dec_delay = 577,
         .scale_value = 32,
-        .increment_interval = 1030,
+        .increment_interval = 1075,
         .decrement_interval = 8,
-        .line_bpg_offset = 13,
-        .nfl_bpg_offset = 683,
+        .line_bpg_offset = 12,
+        .nfl_bpg_offset = 631,
         .slice_bpg_offset = 544,
         .initial_offset = 6144,
         .final_offset = 4320,
@@ -602,13 +661,13 @@ static struct mtk_panel_params ext_params_90Hz = {
         .rc_quant_incr_limit1 = 15,
         .rc_tgt_offset_hi = 3,
         .rc_tgt_offset_lo = 3,
-        //.ext_pps_cfg = {
-        //    .enable = 1,
-        //    .rc_buf_thresh = nt37703a_vdo_dphy_buf_thresh,
-        //    .range_min_qp = nt37703a_vdo_dphy_range_min_qp,
-        //    .range_max_qp = nt37703a_vdo_dphy_range_max_qp,
-        //    .range_bpg_ofs = nt37703a_vdo_dphy_range_bpg_ofs,
-        //    },
+        .ext_pps_cfg = {
+            .enable = 1,
+            .rc_buf_thresh = nt37706a_vdo_dphy_buf_thresh,
+            .range_min_qp = nt37706a_vdo_dphy_range_min_qp,
+            .range_max_qp = nt37706a_vdo_dphy_range_max_qp,
+            .range_bpg_ofs = nt37706a_vdo_dphy_range_bpg_ofs,
+        },
     },
 };
 
@@ -682,12 +741,12 @@ static struct mtk_panel_params ext_params_120Hz = {
         .slice_width = 640,
         .chunk_size = 640,
         .xmit_delay = 512,
-        .dec_delay = 604,
+        .dec_delay = 577,
         .scale_value = 32,
-        .increment_interval = 1030,
+        .increment_interval = 1075,
         .decrement_interval = 8,
-        .line_bpg_offset = 13,
-        .nfl_bpg_offset = 683,
+        .line_bpg_offset = 12,
+        .nfl_bpg_offset = 631,
         .slice_bpg_offset = 544,
         .initial_offset = 6144,
         .final_offset = 4320,
@@ -699,13 +758,13 @@ static struct mtk_panel_params ext_params_120Hz = {
         .rc_quant_incr_limit1 = 15,
         .rc_tgt_offset_hi = 3,
         .rc_tgt_offset_lo = 3,
-        //.ext_pps_cfg = {
-        //    .enable = 1,
-        //    .rc_buf_thresh = nt37703a_vdo_dphy_buf_thresh,
-        //    .range_min_qp = nt37703a_vdo_dphy_range_min_qp,
-        //    .range_max_qp = nt37703a_vdo_dphy_range_max_qp,
-        //    .range_bpg_ofs = nt37703a_vdo_dphy_range_bpg_ofs,
-        //    },
+        .ext_pps_cfg = {
+            .enable = 1,
+            .rc_buf_thresh = nt37706a_vdo_dphy_buf_thresh,
+            .range_min_qp = nt37706a_vdo_dphy_range_min_qp,
+            .range_max_qp = nt37706a_vdo_dphy_range_max_qp,
+            .range_bpg_ofs = nt37706a_vdo_dphy_range_bpg_ofs,
+        },
     },
 };
 
@@ -715,7 +774,7 @@ static struct mtk_panel_params ext_params_144Hz = {
     .change_fps_by_vfp_send_cmd_need_delay = 1,
     .dyn_fps = {
         .switch_en = 1,
-        .vact_timing_fps = 120,
+        .vact_timing_fps = 144,
         // .send_mode = 1,
         // .send_cmd_need_delay = 1,
         .dfps_cmd_table[0] = {0, 6 , {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x08}},
@@ -778,12 +837,12 @@ static struct mtk_panel_params ext_params_144Hz = {
         .slice_width = 640,
         .chunk_size = 640,
         .xmit_delay = 512,
-        .dec_delay = 604,
+        .dec_delay = 577,
         .scale_value = 32,
-        .increment_interval = 1030,
+        .increment_interval = 1075,
         .decrement_interval = 8,
-        .line_bpg_offset = 13,
-        .nfl_bpg_offset = 683,
+        .line_bpg_offset = 12,
+        .nfl_bpg_offset = 631,
         .slice_bpg_offset = 544,
         .initial_offset = 6144,
         .final_offset = 4320,
@@ -795,13 +854,13 @@ static struct mtk_panel_params ext_params_144Hz = {
         .rc_quant_incr_limit1 = 15,
         .rc_tgt_offset_hi = 3,
         .rc_tgt_offset_lo = 3,
-        //.ext_pps_cfg = {
-        //    .enable = 1,
-        //    .rc_buf_thresh = nt37703a_vdo_dphy_buf_thresh,
-        //    .range_min_qp = nt37703a_vdo_dphy_range_min_qp,
-        //    .range_max_qp = nt37703a_vdo_dphy_range_max_qp,
-        //    .range_bpg_ofs = nt37703a_vdo_dphy_range_bpg_ofs,
-        //    },
+        .ext_pps_cfg = {
+            .enable = 1,
+            .rc_buf_thresh = nt37706a_vdo_dphy_buf_thresh,
+            .range_min_qp = nt37706a_vdo_dphy_range_min_qp,
+            .range_max_qp = nt37706a_vdo_dphy_range_max_qp,
+            .range_bpg_ofs = nt37706a_vdo_dphy_range_bpg_ofs,
+        },
     },
 };
 
@@ -940,6 +999,33 @@ static bool panel_hbm_set_wait_state(struct drm_panel *panel, bool wait)
 
     ctx->hbm_wait = wait;
     return old;
+}
+
+static int oplus_display_panel_set_hbm_max(void *dsi, dcs_write_gce_pack cb1, dcs_write_gce cb2, void *handle, unsigned int en) {
+    unsigned int i = 0;
+
+    pr_info("en=%d\n", en);
+
+    if (!dsi || !cb1 || !cb2) {
+        pr_info("Invalid params\n");
+        return -EINVAL;
+    }
+
+    if (en) {
+        for (i = 0; i < sizeof(dsi_switch_hbm_apl_on) / sizeof(struct LCM_setting_table); i++) {
+            cb2(dsi, handle, dsi_switch_hbm_apl_on[i].para_list, dsi_switch_hbm_apl_on[i].count);
+        }
+        pr_info("Enter hbm_max mode");
+    } else if (!en) {
+        dsi_switch_hbm_apl_off[1].para_list[1] = oplus_display_brightness >> 8;
+        dsi_switch_hbm_apl_off[1].para_list[2] = oplus_display_brightness & 0xFF;
+        for (i = 0; i < sizeof(dsi_switch_hbm_apl_off) / sizeof(struct LCM_setting_table); i++) {
+            cb2(dsi, handle, dsi_switch_hbm_apl_off[i].para_list, dsi_switch_hbm_apl_off[i].count);
+        }
+        pr_info("hbm_max off, restore bl:%d\n", oplus_display_brightness);
+    }
+
+    return 0;
 }
 
 static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce cb, void *handle)
@@ -1245,6 +1331,17 @@ struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
     return NULL;
 }
 
+enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
+{
+    pr_info("res_switch_type: %d\n", res_switch_type);
+    return res_switch_type;
+}
+
+int mtk_scaling_mode_mapping(int mode_idx)
+{
+    return MODE_MAPPING_RULE(mode_idx);
+}
+
 static int mtk_panel_ext_param_set(struct drm_panel *panel,
             struct drm_connector *connector, unsigned int mode)
 {
@@ -1283,12 +1380,15 @@ static struct mtk_panel_funcs ext_funcs = {
     .panel_reset = lcm_panel_reset,
     .ata_check = panel_ata_check,
     .ext_param_set = mtk_panel_ext_param_set,
+    .get_res_switch_type = mtk_get_res_switch_type,
+    .scaling_mode_mapping = mtk_scaling_mode_mapping,
     //.mode_switch = mode_switch,
     .set_hbm = lcm_set_hbm,
     //.hbm_set_cmdq = panel_hbm_set_cmdq,
     .oplus_ofp_set_lhbm_pressed_icon_single = oplus_ofp_set_lhbm_pressed_icon_single,
     .doze_disable = panel_doze_disable,
     .doze_enable = panel_doze_enable,
+    .lcm_set_hbm_max = oplus_display_panel_set_hbm_max,
     .set_aod_light_mode = panel_set_aod_light_mode,
     .esd_backlight_recovery = oplus_esd_backlight_recovery,
 
@@ -1301,46 +1401,22 @@ static struct mtk_panel_funcs ext_funcs = {
 static int lcm_get_modes(struct drm_panel *panel,
                     struct drm_connector *connector)
 {
-    struct drm_display_mode *mode[4];
+    struct drm_display_mode *mode[MODE_NUM * RES_NUM];
+    int i = 0;
 
-    mode[0] = drm_mode_duplicate(connector->dev, &disp_mode_60Hz);
-    if (!mode[0]) {
-        pr_info("%s failed to add mode %ux%ux@%u\n", __func__, disp_mode_60Hz.hdisplay, disp_mode_60Hz.vdisplay, drm_mode_vrefresh(&disp_mode_60Hz));
-        return -ENOMEM;
+    for (i = 0; i < MODE_NUM * RES_NUM; i++) {
+        mode[i] = drm_mode_duplicate(connector->dev, &display_mode[i]);
+        if (!mode[i]) {
+            pr_info("%s failed to add mode %ux%ux@%u\n", __func__, display_mode[i].hdisplay, display_mode[i].vdisplay, drm_mode_vrefresh(&display_mode[i]));
+            return -ENOMEM;
+        }
+        drm_mode_set_name(mode[i]);
+        mode[i]->type = DRM_MODE_TYPE_DRIVER;
+        if (i == 3) {
+            mode[i]->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
+        }
+        drm_mode_probed_add(connector, mode[i]);
     }
-    drm_mode_set_name(mode[0]);
-    mode[0]->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
-    drm_mode_probed_add(connector, mode[0]);
-    pr_info("%s clock=%d,htotal=%d,vtotal=%d,hskew=%d,vrefresh=%d\n", __func__, mode[0]->clock, mode[0]->htotal,
-        mode[0]->vtotal, mode[0]->hskew, drm_mode_vrefresh(mode[0]));
-
-    mode[1] = drm_mode_duplicate(connector->dev, &disp_mode_90Hz);
-    if (!mode[1]) {
-        pr_info("%s failed to add mode %ux%ux@%u\n", __func__, disp_mode_90Hz.hdisplay, disp_mode_90Hz.vdisplay, drm_mode_vrefresh(&disp_mode_90Hz));
-        return -ENOMEM;
-    }
-    drm_mode_set_name(mode[1]);
-    mode[1]->type = DRM_MODE_TYPE_DRIVER;
-    drm_mode_probed_add(connector, mode[1]);
-
-    mode[2] = drm_mode_duplicate(connector->dev, &disp_mode_120Hz);
-    if (!mode[2]) {
-        pr_info("%s failed to add mode %ux%ux@%u\n", __func__, disp_mode_120Hz.hdisplay, disp_mode_120Hz.vdisplay, drm_mode_vrefresh(&disp_mode_120Hz));
-        return -ENOMEM;
-    }
-    drm_mode_set_name(mode[2]);
-    mode[2]->type = DRM_MODE_TYPE_DRIVER;
-    drm_mode_probed_add(connector, mode[2]);
-
-    mode[3] = drm_mode_duplicate(connector->dev, &disp_mode_144Hz);
-    if (!mode[3]) {
-        pr_info("%s failed to add mode %ux%ux@%u\n", __func__, disp_mode_144Hz.hdisplay, disp_mode_144Hz.vdisplay, drm_mode_vrefresh(&disp_mode_144Hz));
-        return -ENOMEM;
-    }
-    drm_mode_set_name(mode[3]);
-    mode[3]->type = DRM_MODE_TYPE_DRIVER;
-    drm_mode_probed_add(connector, mode[3]);
-
 
     connector->display_info.width_mm = 69;
     connector->display_info.height_mm = 155;
@@ -1363,6 +1439,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
     struct lcm *ctx;
     struct device_node *backlight;
     int ret;
+    unsigned int res_switch;
 
     pr_info("[LCM] boe_nt37706a %s START\n", __func__);
 
@@ -1395,6 +1472,13 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
     dsi->format = MIPI_DSI_FMT_RGB888;
     dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE
              | MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET;
+
+    ret = of_property_read_u32(dev->of_node, "res-switch", &res_switch);
+    if (ret < 0)
+        res_switch = 0;
+    else
+        res_switch_type = (enum RES_SWITCH_TYPE)res_switch;
+    pr_info("lcm probe res_switch_type:%d\n", res_switch);
 
     backlight = of_parse_phandle(dev->of_node, "backlight", 0);
     if (backlight) {

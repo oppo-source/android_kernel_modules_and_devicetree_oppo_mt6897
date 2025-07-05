@@ -4288,7 +4288,7 @@ static int oplus_discover_id(struct tcpc_device *tcpc_dev)
 	    ret == TCP_DPM_RET_DENIED_WRONG_ROLE ||
 	    ret == TCPM_ERROR_PUT_EVENT) {
 		chg_err(" failed, ret = %d.\n", ret);
-		return EFAULT;
+		return -EFAULT;
 	} else if (ret != TCPM_SUCCESS) {
 		chg_err("failed to discover id, ret = %d\n", ret);
 	}
@@ -4300,12 +4300,12 @@ static int oplus_discover_svid(struct tcpc_device *tcpc_dev)
 {
 	int ret = 0;
 
-	ret = tcpm_dpm_vdm_discover_id(tcpc_dev, NULL);
-	if (ret == TCP_DPM_RET_NOT_SUPPORT ||
-	    ret == TCP_DPM_RET_DENIED_WRONG_ROLE |
+	/* Note: the WC065A11JCH not support the cmd of discover_svid. */
+	ret = tcpm_dpm_vdm_discover_svid(tcpc_dev, NULL);
+	if (ret == TCP_DPM_RET_DENIED_WRONG_ROLE ||
 	    ret == TCPM_ERROR_PUT_EVENT) {
 		chg_err(" failed, ret = %d.\n", ret);
-		return EFAULT;
+		return -EFAULT;
 	} else if (ret != TCPM_SUCCESS) {
 		chg_err("failed to discover svid,ret = %d\n", ret);
 	}
@@ -4316,6 +4316,7 @@ static int oplus_discover_svid(struct tcpc_device *tcpc_dev)
 static int oplus_get_adapter_svid(void)
 {
 	int ret = 0;
+	int discover_svid_ret = 0;
 	struct tcpc_device *tcpc_dev = tcpc_dev_get_by_name("type_c_port0");
 	int disc_svid_retries = 0;
 
@@ -4327,14 +4328,13 @@ static int oplus_get_adapter_svid(void)
 	if (pinfo->pd_svooc)
 		goto trigger_irq;
 
-	chg_info("not got the pd_svooc svid, discover id/svid\n");
 	do {
 		disc_svid_retries++;
 		if (disc_svid_retries > DISCOVER_SVID_MAX_RETRIES)
 			break;
 
 		ret = oplus_discover_id(tcpc_dev);
-		if (ret == EFAULT) {
+		if (ret == -EFAULT) {
 			chg_err("vdm_discover_id failed, ret = %d, retries: %d, not try again.\n",
 				ret, disc_svid_retries);
 			break;
@@ -4346,16 +4346,14 @@ static int oplus_get_adapter_svid(void)
 		}
 
 		mdelay(DISCOVER_SVID_INTERNAL_CMD_DELAY);
-		ret = oplus_discover_svid(tcpc_dev);
-		if (ret == EFAULT) {
+		discover_svid_ret = oplus_discover_svid(tcpc_dev);
+		if (discover_svid_ret == -EFAULT) {
 			chg_err("get the svid failed, ret = %d, retries: %d, not try again.\n",
-				ret, disc_svid_retries);
+				discover_svid_ret, disc_svid_retries);
 			break;
 		} else if (ret != TCPM_SUCCESS) {
 			chg_err("Failed to discover svid. ret %d retries: %d\n",
-				ret, disc_svid_retries);
-			mdelay(DISCOVER_SVID_RETRY_DELAY);
-			continue;
+				discover_svid_ret, disc_svid_retries);
 		}
 		mdelay(DISCOVER_SVID_INTERNAL_CMD_DELAY);
 
@@ -4365,10 +4363,15 @@ static int oplus_get_adapter_svid(void)
 		} else {
 			chg_err("get the pd partner svids failed, ret = %d, retries = %d\n",
 				ret, disc_svid_retries);
+
+			/* Note: the WC065A11JCH maybe not support the get_pd_partner_svids */
+			if (discover_svid_ret == TCP_DPM_RET_NOT_SUPPORT)
+				chg_info("not support to get_pd_partner_svids, ret = %d, discover_svid_ret = %d\n",
+					 ret, discover_svid_ret);
 			mdelay(DISCOVER_SVID_RETRY_DELAY);
-			continue;
 		}
 
+		/* retry to get the SVID by PD partner inform. */
 		mdelay(DISCOVER_SVID_INTERNAL_CMD_DELAY);
 		ret = oplus_get_pd_partner_inform(tcpc_dev);
 		if (ret == TCPM_SUCCESS) {
@@ -4376,6 +4379,13 @@ static int oplus_get_adapter_svid(void)
 		} else {
 			chg_err("get the partner infom failed, ret = %d, retries = %d.\n",
 				ret, disc_svid_retries);
+
+			/* discover svid return not support and get pd_partner_inform failed, not try again.*/
+			if (discover_svid_ret == TCP_DPM_RET_NOT_SUPPORT) {
+				chg_info("not support to get the svid, ret = %d, discover_svid_ret = %d\n",
+					  ret, discover_svid_ret);
+				goto trigger_irq;
+			}
 			mdelay(DISCOVER_SVID_RETRY_DELAY);
 		}
 	} while (ret != TCPM_SUCCESS && disc_svid_retries < DISCOVER_SVID_MAX_RETRIES);

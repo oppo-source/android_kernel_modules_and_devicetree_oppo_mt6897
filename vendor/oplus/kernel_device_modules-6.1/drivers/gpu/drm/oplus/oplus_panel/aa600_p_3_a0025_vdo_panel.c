@@ -71,6 +71,8 @@ extern unsigned int m_db;
 
 extern void lcdinfo_notify(unsigned long val, void *v);
 extern int oplus_display_panel_dbv_probe(struct device *dev);
+extern void mipi_dsi_dcs_write_gce_delay(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
+				const void *data, size_t len);
 
 #define lcm_dcs_write_seq(ctx, seq...) \
 ({\
@@ -182,8 +184,8 @@ static int get_mode_enum(struct drm_display_mode *m)
 
 static void lcm_panel_init(struct lcm *ctx)
 {
-	DISP_ERR("aa600_p_7_a0025 %s +, m_db = %d, mode id=%d\n", __func__, m_db ,mode_id);
-	if (m_db <= 1) {
+	DISP_ERR("aa600_p_3_a0025 %s +, m_db = %d, mode id=%d\n", __func__, m_db ,mode_id);
+	if (m_db < 3) {
 		switch (mode_id) {
 		case FHD_SDC60:
 			push_table(ctx, init_setting_60Hz, sizeof(init_setting_60Hz)/sizeof(struct LCM_setting_table));
@@ -201,27 +203,37 @@ static void lcm_panel_init(struct lcm *ctx)
 	} else {
 		switch (mode_id) {
 		case FHD_SDC60:
-			push_table(ctx, init_setting_60Hz_DVT, sizeof(init_setting_60Hz_DVT)/sizeof(struct LCM_setting_table));
+			push_table(ctx, init_setting_60Hz_PVT, sizeof(init_setting_60Hz_PVT)/sizeof(struct LCM_setting_table));
 			break;
 		case FHD_SDC90:
-			push_table(ctx, init_setting_90Hz_DVT, sizeof(init_setting_90Hz_DVT)/sizeof(struct LCM_setting_table));
+			push_table(ctx, init_setting_90Hz_PVT, sizeof(init_setting_90Hz_PVT)/sizeof(struct LCM_setting_table));
 			break;
 		case FHD_SDC120:
-			push_table(ctx, init_setting_120Hz_DVT, sizeof(init_setting_120Hz_DVT)/sizeof(struct LCM_setting_table));
+			push_table(ctx, init_setting_120Hz_PVT, sizeof(init_setting_120Hz_PVT)/sizeof(struct LCM_setting_table));
 			break;
 		default:
-			push_table(ctx, init_setting_120Hz_DVT, sizeof(init_setting_120Hz_DVT)/sizeof(struct LCM_setting_table));
+			push_table(ctx, init_setting_120Hz_PVT, sizeof(init_setting_120Hz_PVT)/sizeof(struct LCM_setting_table));
 			break;
 		}
 	}
 
 	DISP_ERR("%s,aa600_p_3_a0025 restore seed_mode:%d\n", __func__, temp_seed_mode);
-	if (temp_seed_mode == NATURAL){
-		push_table(ctx, dsi_set_seed_natural, sizeof(dsi_set_seed_natural) / sizeof(struct LCM_setting_table));
-	} else if (temp_seed_mode == EXPERT){
-		push_table(ctx, dsi_set_seed_expert, sizeof(dsi_set_seed_expert) / sizeof(struct LCM_setting_table));
-	} else if (temp_seed_mode == VIVID){
-		push_table(ctx, dsi_set_seed_vivid, sizeof(dsi_set_seed_vivid) / sizeof(struct LCM_setting_table));
+	if (m_db < 3) {
+		if (temp_seed_mode == NATURAL){
+			push_table(ctx, dsi_set_seed_natural, sizeof(dsi_set_seed_natural) / sizeof(struct LCM_setting_table));
+		} else if (temp_seed_mode == EXPERT){
+			push_table(ctx, dsi_set_seed_expert, sizeof(dsi_set_seed_expert) / sizeof(struct LCM_setting_table));
+		} else if (temp_seed_mode == VIVID){
+			push_table(ctx, dsi_set_seed_vivid, sizeof(dsi_set_seed_vivid) / sizeof(struct LCM_setting_table));
+		}
+	} else {
+		if (temp_seed_mode == NATURAL){
+			push_table(ctx, dsi_set_seed_natural_PVT, sizeof(dsi_set_seed_natural_PVT) / sizeof(struct LCM_setting_table));
+		} else if (temp_seed_mode == EXPERT){
+			push_table(ctx, dsi_set_seed_expert_PVT, sizeof(dsi_set_seed_expert_PVT) / sizeof(struct LCM_setting_table));
+		} else if (temp_seed_mode == VIVID){
+			push_table(ctx, dsi_set_seed_vivid_PVT, sizeof(dsi_set_seed_vivid_PVT) / sizeof(struct LCM_setting_table));
+		}
 	}
 
 	DISP_ERR("aa600_p_3_a0025 %s -\n", __func__);
@@ -561,6 +573,9 @@ static struct mtk_panel_params ext_params_60Hz = {
 		.switch_en = 1,
 		.vact_timing_fps = 60,
 		.dfps_cmd_table[0] = {0, 2 , {0x2F, 0x03}},
+		.dfps_cmd_table[1] = {0, 6 , {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+		.dfps_cmd_table[2] = {0, 2 , {0x6F, 0x31}},
+		.dfps_cmd_table[3] = {0, 2 , {0xDF, 0x02}},
 	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 
@@ -638,6 +653,9 @@ static struct mtk_panel_params ext_params_90Hz = {
 		.switch_en = 1,
 		.vact_timing_fps = 90,
 		.dfps_cmd_table[0] = {0, 2 , {0x2F, 0x02}},
+		.dfps_cmd_table[1] = {0, 6 , {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+		.dfps_cmd_table[2] = {0, 2 , {0x6F, 0x31}},
+		.dfps_cmd_table[3] = {0, 2 , {0xDF, 0x01}},
 	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 
@@ -716,6 +734,9 @@ static struct mtk_panel_params ext_params_120Hz = {
 		.switch_en = 1,
 		.vact_timing_fps = 120,
 		.dfps_cmd_table[0] = {0, 2 , {0x2F, 0x01}},
+		.dfps_cmd_table[1] = {0, 6 , {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+		.dfps_cmd_table[2] = {0, 2 , {0x6F, 0x31}},
+		.dfps_cmd_table[3] = {0, 2 , {0xDF, 0x00}},
 	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 
@@ -794,24 +815,47 @@ static int panel_set_seed(void *dsi, dcs_write_gce cb, void *handle, unsigned in
 		return -EINVAL;
 	}
 	temp_seed_mode = mode;
-	switch(mode) {
-		case NATURAL:
-			for(i = 0; i < sizeof(dsi_set_seed_natural)/sizeof(struct LCM_setting_table); i++) {
-				cb(dsi, handle, dsi_set_seed_natural[i].para_list, dsi_set_seed_natural[i].count);
-			}
-		break;
-		case EXPERT:
-			for(i = 0; i < sizeof(dsi_set_seed_expert)/sizeof(struct LCM_setting_table); i++) {
-				cb(dsi, handle, dsi_set_seed_expert[i].para_list, dsi_set_seed_expert[i].count);
-			}
-		break;
-		case VIVID:
-			for(i = 0; i < sizeof(dsi_set_seed_vivid)/sizeof(struct LCM_setting_table); i++) {
-				cb(dsi, handle, dsi_set_seed_vivid[i].para_list, dsi_set_seed_vivid[i].count);
-			}
-		break;
-		default:
-		break;
+
+	if (m_db < 3) {
+		switch(mode) {
+			case NATURAL:
+				for(i = 0; i < sizeof(dsi_set_seed_natural)/sizeof(struct LCM_setting_table); i++) {
+					cb(dsi, handle, dsi_set_seed_natural[i].para_list, dsi_set_seed_natural[i].count);
+				}
+			break;
+			case EXPERT:
+				for(i = 0; i < sizeof(dsi_set_seed_expert)/sizeof(struct LCM_setting_table); i++) {
+					cb(dsi, handle, dsi_set_seed_expert[i].para_list, dsi_set_seed_expert[i].count);
+				}
+			break;
+			case VIVID:
+				for(i = 0; i < sizeof(dsi_set_seed_vivid)/sizeof(struct LCM_setting_table); i++) {
+					cb(dsi, handle, dsi_set_seed_vivid[i].para_list, dsi_set_seed_vivid[i].count);
+				}
+			break;
+			default:
+			break;
+		}
+	} else {
+		switch(mode) {
+			case NATURAL:
+				for(i = 0; i < sizeof(dsi_set_seed_natural_PVT)/sizeof(struct LCM_setting_table); i++) {
+					cb(dsi, handle, dsi_set_seed_natural_PVT[i].para_list, dsi_set_seed_natural_PVT[i].count);
+				}
+			break;
+			case EXPERT:
+				for(i = 0; i < sizeof(dsi_set_seed_expert_PVT)/sizeof(struct LCM_setting_table); i++) {
+					cb(dsi, handle, dsi_set_seed_expert_PVT[i].para_list, dsi_set_seed_expert_PVT[i].count);
+				}
+			break;
+			case VIVID:
+				for(i = 0; i < sizeof(dsi_set_seed_vivid_PVT)/sizeof(struct LCM_setting_table); i++) {
+					cb(dsi, handle, dsi_set_seed_vivid_PVT[i].para_list, dsi_set_seed_vivid_PVT[i].count);
+				}
+			break;
+			default:
+			break;
+		}
 	}
 	return 0;
 }
@@ -823,6 +867,7 @@ static int panel_ata_check(struct drm_panel *panel)
 }
 
 static unsigned int demura_tap = 0;
+static unsigned int lhbm_70nit_off_action = 0;
 static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsigned int level)
 {
 	unsigned int mapped_level = 0;
@@ -861,18 +906,35 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsi
 	oplus_display_brightness = level;
 	lcdinfo_notify(LCM_BRIGHTNESS_TYPE, &level);
 
-	if (mapped_level < 1147 && demura_tap != 1) {
-		demura_tap = 1;
-		DISP_ERR("aa600_p_3_a0025 backlight send demura0\n");
-		for (i = 0; i < sizeof(dsi_demura0_bl)/sizeof(struct LCM_setting_table); i++){
-			cb(dsi, handle, dsi_demura0_bl[i].para_list, dsi_demura0_bl[i].count);
+	if (lhbm_70nit_off_action == 0 && demura_tap != 3) {
+		if (mapped_level < 1147 && demura_tap != 1) {
+			demura_tap = 1;
+			DISP_ERR("aa600_p_3_a0025 backlight send demura0\n");
+			for (i = 0; i < sizeof(dsi_demura0_bl)/sizeof(struct LCM_setting_table); i++){
+				cb(dsi, handle, dsi_demura0_bl[i].para_list, dsi_demura0_bl[i].count);
+			}
+		} else if(mapped_level >= 1147 && demura_tap != 2) {
+			demura_tap = 2;
+			DISP_ERR("aa600_p_3_a0025 backlight send demura1\n");
+			for (i = 0; i < sizeof(dsi_demura1_bl)/sizeof(struct LCM_setting_table); i++){
+				cb(dsi, handle, dsi_demura1_bl[i].para_list, dsi_demura1_bl[i].count);
+			}
 		}
-	} else if(mapped_level >= 1147 && demura_tap != 2) {
-		demura_tap = 2;
-		DISP_ERR("aa600_p_3_a0025 backlight send demura1\n");
-		for (i = 0; i < sizeof(dsi_demura1_bl)/sizeof(struct LCM_setting_table); i++){
-			cb(dsi, handle, dsi_demura1_bl[i].para_list, dsi_demura1_bl[i].count);
+	} else if (lhbm_70nit_off_action == 1) {
+		if (mapped_level < 1147) {
+			demura_tap = 1;
+			DISP_ERR("aa600_p_3_a0025 backlight send demura0 lhbm_70nit_off_action = 1\n");
+			for (i = 0; i < sizeof(dsi_demura0_bl)/sizeof(struct LCM_setting_table); i++){
+				cb(dsi, handle, dsi_demura0_bl[i].para_list, dsi_demura0_bl[i].count);
+			}
+		} else if(mapped_level >= 1147) {
+			demura_tap = 2;
+			DISP_ERR("aa600_p_3_a0025 backlight send demura1 lhbm_70nit_off_action = 1\n");
+			for (i = 0; i < sizeof(dsi_demura1_bl)/sizeof(struct LCM_setting_table); i++){
+				cb(dsi, handle, dsi_demura1_bl[i].para_list, dsi_demura1_bl[i].count);
+			}
 		}
+		lhbm_70nit_off_action = 0;
 	}
 
 	DISP_ERR("aa600_p_3_a0025 setbacklight finish\n");
@@ -895,17 +957,19 @@ static int oplus_esd_backlight_recovery(void *dsi, dcs_write_gce cb, void *handl
 
 	DISP_ERR("esd_bl_level[1]=%x, esd_bl_level[2]=%x backlight = %d\n", esd_bl_level[1], esd_bl_level[2], level);
 
-	if (level < 1147 && demura_tap!= 1) {
-		demura_tap = 1;
-		DISP_ERR("aa600_p_3_a0025 esd send demura_0\n");
-		for (i = 0; i < sizeof(dsi_demura0_bl)/sizeof(struct LCM_setting_table); i++){
-			cb(dsi, handle, dsi_demura0_bl[i].para_list, dsi_demura0_bl[i].count);
-		}
-	} else if(level >= 1147 && demura_tap!= 2){
-		demura_tap = 2;
-		DISP_ERR("aa600_p_3_a0025 esd send demura_1\n");
-		for (i = 0; i < sizeof(dsi_demura1_bl)/sizeof(struct LCM_setting_table); i++){
-			cb(dsi, handle, dsi_demura1_bl[i].para_list, dsi_demura1_bl[i].count);
+	if (lhbm_70nit_off_action == 0 && demura_tap != 3) {
+		if (level < 1147 && demura_tap != 1) {
+			demura_tap = 1;
+			DISP_ERR("aa600_p_3_a0025 esd send demura0\n");
+			for (i = 0; i < sizeof(dsi_demura0_bl)/sizeof(struct LCM_setting_table); i++){
+				cb(dsi, handle, dsi_demura0_bl[i].para_list, dsi_demura0_bl[i].count);
+			}
+		} else if(level >= 1147 && demura_tap != 2) {
+			demura_tap = 2;
+			DISP_ERR("aa600_p_3_a0025 esd send demura1\n");
+			for (i = 0; i < sizeof(dsi_demura1_bl)/sizeof(struct LCM_setting_table); i++){
+				cb(dsi, handle, dsi_demura1_bl[i].para_list, dsi_demura1_bl[i].count);
+			}
 		}
 	}
 
@@ -986,6 +1050,7 @@ static int oplus_ofp_set_lhbm_pressed_icon(struct drm_panel *panel, void *dsi,
 {
 	unsigned int reg_count = 0;
 	struct LCM_setting_table *lhbm_pressed_icon_cmd = NULL;
+	struct LCM_setting_table *lhbm_pressed_icon_cmd_off = NULL;
 	int i = 0;
 	OFP_DEBUG("start\n");
 
@@ -1001,7 +1066,7 @@ static int oplus_ofp_set_lhbm_pressed_icon(struct drm_panel *panel, void *dsi,
 	OFP_INFO("%s,oplus_display_brightness=%d, hbm_mode=%d, mode_id=%d,  m_db = %d\n",
 			 __func__, oplus_display_brightness, en, mode_id, m_db);
 	if (en) {
-		if(m_db <= 1) {
+		if(m_db < 3) {
 			if (mode_id == FHD_SDC60) {
 				reg_count = sizeof(lhbm_pressed_icon_on_cmd_60hz) / sizeof(struct LCM_setting_table);
 				lhbm_pressed_icon_cmd = lhbm_pressed_icon_on_cmd_60hz;
@@ -1013,6 +1078,8 @@ static int oplus_ofp_set_lhbm_pressed_icon(struct drm_panel *panel, void *dsi,
 				lhbm_pressed_icon_cmd = lhbm_pressed_icon_on_cmd_120hz;
 			}
 		} else {
+			demura_tap = 3;
+			OFP_ERR("[LHBM_OFF_ACTION] set demura_tap = 3\n");
 			if(oplus_display_brightness <= 0x47A) {
 				reg_count = sizeof(lhbm_pressed_icon_on_cmd_70nit) / sizeof(struct LCM_setting_table);
 				lhbm_pressed_icon_cmd = lhbm_pressed_icon_on_cmd_70nit;
@@ -1028,9 +1095,21 @@ static int oplus_ofp_set_lhbm_pressed_icon(struct drm_panel *panel, void *dsi,
 			cb(dsi, handle, lhbm_pressed_icon_cmd[i].para_list, lhbm_pressed_icon_cmd[i].count);
 		}
 	} else if (en == 0) {
-		reg_count = sizeof(lhbm_pressed_icon_off_cmd) / sizeof(struct LCM_setting_table);
+		if(m_db < 3) {
+			reg_count = sizeof(lhbm_pressed_icon_off_cmd) / sizeof(struct LCM_setting_table);
+			lhbm_pressed_icon_cmd_off = lhbm_pressed_icon_off_cmd;
+		} else {
+			if(oplus_display_brightness <= 0x47A) {
+				reg_count = sizeof(lhbm_pressed_icon_off_cmd_70nit) / sizeof(struct LCM_setting_table);
+				lhbm_pressed_icon_cmd_off = lhbm_pressed_icon_off_cmd_70nit;
+			} else {
+				reg_count = sizeof(lhbm_pressed_icon_off_cmd_800nit) / sizeof(struct LCM_setting_table);
+				lhbm_pressed_icon_cmd_off = lhbm_pressed_icon_off_cmd_800nit;
+			}
+			lhbm_70nit_off_action = 1;
+		}
 		for (i = 0; i < reg_count; i++) {
-			cb(dsi, handle, lhbm_pressed_icon_off_cmd[i].para_list, lhbm_pressed_icon_off_cmd[i].count);
+			cb(dsi, handle, lhbm_pressed_icon_cmd_off[i].para_list, lhbm_pressed_icon_cmd_off[i].count);
 		}
 		lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
 	}
@@ -1144,6 +1223,16 @@ static struct vdo_aod_params vdo_aod_to_120hz = {
 
 };
 
+static struct vdo_aod_params vdo_aod_to_120hz_unlocking = {
+        .porch_change_flag = 0x03,
+        .dst_hfp = 180,
+        .dst_vfp = 72,
+        .vdo_aod_cmd_table[0]={1, {0x38}},
+        .vdo_aod_cmd_table[1]={3, {0x51, 0x00, 0x00}},
+
+};
+
+
 static struct vdo_aod_params vdo_aod_to_90hz = {
         .porch_change_flag = 0x03,
         .dst_hfp = 180,
@@ -1160,37 +1249,49 @@ static struct vdo_aod_params vdo_aod_to_60hz = {
 
 };
 
+static struct vdo_aod_params vdo_aod_to_60hz_unlocking = {
+        .porch_change_flag = 0x03,
+        .dst_hfp = 180,
+        .dst_vfp = 2592,
+        .vdo_aod_cmd_table[0]={1, {0x38}},
+        .vdo_aod_cmd_table[1]={3, {0x51, 0x00, 0x00}},
+
+};
+
 static int mtk_get_vdo_aod_param(int aod_en, struct vdo_aod_params **vdo_aod_param)
 {
-
-	if(aod_en)
+	static int mode_id_before_aod = 2;
+	if(aod_en) {
 		*vdo_aod_param = &vdo_aod_on;
-	else {
-		if(mode_id == FHD_SDC60)
-			*vdo_aod_param = &vdo_aod_to_60hz;
-		else if (mode_id == FHD_SDC90)
+		mode_id_before_aod = mode_id;
+	} else {
+		if(mode_id_before_aod == FHD_SDC60) {
+			if(oplus_ofp_get_aod_unlocking())
+				*vdo_aod_param = &vdo_aod_to_60hz_unlocking;
+			else {
+				*vdo_aod_param = &vdo_aod_to_60hz;
+				OFP_INFO("%s:before mode_id %d\n", __func__, mode_id_before_aod);
+			}
+		}
+		else if (mode_id_before_aod == FHD_SDC90) {
 			*vdo_aod_param = &vdo_aod_to_90hz;
-		else
-			*vdo_aod_param = &vdo_aod_to_120hz;
+			OFP_INFO("%s:before mode_id %d\n", __func__, mode_id_before_aod);
+		}
+		else {
+			if(oplus_ofp_get_aod_unlocking())
+				*vdo_aod_param = &vdo_aod_to_120hz_unlocking;
+			else {
+				*vdo_aod_param = &vdo_aod_to_120hz;
+				OFP_INFO("%s:before mode_id %d\n", __func__, mode_id_before_aod);
+			}
+		}
 	}
-	OFP_INFO("%s:aod_en %d, mode_id %d\n", __func__, aod_en, mode_id);
+	OFP_INFO("%s:aod_en %d, mode_id %d, unlocking =%d\n", __func__, aod_en, mode_id, oplus_ofp_get_aod_unlocking());
 	return 0;
 }
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
 {
-	struct lcm *ctx = panel_to_lcm(panel);
-
-	ctx->reset_gpio =
-		devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
-	if (IS_ERR(ctx->reset_gpio)) {
-		dev_info(ctx->dev, "%s: cannot get reset_gpio %ld\n",
-			__func__, PTR_ERR(ctx->reset_gpio));
-		return PTR_ERR(ctx->reset_gpio);
-	}
-	gpiod_set_value(ctx->reset_gpio, on);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
-
 	return 0;
 }
 
@@ -1343,8 +1444,6 @@ static int mtk_panel_ext_param_get(struct drm_panel *panel,
 	struct drm_display_mode *m = get_mode_by_id(connector, id);
 
 	mode_id = get_mode_enum(m);
-
-	DISP_INFO("mode:%d,mode_id:%d\n",id,mode_id);
 
 	if (mode_id == FHD_SDC60) {
 		*ext_param = &ext_params_60Hz;

@@ -86,6 +86,34 @@ struct oplus_usbtemp_spec_config {
 	int usbtemp_temp_up_time_thr;
 	int usbtemp_otg_cc_boot_current_limit;
 };
+typedef union {
+	u32 buf[12];
+	struct {
+		u32 plugin_sbu1_volt;
+		u32 plugin_sbu2_volt;
+		u32 plugin_sbu1_pullup_volt;
+		u32 plugin_sbu2_pullup_volt;
+		u32 cc1_volt;
+		u32 cc2_volt;
+		u32 dp_volt;
+		u32 dm_volt;
+		u32 plugout_sbu1_volt;
+		u32 plugout_sbu2_volt;
+		u32 plugout_sbu1_pullup_volt;
+		u32 plugout_sbu2_pullup_volt;
+	} info;
+} oplus_lpd_info;
+
+struct oplus_lpd_rang {
+	int low_thr_mv;
+	int high_thr_mv;
+};
+
+struct oplus_lpd_spec_config {
+	u32 support_status;
+	struct oplus_lpd_rang sbu_rang;
+	struct oplus_lpd_rang sbu_pullup_rang;
+};
 
 struct oplus_mms_wired_abnormal_monitor {
 	unsigned int err_code;
@@ -211,6 +239,11 @@ struct oplus_mms_wired {
 	bool otg_online_status;
 	struct work_struct wls_upgrading_work;
 	bool pd_completed;
+	oplus_lpd_info lpd_info;
+	struct delayed_work lpd_info_update_work;
+	struct oplus_lpd_spec_config lpd_spec;
+	int lpd_retry_count;
+	int lpd_info_status;
 };
 
 static struct oplus_mms_wired *g_mms_wired;
@@ -1322,6 +1355,143 @@ int oplus_wired_set_qc_config(enum oplus_chg_qc_version version, int vol_mv)
 	return rc;
 }
 
+int oplus_wired_set_lpd_config(struct oplus_mms *topic, int *config) {
+	struct oplus_mms_wired *chip = g_mms_wired;
+	struct oplus_lpd_spec_config *lpd_spec = &chip->lpd_spec;
+
+	lpd_spec->support_status = config[0];
+	lpd_spec->sbu_rang.low_thr_mv = config[1];
+	lpd_spec->sbu_rang.high_thr_mv = config[2];
+	lpd_spec->sbu_pullup_rang.low_thr_mv = config[3];
+	lpd_spec->sbu_pullup_rang.high_thr_mv = config[4];
+	chg_info("support_status:%d, rang[%dmv-%dmv], rang[%dmv-%dmv]", lpd_spec->support_status,
+		lpd_spec->sbu_rang.low_thr_mv, lpd_spec->sbu_rang.high_thr_mv,
+		lpd_spec->sbu_pullup_rang.low_thr_mv, lpd_spec->sbu_pullup_rang.high_thr_mv);
+	return 0;
+}
+int oplus_wired_update_lpd_info(struct oplus_mms_wired *chip, int flag, bool plugin)
+{
+	int rc = 0;
+	int i = 0;
+	u32 buf[OPLUS_LPD_SEL_INVALID] = {0};
+
+	if (chip == NULL) {
+		chg_err("chip is NULL");
+		return -ENODEV;
+	}
+
+	rc = oplus_chg_ic_func(chip->buck_ic,
+			       OPLUS_IC_FUNC_BUCK_GET_LPD_INFO,
+			       buf, flag);
+	if (rc < 0)
+		chg_err("can't get lpd info, rc=%d\n", rc);
+
+	chg_info("flag=%d, plugin:%d\n", flag, plugin);
+	for (i = 0; i < OPLUS_LPD_SEL_INVALID; i++) {
+		switch (flag & (0x1 << i)) {
+		case OPLUS_LPD_SEL_SBU1_MASK:
+			if (plugin)
+				chip->lpd_info.info.plugin_sbu1_volt = buf[i];
+			else
+				chip->lpd_info.info.plugout_sbu1_volt = buf[i];
+			break;
+		case OPLUS_LPD_SEL_SBU2_MASK:
+			if (plugin)
+				chip->lpd_info.info.plugin_sbu2_volt = buf[i];
+			else
+				chip->lpd_info.info.plugout_sbu2_volt = buf[i];
+			break;
+		case OPLUS_LPD_SEL_SBU1_PULLUP_MASK:
+			if (plugin)
+				chip->lpd_info.info.plugin_sbu1_pullup_volt = buf[i];
+			else
+				chip->lpd_info.info.plugout_sbu1_pullup_volt = buf[i];
+			break;
+		case OPLUS_LPD_SEL_SBU2_PULLUP_MASK:
+			if (plugin)
+				chip->lpd_info.info.plugin_sbu2_pullup_volt = buf[i];
+			else
+				chip->lpd_info.info.plugout_sbu2_pullup_volt = buf[i];
+			break;
+		case OPLUS_LPD_SEL_CC1_MASK:
+			chip->lpd_info.info.cc1_volt = buf[i];
+			break;
+		case OPLUS_LPD_SEL_CC2_MASK:
+			chip->lpd_info.info.cc2_volt = buf[i];
+			break;
+		case OPLUS_LPD_SEL_DP_MASK:
+			chip->lpd_info.info.dp_volt = buf[i];
+			break;
+		case OPLUS_LPD_SEL_DM_MASK:
+			chip->lpd_info.info.dm_volt = buf[i];
+			break;
+		default:
+			break;
+		}
+		chg_info("buf[%d]=%d\n", i, buf[i]);
+	}
+
+	return rc;
+}
+
+int oplus_wired_check_lpd_info(oplus_lpd_info *info)
+{
+	struct oplus_mms_wired *chip = g_mms_wired;
+	struct oplus_lpd_spec_config *lpd_spec = &chip->lpd_spec;
+	int sbu1_err = 0;
+	int sbu2_err = 0;
+
+	if (chip == NULL || lpd_spec == NULL) {
+		chg_err("chip is NULL");
+		return 0;
+	}
+	if ((info->info.plugin_sbu1_volt < lpd_spec->sbu_rang.low_thr_mv) ||
+	    (info->info.plugin_sbu1_volt > lpd_spec->sbu_rang.high_thr_mv) ||
+	    (info->info.plugin_sbu1_pullup_volt < lpd_spec->sbu_pullup_rang.low_thr_mv) ||
+	    (info->info.plugin_sbu1_pullup_volt > lpd_spec->sbu_pullup_rang.high_thr_mv)) {
+		chg_err("sbu1 abnormal, sbu1_volt:%d, rang[%dmv-%dmv], sbu1_pullup_volt:%d, rang[%dmv-%dmv]",
+		       info->info.plugin_sbu1_volt, lpd_spec->sbu_rang.low_thr_mv, lpd_spec->sbu_rang.high_thr_mv,
+		       info->info.plugin_sbu1_pullup_volt, lpd_spec->sbu_pullup_rang.low_thr_mv,
+		       lpd_spec->sbu_pullup_rang.high_thr_mv);
+		sbu1_err = 1;
+	}
+
+	if ((info->info.plugin_sbu2_volt < lpd_spec->sbu_rang.low_thr_mv) ||
+	    (info->info.plugin_sbu2_volt > lpd_spec->sbu_rang.high_thr_mv) ||
+	    (info->info.plugin_sbu2_pullup_volt < lpd_spec->sbu_pullup_rang.low_thr_mv) ||
+	    (info->info.plugin_sbu2_pullup_volt > lpd_spec->sbu_pullup_rang.high_thr_mv)) {
+		chg_err("sbu2 abnormal, sbu2_volt:%d, rang[%dmv-%dmv], sbu2_pullup_volt:%d, rang[%dmv-%dmv]",
+		       info->info.plugin_sbu2_volt, lpd_spec->sbu_rang.low_thr_mv, lpd_spec->sbu_rang.high_thr_mv,
+		       info->info.plugin_sbu2_pullup_volt, lpd_spec->sbu_pullup_rang.low_thr_mv,
+		       lpd_spec->sbu_pullup_rang.high_thr_mv);
+		sbu2_err = 1;
+	}
+
+	if (sbu1_err && sbu2_err) {
+		chip->lpd_info_status = OPLUS_LPD_ERROR;
+		return 1;
+	}
+
+	return 0;
+}
+
+int oplus_wired_get_lpd_info_status(struct oplus_mms *topic)
+{
+	struct oplus_mms_wired *chip = g_mms_wired;
+
+	if (chip == NULL) {
+		chg_err("chip is NULL");
+		return OPLUS_LPD_NOT_DETECT;
+	}
+
+	if (chip->lpd_spec.support_status == OPLUS_LPD_NOT_SUPPORT)
+		return OPLUS_LPD_NOT_DETECT;
+
+	chg_info("lpd_info_status:%d", chip->lpd_info_status);
+	return chip->lpd_info_status;
+}
+
+
 int oplus_wired_set_pd_config(u32 pdo)
 {
 	int rc;
@@ -1985,6 +2155,7 @@ static int oplus_usbtemp_dischg_action(struct oplus_mms_wired *chip)
 #ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 	if (get_eng_version() != HIGH_TEMP_AGING) {
 #endif
+		oplus_wired_clear_usb_status(chip, USB_LPD_DETECT);
 		oplus_wired_set_usb_status(chip, USB_TEMP_HIGH);
 		rc = oplus_chg_ic_func(chip->buck_ic, OPLUS_IC_FUNC_SET_TYPEC_MODE,
 				TYPEC_PORT_ROLE_DISABLE);
@@ -2004,7 +2175,7 @@ static int oplus_usbtemp_dischg_action(struct oplus_mms_wired *chip)
 			rc = -ENOTSUPP;
 		if (rc < 0)
 			chg_err("can't set charge suspend, rc=%d\n", rc);
-		usleep_range(5000, 5000);
+		usleep_range(20000, 20000);
 		chg_err("set vbus down");
 		oplus_chg_ic_func(chip->buck_ic,
 				  OPLUS_IC_FUNC_SET_USB_DISCHG_ENABLE, true);
@@ -2169,6 +2340,66 @@ static int oplus_usbtemp_push_err_msg(struct oplus_mms_wired *chip,
 	}
 
 	return rc;
+}
+
+static int oplus_lpd_push_track_msg(struct oplus_mms_wired *chip)
+{
+	struct mms_msg *msg;
+	int rc;
+
+	if (!is_err_topic_available(chip)) {
+		chg_err("error topic not found\n");
+		return -ENODEV;
+	}
+
+	msg = oplus_mms_alloc_str_msg(
+		MSG_TYPE_ITEM, MSG_PRIO_MEDIUM, ERR_ITEM_LPD,
+		"$$lpd_status@@[%d]$$lpd_info@@[%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d]", chip->lpd_info_status,
+		chip->lpd_info.buf[0], chip->lpd_info.buf[1], chip->lpd_info.buf[2], chip->lpd_info.buf[3],
+		chip->lpd_info.buf[4], chip->lpd_info.buf[5], chip->lpd_info.buf[6], chip->lpd_info.buf[7],
+		chip->lpd_info.buf[8], chip->lpd_info.buf[9], chip->lpd_info.buf[10], chip->lpd_info.buf[11]);
+
+	if (msg == NULL) {
+		chg_err("alloc usbtemp error msg error\n");
+		return -ENOMEM;
+	}
+
+	/* track module also needs to collect some other information synchronously */
+	rc = oplus_mms_publish_msg_sync(chip->err_topic, msg);
+	if (rc < 0) {
+		chg_err("publish usbtemp error msg error, rc=%d\n", rc);
+		kfree(msg);
+	}
+
+	return rc;
+}
+
+#define LPD_RETRY_COUNT		1
+#define LPD_RETRY_DELAY		100
+static int oplus_wired_check_lpd(struct oplus_mms_wired *chip, int real_chg_type)
+{
+	static int last_real_chg_type = OPLUS_CHG_USB_TYPE_UNKNOWN;
+
+	if ((last_real_chg_type == OPLUS_CHG_USB_TYPE_UNKNOWN) && (last_real_chg_type != real_chg_type) &&
+	     chip->lpd_spec.support_status != OPLUS_LPD_NOT_SUPPORT) {
+		chip->lpd_info_status = OPLUS_LPD_NOT_DETECT;
+		if (real_chg_type == OPLUS_CHG_USB_TYPE_DCP || real_chg_type == OPLUS_CHG_USB_TYPE_PD_PPS
+		    || real_chg_type == OPLUS_CHG_USB_TYPE_PD) {
+			oplus_wired_update_lpd_info(chip, OPLUS_LPD_SEL_CC1_MASK | OPLUS_LPD_SEL_CC2_MASK |
+				OPLUS_LPD_SEL_DP_MASK | OPLUS_LPD_SEL_DM_MASK, 1);
+			schedule_delayed_work(&chip->lpd_info_update_work, msecs_to_jiffies(LPD_RETRY_DELAY));
+		} else {
+			oplus_wired_update_lpd_info(chip, OPLUS_LPD_SEL_CC1_MASK | OPLUS_LPD_SEL_CC2_MASK, 1);
+			schedule_delayed_work(&chip->lpd_info_update_work, msecs_to_jiffies(LPD_RETRY_DELAY));
+		}
+	} else if ((last_real_chg_type != real_chg_type) && (real_chg_type == OPLUS_CHG_USB_TYPE_UNKNOWN) &&
+		   chip->lpd_spec.support_status != OPLUS_LPD_NOT_SUPPORT) {
+		oplus_wired_update_lpd_info(chip, OPLUS_LPD_SEL_SBU1_MASK | OPLUS_LPD_SEL_SBU2_MASK |
+			OPLUS_LPD_SEL_SBU1_PULLUP_MASK | OPLUS_LPD_SEL_SBU2_PULLUP_MASK, 0);
+		oplus_lpd_push_track_msg(chip);
+	}
+	last_real_chg_type = real_chg_type;
+	return 0;
 }
 
 static int oplus_usbtemp_monitor_main(void *data)
@@ -3337,6 +3568,32 @@ static void oplus_wired_otg_enable_handler_work(struct work_struct *work)
 		chg_err("vooc_chg_auto_mode_votable not found\n");
 }
 
+static void oplus_wired_lpd_info_update_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct oplus_mms_wired *chip =
+		container_of(dwork, struct oplus_mms_wired, lpd_info_update_work);
+	int rc = 0;
+
+	oplus_wired_update_lpd_info(chip, OPLUS_LPD_SEL_SBU1_MASK | OPLUS_LPD_SEL_SBU2_MASK |
+			OPLUS_LPD_SEL_SBU1_PULLUP_MASK | OPLUS_LPD_SEL_SBU2_PULLUP_MASK, 1);
+	chip->lpd_info_status = OPLUS_LPD_DETECT;
+	rc = oplus_wired_check_lpd_info(&chip->lpd_info);
+	if (rc != 0) {
+		if (chip->lpd_retry_count < LPD_RETRY_COUNT) {
+			chip->lpd_retry_count++;
+			schedule_delayed_work(&chip->lpd_info_update_work, msecs_to_jiffies(LPD_RETRY_DELAY));
+			return;
+		} else {
+			if ((chip->lpd_spec.support_status == OPLUS_LPD_SUPPORT) &&
+			    ((chip->usb_status & USB_TEMP_HIGH) != USB_TEMP_HIGH)) {
+				chg_err("check lpd info error!\n");
+				oplus_wired_set_usb_status(chip, USB_LPD_DETECT);
+			}
+		}
+	}
+}
+
 static void oplus_wired_otg_enable_pending_work(struct work_struct *work)
 {
 	struct oplus_mms_wired *chip =
@@ -3948,6 +4205,8 @@ static void oplus_mms_wired_plugin_handler_work(struct work_struct *work)
 	if (!present) {
 		chip->bc12_completed = false;
 		chip->pd_completed = false;
+		chip->lpd_retry_count = 0;
+		oplus_wired_clear_usb_status(chip, USB_LPD_DETECT);
 	}
 
 	if (chip->wired_present != present) {
@@ -4065,6 +4324,7 @@ oplus_mms_wired_chg_type_change_handler_work(struct work_struct *work)
 
 	real_chg_type = oplus_wired_get_real_chg_type(chip);
 	chg_info("real_type=%s\n", oplus_wired_get_chg_type_str(oplus_wired_get_real_chg_type(chip)));
+	oplus_wired_check_lpd(chip, real_chg_type);
 	msg = oplus_mms_alloc_msg(MSG_TYPE_ITEM, MSG_PRIO_MEDIUM,
 				  chip->cpa_support ? WIRED_ITEM_REAL_CHG_TYPE : WIRED_ITEM_CHG_TYPE);
 	if (msg == NULL) {
@@ -4134,7 +4394,7 @@ static void oplus_mms_wired_ccdetect_work(struct work_struct *work)
 	chg_info("hw_detect=%d\n", hw_detect);
 	if (hw_detect == 1) {
 		oplus_wired_ccdetect_enable(chip, true);
-		if (chip->usb_status == USB_TEMP_HIGH) {
+		if ((chip->usb_status & USB_TEMP_HIGH) == USB_TEMP_HIGH) {
 			cancel_delayed_work(&chip->usbtemp_recover_work);
 			schedule_delayed_work(&chip->usbtemp_recover_work, 0);
 		}
@@ -4145,7 +4405,7 @@ static void oplus_mms_wired_ccdetect_work(struct work_struct *work)
 	} else {
 		chip->usbtemp_check = false;
 		chip->abnormal_adapter = false;
-		if(chip->usb_status == USB_TEMP_HIGH) {
+		if((chip->usb_status & USB_TEMP_HIGH) == USB_TEMP_HIGH) {
 			cancel_delayed_work(&chip->usbtemp_recover_work);
 			schedule_delayed_work(&chip->usbtemp_recover_work, 0);
 		}
@@ -5499,7 +5759,9 @@ static void oplus_mms_wired_usbtemp_v2_parse_dt(struct oplus_mms_wired *chip)
 static void oplus_mms_wired_parse_dt(struct oplus_mms_wired *chip)
 {
 	struct oplus_usbtemp_spec_config *spec = &chip->usbtemp_spec;
+	struct oplus_lpd_spec_config *lpd_spec = &chip->lpd_spec;
 	struct device_node *node = chip->dev->of_node;
+	u32 buf[MAX_LPD_RANG_NUM] = {0};
 	int rc;
 
 	rc = of_property_read_u32(node, "oplus_spec,usbtemp_batttemp_gap", &spec->usbtemp_batttemp_gap);
@@ -5545,6 +5807,35 @@ static void oplus_mms_wired_parse_dt(struct oplus_mms_wired *chip)
 	rc = of_property_read_u32(node, "oplus_spec,usbtemp_temp_up_time_thr", &spec->usbtemp_temp_up_time_thr);
 	if (rc)
 		spec->usbtemp_temp_up_time_thr = 30;
+
+	rc = of_property_read_u32(node, "oplus_spec,lpd_support_status", &lpd_spec->support_status);
+	if (rc)
+		lpd_spec->support_status = 0;
+
+	rc = read_unsigned_data_from_node(node, "oplus_spec,lpd_sbu_thr_mv",
+					  (u32 *)(buf),
+					  MAX_LPD_RANG_NUM);
+	if (rc < 0) {
+		lpd_spec->sbu_rang.low_thr_mv = 0;
+		lpd_spec->sbu_rang.high_thr_mv = 200;
+	} else {
+		lpd_spec->sbu_rang.low_thr_mv = buf[0];
+		lpd_spec->sbu_rang.high_thr_mv = buf[1];
+	}
+
+	rc = read_unsigned_data_from_node(node, "oplus_spec,lpd_sbu_pullup_thr_mv",
+					  (u32 *)(buf),
+					  MAX_LPD_RANG_NUM);
+	if (rc < 0) {
+		lpd_spec->sbu_pullup_rang.low_thr_mv = 1180;
+		lpd_spec->sbu_pullup_rang.high_thr_mv = 1780;
+	} else {
+		lpd_spec->sbu_pullup_rang.low_thr_mv = buf[0];
+		lpd_spec->sbu_pullup_rang.high_thr_mv = buf[1];
+	}
+	chg_info("support_status:%d, rang[%dmv-%dmv], rang[%dmv-%dmv]", lpd_spec->support_status,
+		lpd_spec->sbu_rang.low_thr_mv, lpd_spec->sbu_rang.high_thr_mv,
+		lpd_spec->sbu_pullup_rang.low_thr_mv, lpd_spec->sbu_pullup_rang.high_thr_mv);
 
 	chip->support_wlsotg_non_coexistence = of_property_read_bool(node, "oplus,support_wlsotg_non_coexistence");
 	chip->support_usbtemp_protect_v2 = of_property_read_bool(node, "oplus,support_usbtemp_protect_v2");
@@ -5657,6 +5948,7 @@ static int oplus_mms_wired_probe(struct platform_device *pdev)
 		  oplus_mms_wired_cpa_chg_type_change_handler_work);
 	INIT_WORK(&chip->gauge_update_work, oplus_wired_gauge_update_work);
 	INIT_DELAYED_WORK(&chip->otg_enable_handler_work, oplus_wired_otg_enable_handler_work);
+	INIT_DELAYED_WORK(&chip->lpd_info_update_work, oplus_wired_lpd_info_update_work);
 	INIT_WORK(&chip->voltage_change_work, oplus_wired_voltage_change_work);
 	INIT_WORK(&chip->current_change_work, oplus_wired_current_change_work);
 	INIT_WORK(&chip->bc12_completed_work, oplus_wired_bc12_completed_work);

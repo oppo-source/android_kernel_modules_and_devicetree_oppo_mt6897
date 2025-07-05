@@ -101,6 +101,7 @@ __maybe_unused static bool oplus_get_pps_charging(struct battery_chg_dev *bcdev)
 static int oplus_chg_set_input_current(struct battery_chg_dev *bcdev, int current_ma);
 static int oplus_get_pps_info_from_adsp(struct oplus_chg_ic_dev *ic_dev, u32 *pdo, int num);
 static int oplus_chg_set_aicl_point(struct oplus_chg_ic_dev *ic_dev, int vbatt);
+static int oplus_sm8350_get_lpd_info(struct oplus_chg_ic_dev *ic_dev, u32 *buf, u32 flag);
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
@@ -458,7 +459,7 @@ static void handle_oem_read_buffer(struct battery_chg_dev *bcdev,
 	complete(&bcdev->oem_read_ack);
 }
 
-static int ap_set_message_id(struct battery_chg_dev *bcdev, u32 message_id)
+static int ap_set_message_id(struct battery_chg_dev *bcdev, u32 message_id, u32 value)
 {
 	struct oplus_ap_read_req_msg req_msg = { { 0 } };
 	int rc = 0;
@@ -467,6 +468,7 @@ static int ap_set_message_id(struct battery_chg_dev *bcdev, u32 message_id)
 	req_msg.hdr.owner = MSG_OWNER_BC;
 	req_msg.hdr.type = MSG_TYPE_REQ_RESP;
 	req_msg.hdr.opcode = AP_OPCODE_READ_BUFFER;
+	req_msg.value = value;
 
 	if (atomic_read(&bcdev->state) == PMIC_GLINK_STATE_DOWN) {
 		chg_err("glink state is down\n");
@@ -5198,6 +5200,7 @@ static void oplus_plugin_irq_work(struct work_struct *work)
 			 usb_plugin_status, type, sub_type);
 		return;
 	}
+
 	pre_type = type;
 	pre_sub_type = sub_type;
 
@@ -8514,6 +8517,9 @@ static void *oplus_chg_8350_buck_get_func(struct oplus_chg_ic_dev *ic_dev, enum 
 	case OPLUS_IC_FUNC_BUCK_SET_AICL_POINT:
 		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_BUCK_SET_AICL_POINT, oplus_chg_set_aicl_point);
 		break;
+	case OPLUS_IC_FUNC_BUCK_GET_LPD_INFO:
+		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_BUCK_GET_LPD_INFO, oplus_sm8350_get_lpd_info);
+		break;
 	default:
 		chg_err("this func(=%d) is not supported\n", func_id);
 		func = NULL;
@@ -8977,7 +8983,7 @@ static int oplus_sm8350_get_reg_info(struct oplus_chg_ic_dev *ic_dev, u8 *info, 
 		return -ENODEV;
 
 	mutex_lock(&bcdev->ap_read_buffer_lock);
-	rc = ap_set_message_id(bcdev, AP_MESSAGE_GET_GAUGE_REG_INFO);
+	rc = ap_set_message_id(bcdev, AP_MESSAGE_GET_GAUGE_REG_INFO, 0);
 	if (rc)
 		goto err;
 
@@ -8996,6 +9002,57 @@ static int oplus_sm8350_get_reg_info(struct oplus_chg_ic_dev *ic_dev, u8 *info, 
 	memcpy(info, bcdev->ap_read_buffer_dump->data_buffer, index);
 	memset(bcdev->ap_read_buffer_dump, 0, sizeof(*bcdev->ap_read_buffer_dump));
 	mutex_unlock(&bcdev->ap_read_buffer_lock);
+	return index;
+err:
+	memset(bcdev->ap_read_buffer_dump, 0, sizeof(*bcdev->ap_read_buffer_dump));
+	mutex_unlock(&bcdev->ap_read_buffer_lock);
+	return -EINVAL;
+}
+
+static int oplus_sm8350_get_lpd_info(struct oplus_chg_ic_dev *ic_dev, u32 *buf, u32 flag)
+{
+	int index = 0;
+	int rc = 0;
+	int i = 0;
+	u8 info[OPLUS_LPD_SEL_INVALID * 4] = {0};
+	struct battery_chg_dev *bcdev;
+
+	if (ic_dev == NULL) {
+		chg_err("oplus_chg_ic_dev is NULL");
+		return -ENODEV;
+	}
+
+	bcdev = oplus_chg_ic_get_drvdata(ic_dev);
+	if (bcdev == NULL || buf == NULL || !bcdev->ap_read_buffer_dump) {
+		chg_err("oplus_chg_ic_dev or info is NULL");
+		return -ENODEV;
+	}
+
+	mutex_lock(&bcdev->ap_read_buffer_lock);
+	rc = ap_set_message_id(bcdev, AP_MESSAGE_GET_LPD_INFO, flag);
+	if (rc)
+		goto err;
+
+	reinit_completion(&bcdev->ap_read_ack[AP_MESSAGE_GET_LPD_INFO]);
+	rc = wait_for_completion_timeout(&bcdev->ap_read_ack[AP_MESSAGE_GET_LPD_INFO],
+					 msecs_to_jiffies(AP_READ_WAIT_TIME_MS));
+	if (!rc) {
+		chg_err("Error, timed out sending message\n");
+		goto err;
+	}
+
+	index = bcdev->ap_read_buffer_dump->data_size;
+	if (index > OPLUS_LPD_SEL_INVALID * 4)
+		goto err;
+
+	memcpy(info, bcdev->ap_read_buffer_dump->data_buffer, index);
+	memset(bcdev->ap_read_buffer_dump, 0, sizeof(*bcdev->ap_read_buffer_dump));
+	mutex_unlock(&bcdev->ap_read_buffer_lock);
+	for (i = 0; i < OPLUS_LPD_SEL_INVALID; i++) {
+		if (flag & (0x1 << i))
+			buf[i] = info[4 * i] | (info[4 * i + 1] << 8) |
+				(info[4 * i + 2] << 16) | (info[4 * i + 3] << 24);
+	}
 	return index;
 err:
 	memset(bcdev->ap_read_buffer_dump, 0, sizeof(*bcdev->ap_read_buffer_dump));
@@ -9028,7 +9085,7 @@ static int oplus_sm8350_get_calib_time(
 	}
 
 	mutex_lock(&bcdev->ap_read_buffer_lock);
-	rc = ap_set_message_id(bcdev, AP_MESSAGE_GET_GAUGE_CALIB_TIME);
+	rc = ap_set_message_id(bcdev, AP_MESSAGE_GET_GAUGE_CALIB_TIME, 0);
 	if (rc)
 		goto err;
 
@@ -9097,7 +9154,7 @@ static void oplus_get_manu_battinfo_work(struct work_struct *work)
 		return;
 
 	mutex_lock(&bcdev->ap_read_buffer_lock);
-	rc = ap_set_message_id(bcdev, AP_MESSAGE_GET_GAUGE_BATTINFO);
+	rc = ap_set_message_id(bcdev, AP_MESSAGE_GET_GAUGE_BATTINFO, 0);
 	if (rc)
 		goto err;
 

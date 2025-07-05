@@ -29,6 +29,27 @@ static unsigned int scmi_id;
 static struct slbc_ipi_ops *ipi_ops;
 static DEFINE_MUTEX(slbc_scmi_lock);
 
+int slbc_sspm_slbc_interface(int id, int size)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	if (size > 10)
+		size = 10;
+	if (size < -10)
+		size = -10;
+
+	/* mapping -10 ~ -1 : 20 ~ 11 */
+	if (size < 0)
+		size = 10 - size;
+
+	slbc_ipi_d.cmd = IPI_SLBC_API_ADJ;
+	slbc_ipi_d.arg = id;
+	slbc_ipi_d.arg2 = size;
+
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_sspm_slbc_interface);
+
 int slbc_sspm_slb_disable(int disable)
 {
 	struct slbc_ipi_data slbc_ipi_d;
@@ -115,6 +136,18 @@ int slbc_outer_cmd(unsigned int outer)
 	return slbc_scmi_set(&slbc_ipi_d);
 }
 EXPORT_SYMBOL_GPL(slbc_outer_cmd);
+
+int slbc_enable_sf_cmd(unsigned int is_on)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_ENABLE_SF;
+	slbc_ipi_d.arg = is_on;
+
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(slbc_enable_sf_cmd);
 
 int slbc_suspend_resume_notify(int suspend)
 {

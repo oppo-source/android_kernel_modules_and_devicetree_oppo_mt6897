@@ -2192,6 +2192,18 @@ uint8_t cnmGetBssMaxBw(struct ADAPTER *prAdapter,
 	}
 #endif
 	if (IS_BSS_AIS(prBssInfo) && prBssDesc) {
+		ucChannelBw = rlmDomainGetChannelBwForCountry(
+			prAdapter, eBand, prBssDesc->ucChannelNum,
+			prBssDesc->eSco, ucMaxBandwidth);
+		if (ucMaxBandwidth > ucChannelBw) {
+			ucMaxBandwidth = ucChannelBw;
+			DBGLOG_LIMITED(RLM, TRACE,
+				"revise BW for country's limit, pCH=%d, BW=%d\n",
+			prBssDesc->ucChannelNum, ucChannelBw);
+		}
+	}
+
+	if (IS_BSS_AIS(prBssInfo) && prBssDesc) {
 		DBGLOG(CNM, TRACE, "Idx=%u, pCH=%d, BW=%d\n",
 			ucBssIndex, prBssDesc->ucChannelNum, ucMaxBandwidth);
 	} else {

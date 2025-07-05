@@ -1387,6 +1387,9 @@ const void *rlmDomainSearchRegdomainFromLocalDataBase(char *alpha2);
 struct GLUE_INFO *rlmDomainGetGlueInfo(void);
 bool rlmDomainIsEfuseUsed(void);
 uint8_t rlmDomainGetChannelBw(enum ENUM_BAND eBand, uint8_t channelNum);
+uint8_t rlmDomainGetChannelBwForCountry(
+	struct ADAPTER *prAdapter, enum ENUM_BAND eBand,
+	uint8_t channelNum, enum ENUM_CHNL_EXT eSco, uint8_t maxChannelBw);
 
 #if (CFG_SUPPORT_SINGLE_SKU_LOCAL_DB == 1)
 extern const struct mtk_regdomain *g_prRegRuleTable[];

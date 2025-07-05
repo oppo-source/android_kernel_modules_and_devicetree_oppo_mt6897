@@ -6,8 +6,8 @@
 		compatible = "focaltech-FT3683g", "synaptics,tcm-spi-hbp";
 		spi-max-frequency = <19000000>;
 		reg = <0x0>;
-		chip-num = <3>;
-		chip-name = "FT3683G","FT3683G", "S3910";
+		chip-num = <4>;
+		chip-name = "S3910", "FT3683G","FT3683G", "S3910";
 		status = "okay";
 		interrupt-parent = <&pio>;
 		irq-gpio = <&pio 9 0x2002>;
@@ -34,11 +34,11 @@
 		touchpanel,single-optimized-time = <8>;
 
 		vid_len = <2>;
-		firmware_name = "AA597", "AA597", "AA597";
-		panel_type = <7 3 3>;
+		firmware_name = "AA597", "AA597", "AA597", "AA597";
+		panel_type = <7 7 3 3>;
 		platform_support_project = <24891>;
 		platform_support_project_dir = <24891>;
-		platform_support_project_commandline = "aa597_p_7_a0025_dsi_vdo-focaltech-FT3683g", "aa597_p_3_a0025_dsi_vdo-focaltech-FT3683g", "aa597_p_3_a0025_dsi_vdo-synaptics-s3910";
+		platform_support_project_commandline = "aa597_p_7_a0025_dsi_vdo-synaptics-s3910", "aa597_p_7_a0025_dsi_vdo-focaltech-FT3683g", "aa597_p_3_a0025_dsi_vdo-focaltech-FT3683g", "aa597_p_3_a0025_dsi_vdo-synaptics-s3910";
 
 		/* SW Support Feature Control */
 		health_monitor_v2_support;

@@ -110,6 +110,7 @@ struct oplus_ofp_params {
 	unsigned int dimlayer_hbm;						/* indicates whether the dimlayer and hbm should enable or not(reserved) */
 	int hbm_enable;									/* HBM_ENABLE property value */
 	bool need_to_update_lhbm_pressed_icon_gamma;	/* indicates whether lhbm pressed icon gamma needs to be read and updated or not */
+	bool need_to_update_lhbm_brightness;	/* indicates whether lhbm on brightness needs to be read and updated or not */
 	bool failed_to_read_lhbm_pressed_icon_gamma;	/* indicates whether lhbm pressed icon gamma reading is failed or not */
 	bool hbm_state;									/* whether panel is hbm state or not */
 	unsigned int hbm_mode;							/* value of a node used for fingerprint calibration */

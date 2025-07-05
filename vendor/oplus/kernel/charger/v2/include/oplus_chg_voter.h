@@ -153,6 +153,7 @@ enum votable_type {
 #define UCP_VOTER		"UCP_VOTER"
 #define OCP_VOTER		"OCP_VOTER"
 #define IIC_VOTER		"IIC_VOTER"
+#define WLS_TIMEOUT_VOTER	"WLS_TIMEOUT_VOTER"
 
 /* TOPIC voter */
 #define COMM_TOPIC_VOTER	"COMM_TOPIC_VOTER"

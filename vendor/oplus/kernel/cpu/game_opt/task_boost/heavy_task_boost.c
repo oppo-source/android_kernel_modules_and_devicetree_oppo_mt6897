@@ -38,8 +38,8 @@ static int boosted_htsks_num = 0;
 
 static struct task_struct *renders[RENDER_COUNT] = { NULL };
 static int policy_num;
-static int *policy2cpu;
-static int *clusters_boost_state;
+static int *policy2cpu = NULL;
+static int *clusters_boost_state = NULL;
 static unsigned long cluster_bitmap;
 
 static u64 heavy_task_threshold = STANDARD_FRAME_INTERVAL;
@@ -57,6 +57,7 @@ static cpumask_var_t limit_cpumask;
 
 static int boost_strategy = 0;
 static bool htb_enable = false;
+static bool init_success = false;
 
 static inline bool render_is_running(void)
 {
@@ -229,7 +230,7 @@ out:
 
 void heavy_task_boost(struct task_struct *task, void *rrt, int rrt_num)
 {
-	if (!htb_enable) {
+	if (!htb_enable || unlikely(!init_success)) {
 		return;
 	}
 
@@ -381,7 +382,7 @@ static void sched_switch_hook(void *unused, bool preempt,
 	struct heavy_task *htsk;
 	u64 now;
 
-	if (!htb_enable)
+	if (!htb_enable || unlikely(!init_success))
 		return;
 
 	raw_spin_lock_irqsave(&htb_spinlock, flags);
@@ -400,7 +401,7 @@ static void sched_switch_hook(void *unused, bool preempt,
 	raw_spin_unlock_irqrestore(&htb_spinlock, flags);
 }
 
-static void cpu_policy_init(void)
+static int cpu_policy_init(void)
 {
 	int i, cpu;
 	struct cpufreq_policy *policy;
@@ -408,28 +409,44 @@ static void cpu_policy_init(void)
 	policy_num = 0;
 	for_each_possible_cpu (cpu) {
 		policy = cpufreq_cpu_get(cpu);
-		if (policy) {
-			cluster_bitmap |= (1 << policy_num);
-			policy_num++;
-			cpu = cpumask_last(policy->related_cpus);
-			cpufreq_cpu_put(policy);
+		if (!policy) {
+			return -1;
 		}
+		cluster_bitmap |= (1 << policy_num);
+		policy_num++;
+		cpu = cpumask_last(policy->related_cpus);
+		cpufreq_cpu_put(policy);
 	}
 
+	if (clusters_boost_state) {
+		kfree(clusters_boost_state);
+	}
+	if (policy2cpu) {
+		kfree(policy2cpu);
+	}
 	clusters_boost_state = kcalloc(policy_num, sizeof(int), GFP_KERNEL);
 	policy2cpu = kcalloc(policy_num, sizeof(int), GFP_KERNEL);
+	if (clusters_boost_state == NULL || policy2cpu == NULL) {
+		return -1;
+	}
 
 	i = 0;
 	for_each_possible_cpu (cpu) {
-		policy = cpufreq_cpu_get(cpu);
-		if (policy) {
-			policy2cpu[i] = cpu;
-			clusters_boost_state[i] = 0;
-			cpu = cpumask_last(policy->related_cpus);
-			i++;
-			cpufreq_cpu_put(policy);
+		if (i >= policy_num) {
+			return -1;
 		}
+		policy = cpufreq_cpu_get(cpu);
+		if (!policy) {
+			return -1;
+		}
+		policy2cpu[i] = cpu;
+		clusters_boost_state[i] = 0;
+		cpu = cpumask_last(policy->related_cpus);
+		i++;
+		cpufreq_cpu_put(policy);
 	}
+
+	return 0;
 }
 
 static void cpu_policy_exit(void)
@@ -464,9 +481,13 @@ int heavy_task_boost_init(void)
 		return -ENOMEM;
 
 	timer_init();
-	cpu_policy_init();
 	boost_proc_init();
 	register_trace_sched_switch(sched_switch_hook, NULL);
+	if (cpu_policy_init() < 0) {
+		return -1;
+	}
+	init_success = true;
+
 	return 0;
 }
 
@@ -509,10 +530,23 @@ void htb_notify_enable(bool enable)
 void htb_notify_frame_produce(void)
 {
 	int i;
+	int nr_clusters = cpu_topology[NR_CPUS - 1].cluster_id + 1;
 	unsigned long flags, cancel_flags = 0;
 
-	if (!htb_enable)
+	if (!htb_enable) {
 		return;
+	}
+	if (unlikely(!init_success)) {
+		if (cpu_policy_init() < 0) {
+			pr_warn("htb init failed, try to init again next time.");
+			return;
+		}
+		init_success = true;
+	}
+	if (unlikely(policy_num != nr_clusters)) {
+		pr_err("policy_num not equal to nr_clusters.\n");
+		return;
+	}
 
 	systrace_c_signed_printk("frame produce", 1);
 

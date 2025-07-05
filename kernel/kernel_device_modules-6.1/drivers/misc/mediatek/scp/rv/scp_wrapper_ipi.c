@@ -6,6 +6,11 @@
 #include "scp_ipi.h"
 #include "scp_ipi_table.h"
 #include "scp.h"
+#ifdef OPLUS_FEATURE_SENSOR_WAKEUP_TRACE
+#include <linux/proc_fs.h>
+#define CREATE_TRACE_POINTS
+#include "trace_smp2p.h"
+#endif
 
 #define IPI_NO_USE 0xFF
 
@@ -330,6 +335,10 @@ void mt_print_scp_ipi_id(unsigned int mbox)
 						    &buf.info, sizeof(buf.info));
 					pr_info("[SCP] sensor notify seq %u type %u cmd %u len %u\n",
 						buf.info[0], buf.info[1], buf.info[2], buf.info[3]);
+#ifdef OPLUS_FEATURE_SENSOR_WAKEUP_TRACE
+					pr_info("[SCP] trace_sensor_wakeup_stat\n");
+					trace_sensor_wakeup_stat((int)buf.info[1]);
+#endif
 				} else {
 					pr_info("[SCP] mbox%u, ipi id %u\n",
 						mbox,

@@ -5044,6 +5044,8 @@ int mtk_cfg80211_vendor_get_trx_stats(struct wiphy *wiphy,
 	}
 
 	ucBssIdx = wlanGetBssIdx(wdev->netdev);
+	if (unlikely(ucBssIdx >= MAX_BSSID_NUM))
+		return -EINVAL;
 
 	DBGLOG(REQ, INFO, "bssIdx:%u\n", ucBssIdx);
 #define MAX_TAG_NUM 16
@@ -5083,7 +5085,7 @@ int mtk_cfg80211_vendor_get_trx_stats(struct wiphy *wiphy,
 						VIR_MEM_TYPE);
 					if (!arIndRx) {
 						DBGLOG(REQ, ERROR,
-							"Can not alloc memory for ind tx info\n");
+							"Can not alloc memory for ind rx info\n");
 						i4Status = -ENOMEM;
 						goto err_handle_label;
 					}
@@ -5103,13 +5105,15 @@ int mtk_cfg80211_vendor_get_trx_stats(struct wiphy *wiphy,
 						VIR_MEM_TYPE);
 					if (!arIndCgs) {
 						DBGLOG(REQ, ERROR,
-							"Can not alloc memory for ind tx info\n");
+							"Can not alloc memory for ind cgs info\n");
 						i4Status = -ENOMEM;
 						goto err_handle_label;
 					}
 					kalMemCopy(arIndCgs, nla_data(attr[i]),
 						ucCgsNum * sizeof(uint32_t));
 				}
+				break;
+			default:
 				break;
 			}
 		}

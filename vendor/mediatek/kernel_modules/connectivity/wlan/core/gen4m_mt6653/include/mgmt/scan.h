@@ -635,6 +635,14 @@ struct CHNL_IDLE_SLOT {
 #endif
 };
 
+struct CHNL_DWELL_TIME {
+	uint16_t au2ChDwellTime2G4[14];
+	uint16_t au2ChDwellTime5G[25];
+#if (CFG_SUPPORT_WIFI_6G == 1)
+	uint16_t au2ChDwellTime6G[59];
+#endif
+};
+
 struct SCAN_INFO {
 	/* Store the STATE variable of SCAN FSM */
 	enum ENUM_SCAN_STATE eCurrentState;
@@ -690,6 +698,8 @@ struct SCAN_INFO {
 	struct SCAN_LOG_CACHE rScanLogCache;
 
 	struct CHNL_IDLE_SLOT rSlotInfo;
+
+	struct CHNL_DWELL_TIME rDwellInfo;
 
 #if CFG_SUPPORT_SCAN_NO_AP_RECOVERY
 	uint8_t		ucScnZeroMdrdyTimes;
@@ -1182,10 +1192,13 @@ void scanLogCacheFlushAll(struct ADAPTER *prAdapter,
 	struct SCAN_LOG_CACHE *prScanLogCache,
 	enum ENUM_SCAN_LOG_PREFIX prefix);
 
-void scanFillChnlIdleSlot(struct ADAPTER *ad, enum ENUM_BAND eBand,
-	uint8_t ucChNum, uint16_t u2IdleTime);
+void scanFillChnlInfo(struct ADAPTER *ad, enum ENUM_BAND eBand,
+	uint8_t ucChNum, uint16_t u2IdleTime, uint16_t u2DwellTime);
 
 uint16_t scanGetChnlIdleSlot(struct ADAPTER *ad, enum ENUM_BAND eBand,
+	uint8_t ucChNum);
+
+uint16_t scanGetChnlDwellTime(struct ADAPTER *ad, enum ENUM_BAND eBand,
 	uint8_t ucChNum);
 
 void scanRemoveBssDescFromList(struct ADAPTER *prAdapter,

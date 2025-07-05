@@ -7103,24 +7103,24 @@ static int syna_glove_mode(void *chip_data, bool enable)
 
 	TP_INFO(tcm_info->tp_index, "%s: %s glove mode.\n", __func__, enable ? "Enter" : "Exit");
 
-	retval = syna_tcm_get_dynamic_config(tcm_info, DC_LOW_TEMP_ENABLE, &regval);
+	retval = syna_tcm_get_dynamic_config(tcm_info, DC_GLOVE_MODE_ENABLED, &regval);
 	if (retval < 0) {
 		TP_INFO(tcm_info->tp_index, "Failed to get glove mode config\n");
 		return retval;
 	}
 
 	if (enable)  {
-		regval = regval | 0x08;
+		regval = regval | 0x01;
 	} else {
-		regval = regval & 0xf7;
+		regval = regval & 0xfe;
 	}
-	retval = syna_tcm_set_dynamic_config(tcm_info, DC_LOW_TEMP_ENABLE, regval);
+	retval = syna_tcm_set_dynamic_config(tcm_info, DC_GLOVE_MODE_ENABLED, regval);
 	if (retval < 0) {
 		TP_INFO(tcm_info->tp_index, "Failed to set glove mode config\n");
 		return retval;
 	}
 
-	retval = syna_tcm_get_dynamic_config(tcm_info, DC_LOW_TEMP_ENABLE, &regval);
+	retval = syna_tcm_get_dynamic_config(tcm_info, DC_GLOVE_MODE_ENABLED, &regval);
 	if (retval < 0) {
 		TP_INFO(tcm_info->tp_index, "Failed to get glove mode config\n");
 		return retval;

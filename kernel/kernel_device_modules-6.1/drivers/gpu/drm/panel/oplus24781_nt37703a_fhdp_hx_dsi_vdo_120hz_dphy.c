@@ -907,6 +907,33 @@ static bool panel_hbm_set_wait_state(struct drm_panel *panel, bool wait)
     return old;
 }
 
+static int oplus_display_panel_set_hbm_max(void *dsi, dcs_write_gce_pack cb1, dcs_write_gce cb2, void *handle, unsigned int en) {
+    unsigned int i = 0;
+
+    pr_info("en=%d\n", en);
+
+    if (!dsi || !cb1 || !cb2) {
+        pr_info("Invalid params\n");
+        return -EINVAL;
+    }
+
+    if (en) {
+        for (i = 0; i < sizeof(dsi_switch_hbm_apl_on) / sizeof(struct LCM_setting_table); i++) {
+            cb2(dsi, handle, dsi_switch_hbm_apl_on[i].para_list, dsi_switch_hbm_apl_on[i].count);
+        }
+        pr_info("Enter hbm_max mode");
+    } else if (!en) {
+        dsi_switch_hbm_apl_off[0].para_list[1] = oplus_display_brightness >> 8;
+        dsi_switch_hbm_apl_off[0].para_list[2] = oplus_display_brightness & 0xFF;
+        for (i = 0; i < sizeof(dsi_switch_hbm_apl_off) / sizeof(struct LCM_setting_table); i++) {
+            cb2(dsi, handle, dsi_switch_hbm_apl_off[i].para_list, dsi_switch_hbm_apl_off[i].count);
+        }
+        pr_info("hbm_max off, restore bl:%d\n", oplus_display_brightness);
+    }
+
+    return 0;
+}
+
 static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce cb, void *handle)
 {
     unsigned int i = 0;
@@ -1253,6 +1280,7 @@ static struct mtk_panel_funcs ext_funcs = {
     .oplus_ofp_set_lhbm_pressed_icon_single = oplus_ofp_set_lhbm_pressed_icon_single,
     .doze_disable = panel_doze_disable,
     .doze_enable = panel_doze_enable,
+    .lcm_set_hbm_max = oplus_display_panel_set_hbm_max,
     .set_aod_light_mode = panel_set_aod_light_mode,
     .esd_backlight_recovery = oplus_esd_backlight_recovery,
 

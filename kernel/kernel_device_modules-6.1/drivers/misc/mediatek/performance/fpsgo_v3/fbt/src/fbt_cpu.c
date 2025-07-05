@@ -1824,7 +1824,7 @@ EXIT:
 }
 
 static int fbt_group_by_lr(struct fpsgo_loading dep_arr[], int dep_size, int heaviest_pid,
-			int second_pid, int thr_pid)
+			int second_pid, int thr_pid, int render_first)
 {
 	int ret = -1;
 	int i;
@@ -1838,10 +1838,10 @@ static int fbt_group_by_lr(struct fpsgo_loading dep_arr[], int dep_size, int hea
 		struct fpsgo_loading *fl = &dep_arr[i];
 
 		if (fbt_is_R_L_task(fl->pid, heaviest_pid, second_pid, thr_pid)) {
-			if (fl->pid == heaviest_pid)
-				fl->heavyidx = FPSGO_GROUP_HEAVY;
+			if (fl->pid == thr_pid)
+				fl->heavyidx = render_first ? FPSGO_GROUP_HEAVY : FPSGO_GROUP_SECOND;
 			else
-				fl->heavyidx = FPSGO_GROUP_SECOND;
+				fl->heavyidx = render_first ? FPSGO_GROUP_SECOND : FPSGO_GROUP_HEAVY;
 		}
 	}
 	ret = 0;
@@ -1855,9 +1855,11 @@ static int fbt_group_dep(int group_by_lr, struct fpsgo_loading *dep_arr, int dep
 {
 	int ret = 0;
 
-	if (group_by_lr)
-		ret = fbt_group_by_lr(dep_arr, dep_size, heaviest_pid, second_pid, thr_pid);
-	else {
+	if (group_by_lr) {
+		int render_first = group_by_lr == 2 ? 1 : 0;
+
+		ret = fbt_group_by_lr(dep_arr, dep_size, heaviest_pid, second_pid, thr_pid, render_first);
+	} else {
 		heavy_group_num = heavy_group_num ? heavy_group_num : max_cl_core_num;
 		ret = fbt_group_by_loading(dep_arr, dep_size, heavy_group_num, FPSGO_GROUP_HEAVY);
 		if (!ret)
@@ -7461,7 +7463,7 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->rescue_second_group_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "group_by_lr")) {
-		if ((val == 0 || val == 1) && action == 's')
+		if ((val <= 2 && val >= 0) && action == 's')
 			boost_attr->group_by_lr_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->group_by_lr_by_pid = BY_PID_DEFAULT_VAL;
@@ -9081,10 +9083,12 @@ static ssize_t group_by_lr_store(struct kobject *kobj,
 	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &arg) == 0) {
-				val = !!arg;
-				mutex_lock(&fbt_mlock);
-				group_by_lr = val;
-				mutex_unlock(&fbt_mlock);
+				val = arg;
+				if (val <= 2 && val >= 0) {
+					mutex_lock(&fbt_mlock);
+					group_by_lr = val;
+					mutex_unlock(&fbt_mlock);
+				}
 			}
 		}
 	}

@@ -9,6 +9,12 @@
 #define BRIGHTNESS_HALF         3515
 #define BRIGHTNESS_MAX          4094
 
+/* Mode Config */
+#define MODE_NUM                    (4)
+#define RES_NUM                     (2)
+#define MODE_MAPPING_RULE(x)        ((x) % (MODE_NUM))
+static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
+
 enum MODE_ID {
 	FHD_SDC60 = 0,
 	FHD_SDC90 = 1,
@@ -50,6 +56,19 @@ static struct LCM_setting_table lcm_lhbm_off_setbrightness_normal[] = {
 	{REGFLAG_CMD, 2, {0xB0, 0x00}},
 	{REGFLAG_CMD, 3, {0x8B, 0x00, 0x00}},
 	{REGFLAG_CMD, 2, {0x87, 0x00}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
+
+struct LCM_setting_table dsi_switch_hbm_apl_on[] = {
+	/* Enter APL 1% 6000*/
+	{REGFLAG_CMD, 3, {0x51, 0x0F, 0xFF}},
+	{REGFLAG_CMD, 2, {0x5F, 0x02}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
+
+struct LCM_setting_table dsi_switch_hbm_apl_off[] = {
+	{REGFLAG_CMD, 2, {0x5F, 0x00}},
+	{REGFLAG_CMD, 3, {0x51, 0x0D, 0xBB}},
 	{REGFLAG_END_OF_TABLE, 0x00, {}}
 };
 

@@ -886,7 +886,7 @@ static int scp_err_info_handler(unsigned int id, void *prdata, void *data,
  */
 unsigned int is_scp_ready(enum scp_core_id id)
 {
-	if (scp_ready[id])
+	if (scp_ready[id] && !system_shutdown)
 		return 1;
 	else
 		return 0;

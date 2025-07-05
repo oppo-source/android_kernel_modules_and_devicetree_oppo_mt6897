@@ -741,7 +741,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.equivalent_fps = 0,
 		},
 	},
-	{/*Reg_B_4096x2304_30FPS**/
+	{/*reg_B14-S6 4096x2304 @30FPS QBIN(VBIN)_with PDAF VB_max PixelRate 2146Msps**/
 		.frame_desc = frame_desc_vid,
 		.num_entries = ARRAY_SIZE(frame_desc_vid),
 		.mode_setting_table = zhuquec2main_normal_video_setting,
@@ -790,7 +790,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.equivalent_fps = 30,
 		},
 	},
-    {/*Reg_B_4096x2304_30FPS**/
+    {/*reg_B15-S6 4096x2304 @60FPS QBIN_with PDAF VB_max PixelRate 2146Msps**/
 		.frame_desc = frame_desc_hs,
 		.num_entries = ARRAY_SIZE(frame_desc_hs),
 		.mode_setting_table = zhuquec2main_hs_video_setting,
@@ -1035,7 +1035,7 @@ static struct subdrv_mode_struct mode_struct[] = {
 			.equivalent_fps = 15,
 		},
 	},
-    {/*F9-S4_4096x3072_30FPS_IZOOM+QBC**/
+    {/*Reg_F11-S6 4096x3072 @30FPS Full-RAW_Crop with PD VB_max 2146Msps**/
 		.frame_desc = frame_desc_cus4,
 		.num_entries = ARRAY_SIZE(frame_desc_cus4),
 		.mode_setting_table = zhuquec2main_custom4_setting,
@@ -2413,7 +2413,6 @@ static int zhuquec2main_seamless_switch(struct subdrv_ctx *ctx, u8 *para, u32 *l
 	i2c_table_write(ctx,
 		ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_table,
 		ctx->s_ctx.mode[scenario_id].seamless_switch_mode_setting_len);
-
 	DRV_LOG(ctx, "write seamless switch setting done\n");
 	if (ae_ctrl) {
 		switch (ctx->s_ctx.mode[scenario_id].hdr_mode) {

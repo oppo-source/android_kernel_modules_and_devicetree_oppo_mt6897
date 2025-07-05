@@ -342,6 +342,24 @@ int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
 }
 EXPORT_SYMBOL_GPL(slbc_get_cache_usage);
 
+int slbc_adjust_cpu(int size)
+{
+	if (common_ops && common_ops->slbc_adjust_cpu)
+		return common_ops->slbc_adjust_cpu(size);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_adjust_cpu);
+
+int slbc_adjust_gpu(int size)
+{
+	if (common_ops && common_ops->slbc_adjust_gpu)
+		return common_ops->slbc_adjust_gpu(size);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_adjust_gpu);
+
 void slbc_register_common_ops(struct slbc_common_ops *ops)
 {
 	common_ops = ops;

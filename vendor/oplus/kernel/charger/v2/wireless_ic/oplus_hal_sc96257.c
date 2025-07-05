@@ -260,7 +260,10 @@ struct rx_cust_type {/*<offset>*/
 	u8 reserved008d[3];
 	/*0x0090*/
 	u8 vsys_cfg;
-	u8 reserved0091[15];
+	u8 vsys_cfg_reserved;
+	u8 fod_q;
+	u8 fod_r;
+	u8 reserved0094[12];
 	/*0x00A0*/
 	u32 tx_setting[24];
 	/*0x0100*/
@@ -1693,6 +1696,39 @@ static int sc96257_set_headroom(struct oplus_chg_ic_dev *dev, int val)
 	return 0;
 }
 
+static int sc96257_epp_send_match_q(struct oplus_chg_ic_dev *dev, u8 data[])
+{
+	struct oplus_sc96257 *chip;
+	int rc;
+	u8 fod_q;
+	u8 fod_f;
+
+	if (dev == NULL || data == NULL) {
+		chg_err("oplus_chg_ic_dev is NULL\n");
+		return -ENODEV;
+	}
+	chip = oplus_chg_ic_get_drvdata(dev);
+	fod_f = data[0];
+	fod_q = data[1];
+
+	rc = sc96257_write_block(chip, (u16)ADDR(struct rx_cust_type, fod_q), (u8 *)&fod_q,
+		sizeof(chip->info.rx_info.fod_q));
+	if (rc < 0) {
+		chg_err("set epp fod_q err, rc=%d\n", rc);
+		return rc;
+	}
+
+	sc96257_write_block(chip, (u16)ADDR(struct rx_cust_type, fod_r), (u8 *)&fod_f,
+		sizeof(chip->info.rx_info.fod_r));
+	if (rc < 0) {
+		chg_err("send epp fod_f err, rc=%d\n", rc);
+		return rc;
+	}
+	chg_info("epp f value:0x%x, q value:0x%x\n", data[0], data[1]);
+
+	return 0;
+}
+
 #define PPP_BUSY_WAIT	30
 static int sc96257_send_match_q(struct oplus_chg_ic_dev *dev, u8 data[])
 {
@@ -1738,7 +1774,7 @@ static int sc96257_send_match_q(struct oplus_chg_ic_dev *dev, u8 data[])
 		chg_err("sc96257 set cmd fail\n");
 		return rc;
 	}
-	chg_info("q value:0x%x\n", buf[3]);
+	chg_info("q value:0x%x, f value:0x%x\n", buf[3], buf[2]);
 
 	return 0;
 }
@@ -2920,6 +2956,11 @@ static void sc96257_event_process(struct oplus_sc96257 *chip)
 		}
 	}
 
+	if (irq_flag & WP_IRQ_RX_EPP_ID_SUCCESS) {
+		chip->event_code = WLS_EVENT_EPP_TX_MANU_ID;
+		oplus_chg_ic_virq_trigger(chip->ic_dev, OPLUS_IC_VIRQ_EVENT_CHANGED);
+	}
+
 out:
 	sc96257_clear_irq(chip, irq_flag);
 
@@ -3703,6 +3744,10 @@ static void *oplus_chg_rx_get_func(struct oplus_chg_ic_dev *ic_dev,
 	case OPLUS_IC_FUNC_RX_SET_SILENT:
 		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_RX_SET_SILENT,
 			sc96257_set_silent);
+		break;
+	case OPLUS_IC_FUNC_RX_SEND_EPP_MATCH_Q:
+		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_RX_SEND_EPP_MATCH_Q,
+			sc96257_epp_send_match_q);
 		break;
 	default:
 		chg_err("this func(=%d) is not supported\n", func_id);

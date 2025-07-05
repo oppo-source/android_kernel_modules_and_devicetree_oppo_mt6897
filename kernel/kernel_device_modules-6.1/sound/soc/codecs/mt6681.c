@@ -58,6 +58,7 @@
 /* #define NLE_IMP */
 #define SKIP_SB
 #define ALIGN_SWING
+//#define ALIGN_SWING_2
 
 
 static ssize_t mt6681_codec_sysfs_read(struct file *filep, struct kobject *kobj,
@@ -931,7 +932,7 @@ static void mt6681_set_2nd_dl_src(struct mt6681_priv *priv, bool enable, bool fo
 				priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
 				AFE_2ND_DL_VOICE_MODE_CTL_PRE_MASK_SFT,
 				0x0 << AFE_2ND_DL_VOICE_MODE_CTL_PRE_SFT);
-#ifdef ALIGN_SWING
+#ifdef ALIGN_SWING_2
 			regmap_update_bits(
 				priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
 				AFE_2ND_DL_GAIN_ON_CTL_PRE_MASK_SFT,
@@ -975,7 +976,7 @@ static void mt6681_set_2nd_dl_src(struct mt6681_priv *priv, bool enable, bool fo
 		}
 	} else {
 		if (priv->hp_hifi_mode == 0 || force == true) {
-#ifdef ALIGN_SWING
+#ifdef ALIGN_SWING_2
 			regmap_update_bits(priv->regmap,
 					   MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
 					   AFE_2ND_DL_GAIN_ON_CTL_PRE_MASK_SFT,
@@ -2143,6 +2144,43 @@ static const struct snd_kcontrol_new mt6681_snd_controls[] = {
 #endif
 };
 
+static int out_mux_enum_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget *w = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_component *component = snd_soc_dapm_to_component(dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+	int reg_val = 0;
+
+	reg_val = snd_soc_dapm_get_enum_double(kcontrol, ucontrol);
+	dev_info(priv->dev, "%s(), w->name %s: reg_val = %d\n", __func__, w->name, reg_val);
+
+	return 0;
+}
+static int out_mux_enum_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget *w = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_component *component = snd_soc_dapm_to_component(dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+	unsigned int mux = ucontrol->value.enumerated.item[0];
+	if (strcmp(w->name, "LO MUX") == 0) {
+		if (mux != 0)
+			priv->lo_enable = 1;
+		else
+			priv->lo_enable = 0;
+	} else {
+		if (mux != 0)
+			priv->hs_enable = 1;
+		else
+			priv->hs_enable = 0;
+	}
+
+	dev_info(priv->dev, "%s(), w->name %s = mux %d hs_enable = %d lo_enable = %d\n", __func__, w->name, mux, priv->hs_enable, priv->lo_enable);
+
+	return snd_soc_dapm_put_enum_double(kcontrol, ucontrol);
+}
+
 /* LOL MUX */
 static const char *const lo_in_mux_map[] = {"Open", "HS DAC", "LO DAC",
 					    "Test Mode_HS"};
@@ -2156,7 +2194,8 @@ static SOC_VALUE_ENUM_SINGLE_DECL(lo_in_mux_map_enum, SND_SOC_NOPM, 0,
 				  lo_in_mux_map_value);
 
 static const struct snd_kcontrol_new lo_in_mux_control =
-	SOC_DAPM_ENUM("LO Select", lo_in_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("LO Select", lo_in_mux_map_enum,
+			  out_mux_enum_get, out_mux_enum_put);
 
 /*HP MUX */
 static const char *const hp_in_mux_map[] = {
@@ -2196,7 +2235,8 @@ static SOC_VALUE_ENUM_SINGLE_DECL(rcv_in_mux_map_enum, SND_SOC_NOPM, 0,
 				  rcv_in_mux_map_value);
 
 static const struct snd_kcontrol_new rcv_in_mux_control =
-	SOC_DAPM_ENUM("RCV Select", rcv_in_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("RCV Select", rcv_in_mux_map_enum,
+			  out_mux_enum_get, out_mux_enum_put);
 
 /* DAC In MUX */
 static const char *const dac_in_mux_map[] = {"Normal Path", "Sgen"};
@@ -12473,6 +12513,8 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
 	dev_dbg(priv->dev, "%s() + ", __func__);
+	dev_info(priv->dev, "%s(), hs_enable = %d(rload = %d) lo_enable = %d\n", __func__, priv->hs_enable, priv->hs_rload, priv->lo_enable);
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (priv->hp_hifi_mode) {
@@ -12480,25 +12522,38 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			 * path or 1:
 			 * HSLO path
 			 */
-			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
-					   RG_CLH_DYN_LOAD_MASK_SFT,
-					   0x0 << RG_CLH_DYN_LOAD_SFT);
+			if ((priv->lo_enable) || (priv->hs_enable))
+				regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+						   RG_CLH_DYN_LOAD_MASK_SFT,
+						   0x1 << RG_CLH_DYN_LOAD_SFT);
+			else
+				regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+						   RG_CLH_DYN_LOAD_MASK_SFT,
+						   0x0 << RG_CLH_DYN_LOAD_SFT);
 			/*
 			 * Step 52:
 			 * [0] Select PVDDref & TONref from
 			 * 0: LUT0 or LUT1 (HP32, HP16, HS32, and LO), 1:
 			 * Calculator (HS16)
 			 */
-			regmap_update_bits(priv->regmap, MT6681_CLH_REFGEN_CON2,
-					   RG_CLH_REFGENSEL_MASK_SFT,
-					   0x0 << RG_CLH_REFGENSEL_SFT);
+			if ((priv->hs_enable) && (priv->hs_rload == 16))
+				regmap_update_bits(priv->regmap, MT6681_CLH_REFGEN_CON2,
+						   RG_CLH_REFGENSEL_MASK_SFT,
+						   0x1 << RG_CLH_REFGENSEL_SFT);
+			else
+				regmap_update_bits(priv->regmap, MT6681_CLH_REFGEN_CON2,
+						   RG_CLH_REFGENSEL_MASK_SFT,
+						   0x0 << RG_CLH_REFGENSEL_SFT);
 			/*
 			 * Step 53:
 			 * Select LUT (including PVDDref & TONref)
-			 * 0: LUT0 (HP32 and HS32), 1: LUT1 (HP16)
+			 * 0: LUT0 (HP32), 1: LUT1 (HP16 and HS32)
 			 */
-			regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x0);
-
+			if (((priv->hs_enable) && (priv->hs_rload == 32)) ||
+			((!priv->hs_enable) && (!priv->lo_enable) && (priv->hp_impedance != 0) && (priv->hp_impedance < 30)))
+				regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x1);
+			else
+				regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x0);
 			/* Step 54: Enable DA_CLH_CLK26M = 010101*/
 			regmap_write(priv->regmap, MT6681_CLH_COM_CON1, 0x1);
 			/* Step 55: Set V18Nref to -1.587V */
@@ -12515,7 +12570,12 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			/* Step 58: Set Tonref = 13.5T in bypass mode or
 			 * class-AB state
 			 */
-			regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
+			if ((priv->hs_enable) && (priv->hs_rload == 32))
+				regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x10);
+			else if ((!priv->hs_enable) && (!priv->lo_enable) && (priv->hp_impedance != 0) && (priv->hp_impedance < 30))
+				regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x1c);
+			else
+				regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
 			/*
 			 * Step 59:
 			 * [4] Set DA_CLH_TONENDA = 0
@@ -12531,7 +12591,14 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			 * [6:0] Set PVDDref = 1.95V in bypass mode or class-AB
 			 * state
 			 */
-			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xfc);
+			if (priv->lo_enable)
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xf4);
+			else if ((priv->hs_enable) && (priv->hs_rload == 16))
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xf0);
+			else if ((!priv->hs_enable) && (!priv->lo_enable) && (priv->hp_impedance >= 30))
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xfc);
+			else
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xf8);
 
 			/* Step 61: Set preview 8 data (after up-sampling) in
 			 * each channel
@@ -12542,7 +12609,18 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			 * (VS1 to VP)
 			 * based on Rload
 			 */
-			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
+			if (priv->lo_enable)
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x78);
+			else if (priv->hs_enable) {
+				if (priv->hs_rload == 32)
+					regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x5a);
+				else
+					regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x65);
+			} else if ((!priv->hs_enable) && (!priv->lo_enable) && (priv->hp_impedance != 0) && (priv->hp_impedance < 30))
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x70);
+			else
+				regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
+
 			/* Step 63: Set PVDDref-path delay 1 for fs = 48kHz */
 			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON8, 0x0);
 
@@ -38793,6 +38871,18 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 				dev,
 				"%s() Get pmic_hpofs_cal iio ch failed (%d), will retry ...\n",
 				__func__, ret);
+	}
+
+	ret = of_property_read_u32(np, "hs-rload",
+				   &priv->hs_rload);
+
+	dev_info(priv->dev, "%s() pass to read hs_rload = %d\n",
+		__func__, priv->hs_rload);
+
+	if (ret) {
+		dev_info(priv->dev, "%s() failed to read hs_rload\n",
+			__func__);
+		priv->hs_rload = 16;
 	}
 
 #if IS_ENABLED(CONFIG_MT6681_EFUSE)

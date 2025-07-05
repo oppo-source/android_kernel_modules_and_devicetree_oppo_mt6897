@@ -1523,6 +1523,7 @@ static ssize_t rtp_store(struct device *dev,
 		|| (val >=  OS12_NEW_RING_START && val <= OS12_NEW_RING_END)
 		|| (val >=  OPLUS_RING_START && val < OPLUS_RING_END)
 		|| (val >=  OS14_NEW_RING_START && val <= OS14_NEW_RING_END)
+		|| (val >=  OS15_NEW_RING_START && val <= OS15_NEW_RING_END)
 		|| (val >=  ALCLOUDSCAPE_START && val <= ALCLOUDSCAPE_END)
 		|| (val >=  RINGTONE_NOTIF_ALARM_START && val <= RINGTONE_NOTIF_ALARM_END)
 		|| val == RINGTONES_SIMPLE_INDEX

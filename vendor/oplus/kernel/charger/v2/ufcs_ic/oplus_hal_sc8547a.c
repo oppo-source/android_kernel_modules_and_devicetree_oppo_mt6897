@@ -1805,7 +1805,6 @@ static int sc8547_irq_register(struct sc8547a_device *chip)
 				voocphy->irq, ret);
 			return ret;
 		}
-		enable_irq_wake(voocphy->irq);
 		chg_debug("request irq ok\n");
 	}
 

@@ -299,6 +299,7 @@ enum oplus_chg_wls_event_code {
 	WLS_EVENT_RXAC_ATTACH,
 	WLS_EVENT_RXAC_DETACH,
 	WLS_EVENT_EPP_NEGO_FAIL,
+	WLS_EVENT_EPP_TX_MANU_ID,
 };
 
 enum fastchg_protocol_type {
@@ -332,6 +333,7 @@ struct oplus_gauge_lifetime {
 #define OTG_ENABLE_PENDING	BIT(2)
 #define USB_RESERVE3		BIT(3)
 #define USB_RESERVE4		BIT(4)
+#define USB_LPD_DETECT		BIT(5)
 #define WLS_CONNECT_PENDING	BIT(16)
 #define WLS_RESERVE17		BIT(17)
 #define USB_DONOT_USE		BIT(31)

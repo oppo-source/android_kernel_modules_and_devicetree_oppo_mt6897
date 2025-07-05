@@ -668,6 +668,9 @@ int mtk_cfg80211_get_station(struct wiphy *wiphy,
 	struct BSS_INFO *prBssInfo;
 	uint8_t ucBandIdx = 0;
 	struct MIB_INFO_STAT *prMibInfo = NULL;
+#if CFG_SUPPORT_LLS
+	uint8_t ac;
+#endif
 
 	WIPHY_PRIV(wiphy, prGlueInfo);
 	ASSERT(prGlueInfo);
@@ -820,14 +823,9 @@ int mtk_cfg80211_get_station(struct wiphy *wiphy,
 	if (!rLinkSpeed.rLq[ucBssIndex].fgIsLinkRateValid) {
 #endif
 		/* use the scan RSSI */
-		struct BSS_DESC *prBssDesc =
-			scanSearchBssDescByBssid(prAdapter, (uint8_t *)mac);
-
-		if (prBssDesc) {
-			i4Rssi = RCPI_TO_dBm(prBssDesc->ucRCPI);
-			DBGLOG(REQ, WARN,
+		i4Rssi = RCPI_TO_dBm(prAdapter->ucScanRcpi[ucBssIndex]);
+		DBGLOG(REQ, WARN,
 				"LR invalid, use scan result:%d\n", i4Rssi);
-		}
 	}
 
 	if (rStatus != WLAN_STATUS_SUCCESS) {
@@ -884,7 +882,13 @@ int mtk_cfg80211_get_station(struct wiphy *wiphy,
 		sinfo->filled |= STATION_INFO_RX_PACKETS;
 		sinfo->filled |= NL80211_STA_INFO_RX_BYTES64;
 #endif
+#if CFG_SUPPORT_LLS
+		sinfo->rx_packets = 0;
+		for (ac = 0; ac < STATS_LLS_WIFI_AC_MAX; ac++)
+			sinfo->rx_packets += prBssInfo->u4RxMpduAc[ac];
+#else
 		sinfo->rx_packets = prDevStats->rx_packets;
+#endif /* CFG_SUPPORT_LLS */
 		sinfo->rx_bytes = prDevStats->rx_bytes;
 
 		/* 5. fill TX_PACKETS */

@@ -2426,7 +2426,14 @@ static int open(struct subdrv_ctx *ctx)
 	if (get_imgsensor_id(ctx, &sensor_id) != ERROR_NONE)
 		return ERROR_SENSOR_CONNECT_FAIL;
 
-	if (module_flag == 0x010F || module_flag == 0x011F || (module_flag & 0xFF00) == 0x0200){
+	if((module_flag & 0xFF00) == 0x0700) {
+		DRV_LOGE(ctx, "module_flag = 0x%x, new module\n", module_flag);
+		subdrv_i2c_wr_regs_u16(ctx, zhuquec2front_sensor_init_pre_setting1, ARRAY_SIZE(zhuquec2front_sensor_init_pre_setting1));
+		mdelay(5);
+		subdrv_i2c_wr_regs_u16(ctx, zhuquec2front_sensor_init_pre_setting2, ARRAY_SIZE(zhuquec2front_sensor_init_pre_setting2));
+		mdelay(5);
+		zhuquec2front_i2c_burst_wr_regs_u16(ctx, zhuquec2front_sensor_simple_init_setting_0x07xx, ARRAY_SIZE(zhuquec2front_sensor_simple_init_setting_0x07xx));
+	} else if (module_flag == 0x010F || module_flag == 0x011F || (module_flag & 0xFF00) == 0x0200){
 		DRV_LOGE(ctx, "module_flag = 0x%x, modules with OTP data\n", module_flag);
 		subdrv_i2c_wr_regs_u16(ctx, zhuquec2front_sensor_init_pre_setting1, ARRAY_SIZE(zhuquec2front_sensor_init_pre_setting1));
 		mdelay(5);
@@ -2434,15 +2441,15 @@ static int open(struct subdrv_ctx *ctx)
 		mdelay(5);
 		zhuquec2front_i2c_burst_wr_regs_u16(ctx, zhuquec2front_sensor_simple_init_setting, ARRAY_SIZE(zhuquec2front_sensor_simple_init_setting));
 		DRV_LOGE(ctx, "setting end\n");
-	}else{
+	} else {
 		DRV_LOGE(ctx, "module_flag = 0x%x, modules without OTP data\n", module_flag);
 		subdrv_i2c_wr_regs_u16(ctx, zhuquec2front_sensor_init_pre_setting1, ARRAY_SIZE(zhuquec2front_sensor_init_pre_setting1));
 		mdelay(5);
 		subdrv_i2c_wr_regs_u16(ctx, zhuquec2front_sensor_init_pre_setting2, ARRAY_SIZE(zhuquec2front_sensor_init_pre_setting2));
 		mdelay(5);
 		subdrv_i2c_wr_regs_u16(ctx, zhuquec2front_sensor_init_setting, ARRAY_SIZE(zhuquec2front_sensor_init_setting));
-		DRV_LOGE(ctx, "setting end\n");
 	};
+	DRV_LOGE(ctx, "setting end\n");
 
 	memset(ctx->exposure, 0, sizeof(ctx->exposure));
 	memset(ctx->ana_gain, 0, sizeof(ctx->gain));
